@@ -1,0 +1,84 @@
+name: CI
+
+# Checks that are independent from the agents. Runs on pushes and pull requests,
+# and is triggered by the daily cycle after it pushes its commits.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: kanban
+          POSTGRES_PASSWORD: kanban
+          POSTGRES_DB: kanban_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kanban"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://kanban:kanban@localhost:5432/kanban_test
+      SESSION_SECRET: ci-only-session-secret-not-used-anywhere-else
+      CI: "true"
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Does the project exist yet?
+        id: exists
+        run: |
+          if [ -f package.json ]; then echo "yes=true" >> "$GITHUB_OUTPUT"; else echo "yes=false" >> "$GITHUB_OUTPUT"; fi
+
+      # Uses the pnpm version pinned in package.json ("packageManager").
+      - uses: pnpm/action-setup@v4
+        if: steps.exists.outputs.yes == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.exists.outputs.yes == 'true'
+        with:
+          node-version: 22
+
+      - name: Install
+        if: steps.exists.outputs.yes == 'true'
+        run: pnpm install --frozen-lockfile
+
+      # Build first: web and api typecheck against the packages/shared build.
+      - name: Build
+        if: steps.exists.outputs.yes == 'true'
+        run: pnpm run --if-present build
+
+      - name: Lint
+        if: steps.exists.outputs.yes == 'true'
+        run: pnpm run --if-present lint
+
+      - name: Types
+        if: steps.exists.outputs.yes == 'true'
+        run: pnpm run --if-present typecheck
+
+      - name: Migrations
+        if: steps.exists.outputs.yes == 'true'
+        run: pnpm run --if-present db:migrate
+
+      - name: Unit and API tests
+        if: steps.exists.outputs.yes == 'true'
+        run: pnpm run --if-present test
+
+      - name: Install Chromium (if the script exists)
+        if: steps.exists.outputs.yes == 'true'
+        run: pnpm run --if-present test:e2e:setup
+
+      - name: E2E tests
+        if: steps.exists.outputs.yes == 'true'
+        run: pnpm run --if-present test:e2e

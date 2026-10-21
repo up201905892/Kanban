@@ -1,0 +1,46 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(pnpm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(docker compose *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git rev-parse *)",
+      "Bash(ls *)",
+      "Bash(mkdir *)",
+      "Agent(planner)",
+      "Agent(developer)",
+      "Agent(tester)",
+      "Agent(finisher)"
+    ],
+    "deny": [
+      "Bash(git push *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git reset *)",
+      "Bash(git rebase *)",
+      "Bash(npm publish *)",
+      "Bash(pnpm publish *)",
+      "Bash(flyctl *)",
+      "Bash(fly *)",
+      "Bash(vercel *)",
+      "Bash(railway *)",
+      "Bash(render *)",
+      "Read(/.env)",
+      "Read(/**/.env)",
+      "Edit(/.env)",
+      "Edit(/**/.env)",
+      "Edit(/.github/**)",
+      "Edit(/.claude/**)",
+      "Edit(/CLAUDE.md)",
+      "Edit(/docs/workflow/approvals.md)"
+    ]
+  }
+}

@@ -1,0 +1,146 @@
+name: Daily cycle
+
+# Runs /daily in autonomous mode on the develop branch every weekday.
+# Times are UTC: 09:23 UTC = 09:23 in Lisbon in winter, 10:23 in summer.
+# Offset from the Design System cycle (06:47 UTC) so both never run at the same time.
+on:
+  schedule:
+    - cron: "23 9 * * 1-5"
+  workflow_dispatch: {}
+
+concurrency:
+  group: daily-cycle
+  cancel-in-progress: false
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+      id-token: write
+
+    # Database for the tests the agents run.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: kanban
+          POSTGRES_PASSWORD: kanban
+          POSTGRES_DB: kanban_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kanban"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Test-only credentials, valid only inside this run.
+      DATABASE_URL: postgresql://kanban:kanban@localhost:5432/kanban_test
+      SESSION_SECRET: ci-only-session-secret-not-used-anywhere-else
+      CI: "true"
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Switch to the develop branch (created on the first run)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin develop > /dev/null; then
+            git checkout -B develop origin/develop
+          else
+            git checkout -b develop
+            git push -u origin develop
+          fi
+
+      # Once package.json pins "packageManager", pnpm/action-setup must run without
+      # a version (otherwise it fails with "multiple versions"). Before the project
+      # exists, it needs an explicit version so the agents can create it.
+      - name: Detect the pnpm version source
+        id: pnpm
+        run: |
+          if [ -f package.json ] && grep -q '"packageManager"' package.json; then
+            echo "pinned=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pinned=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install pnpm (version from package.json)
+        if: steps.pnpm.outputs.pinned == 'true'
+        uses: pnpm/action-setup@v4
+
+      - name: Install pnpm (project not created yet)
+        if: steps.pnpm.outputs.pinned != 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies (if the project exists)
+        run: |
+          if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; fi
+
+      - name: Install Chromium for E2E tests (if the script exists)
+        run: |
+          if [ -f package.json ]; then pnpm run --if-present test:e2e:setup; fi
+
+      - name: Run the daily cycle
+        uses: anthropics/claude-code-action@v1
+        env:
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
+        with:
+          # With a Claude subscription (Pro/Max): CLAUDE_CODE_OAUTH_TOKEN secret, generated with `claude setup-token`.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # With an API key, replace the line above with:
+          # anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: "/daily autonomous"
+          settings: .claude/settings.json
+          claude_args: |
+            --max-turns 200
+
+      - name: Push the day's commits
+        run: |
+          if [ -n "$(git log origin/develop..HEAD --oneline)" ]; then
+            git pull --rebase origin develop
+            git push origin develop
+          else
+            echo "No new commits today."
+          fi
+
+      - name: Run CI on develop
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --ref develop
+
+      - name: Post the summary on the develop → main pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          awk '/^## 20[0-9][0-9]-/{n++} n==1' docs/workflow/daily-log.md > "$RUNNER_TEMP/summary.md" || true
+          if [ -z "$(git log origin/main..develop --oneline)" ]; then
+            echo "develop has nothing new compared to main."
+            exit 0
+          fi
+          PR=$(gh pr list --head develop --base main --state open --json number -q '.[0].number')
+          if [ -z "$PR" ]; then
+            gh pr create --base main --head develop \
+              --title "Kanban — daily cycle work" \
+              --body "Pull request maintained by the daily cycle. Review the commits and merge into main when you want to close a phase. Decisions are made in docs/workflow/approvals.md, on the develop branch."
+            PR=$(gh pr list --head develop --base main --state open --json number -q '.[0].number')
+          fi
+          if [ -s "$RUNNER_TEMP/summary.md" ]; then
+            gh pr comment "$PR" --body-file "$RUNNER_TEMP/summary.md"
+          fi
