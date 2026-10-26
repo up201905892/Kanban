@@ -1,12 +1,18 @@
 import { buildApp } from './app.js';
+import { loadConfigOrExit, loadDotEnv } from './config.js';
+import { createPrismaClient } from './db.js';
 
-const port = Number(process.env['PORT'] ?? 3000);
-const host = process.env['HOST'] ?? '0.0.0.0';
+loadDotEnv();
+const config = loadConfigOrExit();
 
-const app = buildApp();
+const prisma = createPrismaClient(config.DATABASE_URL);
+const app = buildApp({ prisma });
+app.addHook('onClose', async () => {
+  await prisma.$disconnect();
+});
 
 try {
-  await app.listen({ port, host });
+  await app.listen({ port: config.PORT, host: config.HOST });
 } catch (err) {
   app.log.error(err);
   process.exit(1);

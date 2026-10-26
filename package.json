@@ -13,7 +13,11 @@
     "format": "prettier --write .",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r --if-present test",
-    "dev": "pnpm --filter @kanban/shared build && pnpm -r --parallel --filter \"!@kanban/shared\" dev"
+    "dev": "pnpm --filter @kanban/shared build && pnpm -r --parallel --filter \"!@kanban/shared\" dev",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @kanban/api exec prisma migrate deploy",
+    "db:migrate:dev": "pnpm --filter @kanban/api exec prisma migrate dev"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

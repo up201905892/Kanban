@@ -10,3 +10,6 @@ blob-report
 playwright/.cache
 *.tsbuildinfo
 .DS_Store
+
+# Generated Prisma client
+apps/api/src/generated
