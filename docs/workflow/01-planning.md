@@ -8,7 +8,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 
 | ID | Task | MVP phase | Priority | Depends on | Status |
 | --- | --- | --- | --- | --- | --- |
-| KB-001 | Monorepo scaffold and tooling | Foundations | High | — | Passed |
+| KB-001 | Monorepo scaffold and tooling | Foundations | High | — | Done |
 | KB-002 | Local PostgreSQL, Prisma and validated configuration | Foundations | High | KB-001 | Planned |
 | KB-003 | API conventions and E2E harness | Foundations | High | KB-001 | Planned |
 | KB-004 | Web app shell, data layer and minimal local components | Foundations | High | KB-003 | Planned |
@@ -205,6 +205,7 @@ Task template (copy for each new task):
 - 2026-10-26 · developer · In development → Ready for test · commit 34bb1ee
 - 2026-10-26 · tester · Ready for test → In test · testing started
 - 2026-10-26 · tester · In test → Passed · Report 1 in 03-testing.md, all criteria verified
+- 2026-10-26 · finisher · Passed → Done · CHANGELOG, .env.example and docs/api.md added; entry in 04-done.md
 
 ### KB-002 · Local PostgreSQL, Prisma and validated configuration
 

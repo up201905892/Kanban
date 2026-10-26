@@ -17,6 +17,15 @@ Entry template:
 - **Lessons:** optional, one line
 -->
 
+### KB-001 · Monorepo scaffold and tooling — done on 2026-10-26
+
+- **Approving test report:** Report 1 (2026-10-26), commit 34bb1ee
+- **Development iterations:** 1
+- **Delivered:** the project has a working base (web, api and shared packages) with a health check, so every later feature builds on the same tooling.
+- **CHANGELOG:** "Added: The app now has a starting point: a web page and a server with a health check that reports when the service is running (KB-001)."
+- **Documentation:** `docs/api.md` (GET /health), `.env.example` (PORT, HOST); no ADR required
+- **Lessons:** `pnpm dev` needs `packages/shared` built once first; a watch mode for shared is a candidate task for the planner.
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
