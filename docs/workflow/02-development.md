@@ -46,3 +46,23 @@ Entry template:
   - `pnpm install` reports "Ignored build scripts: esbuild"; everything works without approving it.
   - I could not start the api server and curl `/health` here (the sandbox blocked the compound command); `/health` is covered through `app.inject`. Please check `pnpm dev` manually.
   - Suggestion for the planner: the `dev` script needs `shared` built once; a watch mode for `shared` could be added later.
+
+### KB-002 · Local PostgreSQL, Prisma and validated configuration
+
+**Iteration 1 — 2026-10-26**
+
+- **Status at the end:** Ready for test
+- **What was done:** Added `docker-compose.yml` (postgres:17, named volume, healthcheck, init script creating `kanban_test`), Prisma 7 in `apps/api` (config in `prisma.config.ts`, client generated to `src/generated/prisma` with the `pg` driver adapter) and the `init` migration. Added the Zod-validated config module, `GET /health/ready` (200 `{db:"ok"}` / 503 `{db:"unavailable"}`, schema in `packages/shared`), a Vitest global setup that runs `prisma migrate deploy`, and `resetDatabase()` which refuses non-`_test` databases. `.env.example` updated.
+- **Changed files:** `docker-compose.yml`, `docker/postgres-init/01-create-test-db.sql`, `.env.example`, `.gitignore`, `.prettierignore`, `eslint.config.js`, `package.json`, `pnpm-lock.yaml`, `apps/api/package.json`, `apps/api/tsconfig.build.json`, `apps/api/prisma.config.ts`, `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/**`, `apps/api/vitest.config.ts`, `apps/api/src/{app,server,config,db}.ts`, `apps/api/src/test-utils/*`, `apps/api/src/{config,health}.test.ts`, `packages/shared/src/{health,index}.ts`, `packages/shared/package.json`
+- **Migrations:** `20261026180933_init` (creates the technical `app_meta` table)
+- **Commit(s):** `23baaa8` feat(api): KB-002 add PostgreSQL, Prisma, validated config and readiness check
+- **Acceptance criteria covered:** compose + `db:up`/`db:down` (`docker-compose.yml`; not run here, see notes); `db:migrate` / `db:migrate:dev` / `init` migration (verified `pnpm db:migrate`); client generated in `pnpm build` (api `build` runs `prisma generate`); config (`config.ts`, `config.test.ts`); `/health/ready` (`health.test.ts`); `.env.example`; global setup + `resetDatabase()` (`test-utils/`, `reset-database.test.ts`); G1, G3, G6, G8.
+- **Tests written by the developer:** `apps/api/src/config.test.ts`, `apps/api/src/health.test.ts`, `apps/api/src/test-utils/reset-database.test.ts`
+- **Local checks:** build ✔ · lint ✔ · typecheck ✔ · test ✔ (against the CI-style PostgreSQL service on localhost:5432) · test:e2e n.a.
+- **New dependencies (G9):** api: `@prisma/client` ^7.10.1, `@prisma/adapter-pg` 7.10.1 (Prisma 7 requires a driver adapter), `zod` ^4; dev `prisma` ~7.10.1 (pinned to 7.x because `latest` resolved to an 8.0 release candidate). shared: `zod`.
+- **Notes for the tester:**
+  - Prisma creates no migration for an empty schema, so `init` needed a model: I added a minimal technical `AppMeta` (`app_meta`) table. It is not a domain table; the planner may want to confirm or replace it.
+  - Tests use `TEST_DATABASE_URL` if set, otherwise `DATABASE_URL` (CI); both must name a database ending in `_test`. The global setup refuses otherwise.
+  - Locally: `cp .env.example .env`, `pnpm db:up`, `pnpm db:migrate`. `pnpm db:up`/`db:down` and the invalid-config exit of `server.ts` (covered by unit tests of `loadConfig`) were not run manually here.
+  - The server loads the repository-root `.env` with `process.loadEnvFile` (no dotenv dependency). `pnpm install` still reports ignored build scripts (esbuild, prisma engines); nothing needs approving.
+  - New env vars `HOST`, `NODE_ENV`, `WEB_ORIGIN`, `TEST_DATABASE_URL` are in `.env.example`.
