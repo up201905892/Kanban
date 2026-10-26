@@ -67,3 +67,38 @@ Report template:
 **Observations (not failures):**
 - `typescript` is declared as `^6.0.3` (the development note says `~6.0`); the lockfile pins the resolved version, so this is harmless.
 - `pnpm dev` (vite and `tsx watch`) was not exercised live.
+
+### KB-002 · Local PostgreSQL, Prisma and validated configuration — Report 1 — 2026-10-26
+
+- **Commit tested:** 23baaa8 (in `develop` history; working tree clean apart from the status change)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm install --frozen-lockfile`, `pnpm build` (runs `prisma generate`) | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (24 tests incl. 2 added by the tester: shared 2, web 1, api 21) | ✔ |
+| E2E | `pnpm test:e2e` not defined; the task states E2E is n/a (harness in KB-003) | n.a. |
+| Authorization | no protected routes yet | n.a. |
+| Real time | not touched | n.a. |
+| Accessibility | n/a for this task | n.a. |
+
+**Acceptance criteria:**
+- [x] `docker-compose.yml` with `postgres:17`, named volume `kanban_pgdata`, healthcheck, init script creating `kanban_test`; `db:up` (`docker compose up -d --wait`) and `db:down` exist — verified by reading the files only; docker is not available in this run, so the stack was not started.
+- [x] Prisma in `apps/api/prisma/schema.prisma`; `db:migrate` = `prisma migrate deploy`, `db:migrate:dev` = `prisma migrate dev`; migration `20261026180933_init` exists — read files; `prisma migrate deploy` ran through the Vitest global setup; `prisma migrate diff` from the database to the schema reports no difference.
+- [x] Client generated in `pnpm build` (api `build` = `prisma generate && tsc`) — `pnpm build` ran from the install with no extra database step and typecheck passed afterwards.
+- [x] Config module validates `DATABASE_URL`, `SESSION_SECRET` (>= 32), `PORT`, `WEB_ORIGIN`, `NODE_ENV`; invalid configuration exits — read `config.ts`; unit tests; added `config-exit.test.ts` proving `loadConfigOrExit` prints variable names only (no values) and calls `process.exit(1)`.
+- [x] `GET /health/ready` returns 200 `{db:"ok"}` / 503 `{db:"unavailable"}` — `health.test.ts` against the real test database and an unreachable URL; response parsed with the shared Zod schema.
+- [x] `.env.example` lists every variable with fake values and a comment each — read the file (`PORT`, `HOST`, `NODE_ENV`, `WEB_ORIGIN`, `DATABASE_URL`, `TEST_DATABASE_URL`, `SESSION_SECRET`).
+- [x] Global setup applies migrations; `resetDatabase()` truncates all tables (keeps `_prisma_migrations`) and refuses non-`_test` databases, including lookalikes (`kanban_test_backup`), empty names and invalid URLs, without leaking credentials — read the code and tests; they ran green.
+- [x] G1 (all checks green, no `.only`/`.skip`), G3, G6, G8 — checked; G9 dependencies listed in the development entry.
+
+**Required tests:** config accepts valid / rejects missing `DATABASE_URL` and short `SESSION_SECRET` with name-only messages; `resetDatabase()` throws for a non-`_test` database; `/health/ready` 200 and 503. All exist, assert real behaviour and are not trivial.
+
+**Tests added by the tester:** `apps/api/src/config-exit.test.ts` (exit code 1 and no value leakage on invalid configuration).
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was not run: Prisma blocks it when invoked by an AI agent without explicit user consent. Instead, the single `init` migration was checked by reading it, by the `migrate deploy` in global setup and by `migrate diff` showing no drift. The database was not recreated from empty in this run; worth a manual `prisma migrate reset` by João.
+- `pnpm db:up` / `db:down` and the real server start were not run (no docker, no compound commands in this sandbox).
+- The `app_meta` table is a technical placeholder so that `init` exists, as the developer noted; the planner may confirm it.
