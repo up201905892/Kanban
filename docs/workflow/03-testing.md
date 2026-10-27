@@ -174,3 +174,38 @@ Report template:
 **Observations (not failures):**
 - `CI=1 pnpm test:e2e` was not re-run (no E2E or web changes since report 1, where it passed).
 - Sandbox denials: compound commands (`&&`, `;` chains, `git merge-base` combined with echo) and `sed -i` chains; I used the Edit tool, `pnpm --dir` and heredoc append.
+
+### KB-004 · Web app shell, data layer and minimal local components — Report 1 — 2026-10-27
+
+- **Commit tested:** 488703d (in `develop` history, HEAD f334744; working tree clean apart from the status change)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 6, web 18, api 37) | ✔ |
+| E2E | `pnpm test:e2e` (6 passed) | ✔ |
+| Authorization | no protected routes touched | n.a. |
+| Real time | not touched (proxy config only) | n.a. |
+| Accessibility | axe E2E on 404, tab order E2E, Dialog keyboard unit test | ✔ |
+
+**Acceptance criteria:**
+- [x] Router, root layout, 404, error boundary with Reload: `router.tsx` and `routes/` read; `App.test.tsx`, `RouteError.test.tsx` and the E2E 404 test pass.
+- [x] QueryClient defaults (no retry on 4xx) and typed `apiClient`: `query-client.ts` `shouldRetry` and `api-client.ts` read (`credentials: 'include'`, schema validation, A1 parsed into `ApiError`, NETWORK_ERROR and INVALID_RESPONSE fallbacks); `api-client.test.ts` green.
+- [x] ESLint forbids `fetch` outside `lib/api`: confirmed by linting `api-client.ts` content as `apps/web/src/x.ts` through stdin, which raised `no-restricted-globals` for `fetch`.
+- [x] Local components (Button, IconButton, TextField, TextArea, Select, Dialog, Spinner, EmptyState, ErrorState, Announcer and `useAnnounce`): all files exist; Dialog trap, Escape and focus return, `aria-describedby` and live regions covered by `components.test.tsx`.
+- [x] Vite dev proxy for `/api` and `/ws` (ws enabled): verified by reading `vite.config.ts` only.
+- [x] Common criteria G1, U1, U3, U4, U5, U8, U9, U10: axe has zero serious or critical violations, a 360 px no-overflow check passes, tab order is skip link, brand link, back link.
+
+**Required tests:** all exist, assert real behaviour, not trivial.
+
+**Tests added by the tester:** none
+
+**Failures:** none
+
+**Observations (not failures):**
+- The Vite proxy was not exercised at runtime (no test; config reviewed only).
+- `/health` is not under `/api`, so it is not proxied (developer already flagged it for the planner).
+- Sandbox denials: heredoc append with `tee`, and plain `git status --short` (plain `git status` worked).
