@@ -1,6 +1,12 @@
 # API reference
 
-REST endpoints and real-time messages. Error format (to be applied by KB-003): `{ error: { code, message } }`.
+REST endpoints and real-time messages. Error format for every error response: `{ error: { code, message } }`, plus `details` for validation errors. The schemas (`ErrorCode`, `ApiError`) are in `packages/shared`.
+
+## Conventions
+
+- Every response carries an `x-request-id` header; the same id appears in the server logs.
+- Unknown routes return `404 NOT_FOUND`; invalid or malformed requests return `400 VALIDATION_ERROR` (with `details` for schema errors); unexpected errors return `500 INTERNAL_ERROR` with a generic message and no stack trace.
+- Cookies, authorization headers and passwords are redacted from logs.
 
 ## REST
 
@@ -8,7 +14,7 @@ REST endpoints and real-time messages. Error format (to be applied by KB-003): `
 
 Reports that the API process is running. No authentication.
 
-- Response `200`: `{ "status": "ok" }`
+- Response `200`: `{ "status": "ok" }` (schema `healthResponseSchema` in `packages/shared`)
 
 ### GET /health/ready
 
