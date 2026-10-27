@@ -102,3 +102,40 @@ Report template:
 - `prisma migrate reset --force` was not run: Prisma blocks it when invoked by an AI agent without explicit user consent. Instead, the single `init` migration was checked by reading it, by the `migrate deploy` in global setup and by `migrate diff` showing no drift. The database was not recreated from empty in this run; worth a manual `prisma migrate reset` by João.
 - `pnpm db:up` / `db:down` and the real server start were not run (no docker, no compound commands in this sandbox).
 - The `app_meta` table is a technical placeholder so that `init` exists, as the developer noted; the planner may confirm it.
+
+### KB-003 · API conventions and E2E harness — Report 1 — 2026-10-27
+
+- **Commit tested:** f93922c (in `develop` history, HEAD c0a45eb; working tree clean apart from the status change)
+- **Result:** Failed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 6, web 1, api 36) | ✔ |
+| E2E | `pnpm test:e2e` and `CI=1 pnpm test:e2e` (2 passed each) | ✔ |
+| Authorization | no protected routes yet | n.a. |
+| Real time | not touched | n.a. |
+| Accessibility | n/a for this task | n.a. |
+
+**Acceptance criteria:**
+- [x] Zod type provider with shared schemas; `ErrorCode` and `ApiError` in `packages/shared` — read `app.ts`, `errors.ts`; validator/serializer compilers set; strict-schema test passes.
+- [x] Global error and not-found handlers return A1; unexpected errors give `500 INTERNAL_ERROR` with a generic message and the full error is logged with the request id — read `app.ts`, `app-error.ts`; `app.test.ts` asserts the body has no SQL/path/stack text and the log line `reqId` equals `x-request-id`.
+- [x] pino logging with a request id per request; cookies, authorization, set-cookie and passwords redacted — `app.test.ts` (distinct ids; no `SECRET` string in log output). The redaction test logs a hand-built `req` object, not a real request carrying a body password (see observations).
+- [x] `buildApp()` factory used by server and tests; `modules/health/{routes,service,health.test}` as the reference module — read files.
+- [x] `test:e2e:setup` = `playwright install --with-deps chromium`; `test:e2e` = `playwright test`; config starts api and web via `webServer`, `reuseExistingServer: !isCI`, Chromium only, `trace: 'retain-on-failure'` — read `playwright.config.ts` and `package.json`; ran E2E with and without `CI=1`. `test:e2e:setup` itself was not run (needs system packages).
+- [x] Fixture with independent `userA` and `userB` contexts — `fixtures.spec.ts` checks cookies, localStorage and distinct contexts; passed.
+- [ ] Common criteria G1, G2, A1, A2 — G1, A1, A2 verified. **G2 not met**, see failure 1.
+
+**Required tests:** error serializer unit tests, API tests (404 A1, 400 with details, 500 without stack), smoke and fixture E2E all exist and assert real behaviour. Not trivial.
+
+**Tests added by the tester:** none
+
+**Failures:**
+1. G2 violated in the reference module. The `GET /health` response schema `healthResponseSchema = z.object({ status: z.literal('ok') })` is defined locally in `apps/api/src/modules/health/routes.ts` instead of in `packages/shared`. G2 requires every response body to have a Zod schema in `packages/shared`, with web and api using the inferred types. Reproduce: `grep -rn "status" packages/shared/src` finds no health schema. Expected: a shared schema (next to `readyResponseSchema`) imported by the route. Actual: local duplicate. Likely files: `apps/api/src/modules/health/routes.ts`, `packages/shared/src`.
+
+**Observations (not failures):**
+- The redaction test would be stronger if it sent a real request body containing `password` through a test route and asserted on the real log lines.
+- `pnpm test:e2e:setup` was not run; Chromium was already available.
+- Sandbox denials: compound commands (`cd ... && ...`, `;` chains, heredoc appends) and `git -C <path>`; plain `git status` and `git log` worked.

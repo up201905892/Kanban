@@ -10,7 +10,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | --- | --- | --- | --- | --- | --- |
 | KB-001 | Monorepo scaffold and tooling | Foundations | High | — | Done |
 | KB-002 | Local PostgreSQL, Prisma and validated configuration | Foundations | High | KB-001 | Done |
-| KB-003 | API conventions and E2E harness | Foundations | High | KB-001 | Ready for test |
+| KB-003 | API conventions and E2E harness | Foundations | High | KB-001 | Failed |
 | KB-004 | Web app shell, data layer and minimal local components | Foundations | High | KB-003 | Planned |
 | KB-005 | Authentication core: accounts and cookie sessions | Authentication and workspaces | High | KB-002, KB-003 | Proposed |
 | KB-006 | Sign-up, log-in and log-out UI with protected routes | Authentication and workspaces | High | KB-004, KB-005 | Proposed |
@@ -274,6 +274,8 @@ Task template (copy for each new task):
 - 2026-10-24 · planner · Proposed → Planned · approved by João (conversation, 2026-10-24)
 - 2026-10-27 · developer · Planned → In development · started
 - 2026-10-27 · developer · In development → Ready for test · commit f93922c
+- 2026-10-27 · tester · Ready for test → In test · started testing
+- 2026-10-27 · tester · In test → Failed · report 1: G2 violated, /health response schema is local to api instead of packages/shared
 
 ### KB-004 · Web app shell, data layer and minimal local components
 
