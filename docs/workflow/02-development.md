@@ -85,3 +85,18 @@ Entry template:
   - Malformed JSON and other framework 4xx errors are mapped to `400 VALIDATION_ERROR` with a generic message.
   - Process note: `git mv` and `python3` heredocs were denied by the sandbox; I used plain `mv` and the Edit tool instead.
   - Suggestion for the planner: `ErrorCode` already contains codes for later tasks (UNAUTHENTICATED, FORBIDDEN, CSRF_REJECTED, CONFLICT, RATE_LIMITED); CI may need `CI=true` env for `webServer` to start fresh servers (it already sets it).
+
+**Iteration 2 — 2026-10-27** (fix for test report 1)
+
+- **Status at the end:** Ready for test
+- **What was done:** Failure 1 (G2): `healthResponseSchema` and `HealthResponse` moved to `packages/shared/src/health.ts`, exported from the index, and imported by the health route (local duplicate and the `zod` import removed). Observation addressed: new API test sends a real `POST /__test/login` with a password in the body and a cookie header, and asserts that the real log lines contain the request but no `SECRET` text.
+- **Changed files:** `packages/shared/src/health.ts`, `packages/shared/src/index.ts`, `apps/api/src/modules/health/routes.ts`, `apps/api/src/app.test.ts`
+- **Migrations:** none
+- **Commit(s):** `e514dee` fix(api): KB-003 move health response schema to shared and test real-request redaction
+- **Acceptance criteria covered:** G2 (shared schema used by the route); log redaction with a real request.
+- **Tests written by the developer:** `apps/api/src/app.test.ts` (new redaction test)
+- **Local checks:** build ✔ · lint ✔ · typecheck ✔ · test ✔ (shared 6, web 1, api 37) · test:e2e not re-run (no E2E or web changes)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - The test logs `{ body: req.body }` (covered by the `*.password` redact path); Fastify's own `req` serializer drops the body, so the `req.body.password` path is only a safety net.
+  - Sandbox denials this iteration: compound commands (`cd ... && ...` with variable use, `;` chains) and `python3` heredoc edits; I used the Edit tool and `pnpm --dir`.
