@@ -100,3 +100,23 @@ Entry template:
 - **Notes for the tester:**
   - The test logs `{ body: req.body }` (covered by the `*.password` redact path); Fastify's own `req` serializer drops the body, so the `req.body.password` path is only a safety net.
   - Sandbox denials this iteration: compound commands (`cd ... && ...` with variable use, `;` chains) and `python3` heredoc edits; I used the Edit tool and `pnpm --dir`.
+
+### KB-004 · Web app shell, data layer and minimal local components
+
+**Iteration 1 — 2026-10-27**
+
+- **Status at the end:** Ready for test
+- **What was done:** React Router (data router) with `RootLayout` (skip link, main nav, `<main id="main">`), `HomePage`, `NotFoundPage` (catch-all) and a `RouteError` errorElement with a "Reload" button. `App` wires `QueryClientProvider` (no retry on 4xx, max 2 retries otherwise, no mutation retry), `AnnouncerProvider` and the router; tests can inject a router (`createTestRouter`) and a query client. Typed `apiClient` in `apps/web/src/lib/api` (`credentials: 'include'`, JSON body, response validated with a shared Zod schema, A1 bodies parsed with `apiErrorSchema` into `ApiError`; client-side codes `NETWORK_ERROR` and `INVALID_RESPONSE`). ESLint rule forbids `fetch` (global, `window.fetch`, `globalThis.fetch`) in `apps/web` except `src/lib/api`. Local components: Button, IconButton, TextField, TextArea, Select, Dialog (portal, focus trap, Escape, focus return), Spinner, EmptyState, ErrorState (optional `retryLabel`), Announcer (`AnnouncerProvider` with polite and assertive live regions, `useAnnounce()`). Vite dev proxy for `/api` and `/ws` (ws enabled) to `API_URL` (default `http://localhost:3000`). Minimal `styles.css` (layout, focus ring, `sr-only`).
+- **Changed files:** `eslint.config.js`, `package.json`, `pnpm-lock.yaml`, `apps/web/package.json`, `apps/web/vite.config.ts`, `apps/web/src/{App.tsx,App.test.tsx,main.tsx,router.tsx,styles.css}`, `apps/web/src/routes/*`, `apps/web/src/components/*`, `apps/web/src/lib/api/*`, `e2e/not-found.spec.ts`
+- **Migrations:** none
+- **Commit(s):** `488703d` feat(web): KB-004 add app shell, data layer and minimal local components
+- **Acceptance criteria covered:** router, 404 and error boundary (`router.tsx`, `routes/`, `RouteError.test.tsx`); query client and `apiClient` (`lib/api`, `api-client.test.ts`); fetch lint rule (`eslint.config.js`; `pnpm lint` passes with the only `fetch` calls in `lib/api`); components (`components/`, `components.test.tsx`); Vite proxy (`vite.config.ts`); G1, U1, U3, U4, U5, U8, U9 (axe in `e2e/not-found.spec.ts`), U10 (360 px E2E check).
+- **Tests written by the developer:** `apps/web/src/components/components.test.tsx` (Dialog trap/Escape/focus return, field `aria-describedby`, `useAnnounce` regions), `apps/web/src/lib/api/api-client.test.ts` (A1 to `ApiError`, validation, retry policy), `apps/web/src/routes/RouteError.test.tsx`, `apps/web/src/App.test.tsx` (home, 404, tab order), `e2e/not-found.spec.ts` (404, axe, tab order, 360 px)
+- **Local checks:** build ✔ · lint ✔ · typecheck ✔ · test ✔ (shared 6, web 18, api 37) · test:e2e ✔ (6 passed)
+- **New dependencies (G9):** web: `react-router` ^7, `@tanstack/react-query` (stack), `zod` (types for `apiClient` schemas, same version as shared); web dev: `@testing-library/user-event`; root dev: `@axe-core/playwright` (named by U9).
+- **Notes for the tester:**
+  - Dev proxy forwards `/api` and `/ws` without rewriting; `/health` is not proxied (it is not under `/api`). The proxy was not exercised by a test.
+  - The web `ApiError` is a class; the shared `ApiError` type is the response body shape.
+  - `Spinner` uses `role="status"`; `Announcer` messages are set 50 ms after clearing so repeats are re-announced.
+  - Suggestion for the planner: decide whether `/health` should move under `/api` for same-origin use in production (KB-031).
+  - Sandbox denials: heredoc file creation, `sed -i`, and `git -C <path>` were denied; I used the Write/Edit tools and plain `git` commands.
