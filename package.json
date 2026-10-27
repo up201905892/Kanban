@@ -11,7 +11,9 @@
     "build": "pnpm --filter @kanban/shared build && pnpm -r --workspace-concurrency=1 --filter \"!@kanban/shared\" build",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.json",
+    "test:e2e:setup": "playwright install --with-deps chromium",
+    "test:e2e": "playwright test",
     "test": "pnpm -r --if-present test",
     "dev": "pnpm --filter @kanban/shared build && pnpm -r --parallel --filter \"!@kanban/shared\" dev",
     "db:up": "docker compose up -d --wait",
@@ -21,6 +23,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.5",
     "eslint": "^10.13.0",
     "eslint-plugin-react-hooks": "^7.1.1",

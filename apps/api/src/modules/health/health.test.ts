@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { readyResponseSchema } from '@kanban/shared';
-import { buildApp } from './app.js';
-import { createPrismaClient } from './db.js';
+import { buildApp } from '../../app.js';
+import { createPrismaClient } from '../../db.js';
 
 describe('GET /health', () => {
   it('returns 200 with status ok', async () => {
