@@ -44,6 +44,17 @@ Entry template:
 - **Documentation:** `docs/api.md` (error format and conventions, health schema); no new environment variables; no ADR required
 - **Lessons:** iteration 1 failed G2 because a response schema was local to the api; check that every response schema lives in `packages/shared` before handing over. Not run: `pnpm test:e2e:setup` and `CI=1 pnpm test:e2e` after the fix (no relevant changes).
 
+### KB-004 · Web app shell, data layer and minimal local components — done on 2026-10-27
+
+- **Approving test report:** Report 1 (2026-10-27), commit 488703d (later commits are workflow records only)
+- **Development iterations:** 1
+- **Delivered:** the web app now has routing, a not-found page, an error screen with Reload, a typed API client and accessible basic components, so every UI feature can build on them.
+- **CHANGELOG:** "Added: The web app now has page navigation, a "page not found" screen, a recovery screen with a Reload button when something goes wrong, and accessible basic building blocks such as buttons, form fields and dialogs (KB-004)."
+- **Documentation:** `.env.example` (API_URL for the Vite dev proxy); no new endpoints, so no `docs/api.md` change; no ADR required
+- **Lessons:** the Vite proxy was only reviewed, not exercised at runtime; `/health` is not under `/api` so it is not proxied (planner suggestion). The finisher could not run `git log`/`git diff`/`git show` with paths in the sandbox, so "no production commits after the tested commit" rests on the commit list in the session context (only two docs(workflow) commits follow 488703d).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
+
+- Foundations done — 2026-10-27 (KB-001, KB-002, KB-003, KB-004)
