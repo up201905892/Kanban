@@ -1,11 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { readyResponseSchema } from '@kanban/shared';
-import { z } from 'zod';
+import { healthResponseSchema, readyResponseSchema } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
 import { checkDatabase } from './service.js';
-
-const healthResponseSchema = z.object({ status: z.literal('ok') });
 
 /** Reference module: routes validate through shared schemas and delegate to the service. */
 export function healthRoutes(prisma: PrismaClient | undefined) {

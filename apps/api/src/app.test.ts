@@ -11,6 +11,10 @@ function testApp(logStream?: { write(line: string): void }): FastifyInstance {
     ...(logStream ? { logStream } : {}),
     registerRoutes: (app) => {
       app.post('/__test/echo', { schema: { body: bodySchema } }, async (req) => req.body);
+      app.post('/__test/login', async (req) => {
+        req.log.info({ body: req.body }, 'login attempt');
+        return { ok: true };
+      });
       app.get('/__test/boom', async () => {
         throw new Error('SELECT secret FROM users exploded at /srv/internal/file.ts');
       });
@@ -109,6 +113,22 @@ describe('API conventions', () => {
     expect(all).toContain('sensitive');
     expect(all).not.toMatch(/SECRET/);
     expect(all).toContain('[Redacted]');
+  });
+
+  it('redacts a password sent in a real request body', async () => {
+    const lines: string[] = [];
+    app = testApp({ write: (l) => lines.push(l) });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/__test/login',
+      headers: { cookie: 'sid=SECRETCOOKIE' },
+      payload: { email: 'a@b.c', password: 'SECRETPASSWORD' },
+    });
+    expect(res.statusCode).toBe(200);
+    const all = lines.join('\n');
+    expect(all).toContain('login attempt');
+    expect(all).toContain('a@b.c');
+    expect(all).not.toMatch(/SECRET/);
   });
 
   it('gives every request a distinct request id', async () => {

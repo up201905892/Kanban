@@ -8,4 +8,9 @@ export {
   type ApiError,
   type ApiErrorDetail,
 } from './errors.js';
-export { readyResponseSchema, type ReadyResponse } from './health.js';
+export {
+  healthResponseSchema,
+  readyResponseSchema,
+  type HealthResponse,
+  type ReadyResponse,
+} from './health.js';
