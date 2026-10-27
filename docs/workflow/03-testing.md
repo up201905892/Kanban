@@ -139,3 +139,38 @@ Report template:
 - The redaction test would be stronger if it sent a real request body containing `password` through a test route and asserted on the real log lines.
 - `pnpm test:e2e:setup` was not run; Chromium was already available.
 - Sandbox denials: compound commands (`cd ... && ...`, `;` chains, heredoc appends) and `git -C <path>`; plain `git status` and `git log` worked.
+
+### KB-003 · API conventions and E2E harness — Report 2 — 2026-10-27
+
+- **Commit tested:** e514dee (in `develop` history, HEAD a61c79b; working tree clean apart from the status change)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 6, web 1, api 37) | ✔ |
+| E2E | `pnpm test:e2e` (2 passed) | ✔ |
+| Authorization | no protected routes yet | n.a. |
+| Real time | not touched | n.a. |
+| Accessibility | n/a for this task | n.a. |
+
+**Acceptance criteria:**
+- [x] Zod type provider with shared schemas; `ErrorCode` and `ApiError` in `packages/shared` — unchanged since report 1; tests green.
+- [x] Global error and not-found handlers return A1; 500 generic with full error logged with the request id — `app.test.ts` green (unchanged).
+- [x] pino logging, request id per request, redaction — new test sends a real `POST /__test/login` with a cookie header and a body password; asserts the log contains the request and email but no `SECRET` text.
+- [x] `buildApp()` factory and `modules/health` reference module — unchanged.
+- [x] `test:e2e:setup` / `test:e2e` scripts and Playwright config — E2E ran green; `test:e2e:setup` not run (needs system packages).
+- [x] Two-context fixture `userA`/`userB` — `fixtures.spec.ts` passed.
+- [x] G1, G2, A1, A2 — G2 now met: `healthResponseSchema` and `readyResponseSchema` live in `packages/shared/src/health.ts` and the health routes import both from `@kanban/shared` (grep shows no local schema definition left in `apps/api`).
+
+**Required tests:** all exist, assert real behaviour, not trivial.
+
+**Tests added by the tester:** none
+
+**Failures:** none
+
+**Observations (not failures):**
+- `CI=1 pnpm test:e2e` was not re-run (no E2E or web changes since report 1, where it passed).
+- Sandbox denials: compound commands (`&&`, `;` chains, `git merge-base` combined with echo) and `sed -i` chains; I used the Edit tool, `pnpm --dir` and heredoc append.
