@@ -16,6 +16,20 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-10-27
+
+- **Decisions for João:**
+  - Approve the next tasks in `approvals.md` (e.g. `Approve | KB-005 to KB-009`). Only KB-010 is `Planned` now, so tomorrow's run will only have KB-010 to develop. KB-005 and KB-006 are the next on the critical path.
+  - Answer D5 (scope of Yjs authority) and D6 (email in v1.0) in "Technical decisions" of `01-planning.md`. D5 must be answered before KB-010 and KB-012 are approved.
+  - Open from yesterday: optional local `prisma migrate reset` / `pnpm db:up`/`db:down` check, and confirm the placeholder `app_meta` table from KB-002.
+  - Planner suggestion: `/health` is not under `/api`, so the Vite dev proxy does not forward it. Decide whether it should move under `/api` (relevant for KB-031).
+- **Done:** KB-003, KB-004 (Foundations milestone: KB-001 to KB-004 complete)
+- **Tested:** KB-003 (report 1 Failed: `healthResponseSchema` was not in `packages/shared`; report 2 Passed), KB-004 (Passed)
+- **Developed:** KB-003 (two iterations), KB-004
+- **Proposals awaiting approval:** KB-005 to KB-032 (no new proposals; the whole backlog is already proposed, so the planner was not called)
+- **Rule violations found:** none. The finisher could not run `git add`/`git commit` for KB-004; the orchestrator committed its docs as `1a11763`.
+- **Next step:** develop KB-010 once approvals for KB-005 onwards arrive.
+
 ## 2026-10-26
 
 - **Decisions for João:**
