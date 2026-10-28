@@ -7,6 +7,9 @@ How to use it: add one line per decision (on GitHub, on the `develop` branch, ev
 | Date | Decision | IDs | Note |
 | --- | --- | --- | --- |
 | *YYYY-MM-DD* | *Approve* | *KB-001 to KB-008* | |
+| 2026-10-28 | Approve | KB-005 to KB-009 | |
+| 2026-10-28 | Answer | D6 | Accept the working assumption: no email in v1.0; invites are shared links and password reset uses the operator CLI |
+| 2026-10-28 | Answer | D5 | Accept the working assumption: hybrid; Yjs is the authority for card descriptions and presence, PostgreSQL (via REST) for structured data |
 
 Possible decisions:
 
