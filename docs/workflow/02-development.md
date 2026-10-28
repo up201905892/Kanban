@@ -120,3 +120,22 @@ Entry template:
   - `Spinner` uses `role="status"`; `Announcer` messages are set 50 ms after clearing so repeats are re-announced.
   - Suggestion for the planner: decide whether `/health` should move under `/api` for same-origin use in production (KB-031).
   - Sandbox denials: heredoc file creation, `sed -i`, and `git -C <path>` were denied; I used the Write/Edit tools and plain `git` commands.
+
+### KB-010 · Fractional indexing utility and ordering/conflict ADR
+
+**Iteration 1 — 2026-10-28**
+
+- **Status at the end:** Ready for test
+- **What was done:** `packages/shared/src/ordering` with `keyBetween`, `keysBetween`, `isValidKey`, `compareByPosition` (plus `needsRebalance`, `MAX_KEY_LENGTH` = 50, `InvalidKeyError`), a pure base-62 fractional-index implementation (Greenspan scheme, written in-house, no new runtime dependency), exported from the shared index. ADR `docs/adr/0001-ordering-and-conflict-handling.md` covers keys, `(position, id)` order, server-computed keys, rebalancing above 50 characters, concurrent-edit rules, `version` ordering, idempotent creates (A6) and measurements.
+- **Changed files:** `packages/shared/src/ordering/fractional-index.ts`, `packages/shared/src/ordering/index.ts`, `packages/shared/src/ordering/fractional-index.test.ts`, `packages/shared/src/index.ts`, `packages/shared/package.json`, `pnpm-lock.yaml`, `docs/adr/0001-ordering-and-conflict-handling.md`
+- **Migrations:** none
+- **Commit(s):** `ee1160d` feat(shared): KB-010 add fractional indexing utility and ordering ADR
+- **Acceptance criteria covered:** ADR (G7) in `docs/adr/0001-...`; ordering API in `packages/shared/src/ordering`; measured key length (append x10,000: 4 characters; same position x10,000: 1,669 characters, over 50 from insert 289) recorded in the ADR and asserted in the tests; G1, G8, G9.
+- **Tests written by the developer:** `packages/shared/src/ordering/fractional-index.test.ts` (fast-check properties for random inserts and `keysBetween(n = 100)`, invalid keys, `a >= b`, boundaries, `compareByPosition`, growth measurements)
+- **Local checks:** build ✔ · lint ✔ · typecheck ✔ · test ✔ (shared 29, web 18, api 37) · test:e2e n.a.
+- **New dependencies (G9):** `fast-check` (dev, `packages/shared`), required by the task's property-based tests.
+- **Notes for the tester:**
+  - **D5 is still pending.** The ADR's section 7 (Yjs/PostgreSQL authority split) is marked provisional and states the assumption used (hybrid: text and presence in Yjs, structured data in PostgreSQL via REST). If João chooses the alternative, ADR sections 3, 5 and 6 must be revisited. The task text says D5 should be answered before KB-010 is approved; it was approved anyway, so this is flagged for the daily log.
+  - The ADR states that position columns need `COLLATE "C"` so database order matches code-unit order; KB-011 and KB-012 migrations should apply it (suggestion for the planner).
+  - The ADR's stale-neighbour rule (section 3) is a proposal for KB-015 to implement and test.
+  - `pnpm test:e2e` not run (no E2E or web changes).
