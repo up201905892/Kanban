@@ -9,6 +9,16 @@ export {
   type ApiErrorDetail,
 } from './errors.js';
 export {
+  keyBetween,
+  keysBetween,
+  isValidKey,
+  compareByPosition,
+  needsRebalance,
+  InvalidKeyError,
+  MAX_KEY_LENGTH,
+  type Positioned,
+} from './ordering/index.js';
+export {
   healthResponseSchema,
   readyResponseSchema,
   type HealthResponse,
