@@ -17,7 +17,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-007 | Workspaces, memberships and the authorization policy | Authentication and workspaces | High | KB-005, KB-006 | Proposed |
 | KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Proposed |
 | KB-009 | Invite links, members and roles | Authentication and workspaces | Medium | KB-007 | Proposed |
-| KB-010 | Fractional indexing utility and ordering/conflict ADR | Board | High | KB-001 | Ready for test |
+| KB-010 | Fractional indexing utility and ordering/conflict ADR | Board | High | KB-001 | Passed |
 | KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Proposed |
 | KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Proposed |
 | KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Proposed |
@@ -495,6 +495,8 @@ Task template (copy for each new task):
 - 2026-10-24 · planner · Proposed → Planned · approved by João (conversation, 2026-10-24)
 - 2026-10-28 · developer · Planned → In development · started
 - 2026-10-28 · developer · In development → Ready for test · commit ee1160d (ADR section 7 provisional, D5 pending)
+- 2026-10-28 · tester · Ready for test → In test · testing started
+- 2026-10-28 · tester · In test → Passed · Report 1 in 03-testing.md, all criteria verified
 
 ### KB-011 · Board and configurable columns
 

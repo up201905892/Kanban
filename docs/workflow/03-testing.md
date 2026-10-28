@@ -209,3 +209,35 @@ Report template:
 - The Vite proxy was not exercised at runtime (no test; config reviewed only).
 - `/health` is not under `/api`, so it is not proxied (developer already flagged it for the planner).
 - Sandbox denials: heredoc append with `tee`, and plain `git status --short` (plain `git status` worked).
+
+### KB-010 · Fractional indexing utility and ordering/conflict ADR — Report 1 — 2026-10-28
+
+- **Commit tested:** ee1160d (in `develop` history, HEAD 718ec9c; working tree clean before the tester's test file)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 29 + 3 added, web 18, api 37) | ✔ |
+| E2E | `CI=1 pnpm test:e2e` (6 passed) | ✔ |
+| Authorization | no routes touched | n.a. |
+| Database | no migrations | n.a. |
+| Real time / accessibility | not touched | n.a. |
+
+**Acceptance criteria:**
+- [x] ADR (G7): `docs/adr/0001-ordering-and-conflict-handling.md` read; covers base-62 keys, (position, id) order, server-computed keys with client keys as hints, rebalancing above 50 characters, field-level LWW PATCH, last move wins, delete wins with 404, per-card `version`, idempotent creates (A6) and the Yjs/PostgreSQL split (section 7, explicitly provisional pending D5).
+- [x] `packages/shared/src/ordering`: `keyBetween`, `keysBetween`, `isValidKey`, `compareByPosition` exist, are pure and are exported; implementation read in full.
+- [x] Measured lengths in the ADR (4 characters after 10,000 appends; 1,669 after 10,000 same-position inserts, over 50 at insert 289) match the assertions in the unit test, which passes.
+- [x] Common criteria G1, G7, G8, G9: all checks green; only dev dependency `fast-check` added, justified by the required property tests; no new runtime dependency.
+
+**Required tests:** fast-check properties for random inserts and `keysBetween(n = 100)`, invalid keys and `a >= b` throwing all exist and assert real behaviour.
+
+**Tests added by the tester:** `packages/shared/src/ordering/fractional-index.edge.test.ts` (10,000 repeated prepends, random insert/delete sequences, `keysBetween` between fractional bounds); all pass.
+
+**Failures:** none
+
+**Observations (not failures):**
+- D5 is still pending, so ADR section 7 and the dependent sections 3, 5 and 6 may need revision; the ADR states this openly.
+- `COLLATE "C"` for position columns and the stale-neighbour rule are for KB-011, KB-012 and KB-015 to implement and test.
