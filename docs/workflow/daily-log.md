@@ -16,6 +16,20 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-10-28
+
+- **Decisions for João:**
+  - Approve the next tasks in `approvals.md` (e.g. `Approve | KB-005 to KB-009`). No task is `Planned` now, so tomorrow's run has nothing to develop until you approve.
+  - Answer D5 (scope of Yjs authority). KB-010 was approved before D5 was answered, so ADR `0001` section 7 is provisional (assumes text and presence in Yjs, structured data through REST with PostgreSQL as authority). If you choose the alternative, ADR sections 3, 5 and 6 and tasks KB-012 to KB-016, KB-018, KB-021, KB-022 and KB-024 need revising. Also answer D6 (email in v1.0).
+  - Still open: optional local `prisma migrate reset` / `pnpm db:up`/`db:down` check, the placeholder `app_meta` table, and whether `/health` should move under `/api`.
+  - Planner suggestions for KB-011/KB-012: use `COLLATE "C"` on position columns; KB-015 must implement the stale-neighbour rule from the ADR.
+- **Done:** KB-010
+- **Tested:** KB-010 (Passed; the tester added 3 edge-case tests)
+- **Developed:** KB-010 (Ready for test)
+- **Proposals awaiting approval:** KB-005 to KB-009, KB-011 to KB-032 (no new proposals; the backlog is already fully proposed, so the planner was not called)
+- **Rule violations found:** none. The finisher could not run its secret-pattern scan (sandbox denied it); the commit only added ordering code, tests, the ADR and the `fast-check` dev dependency.
+- **Next step:** develop KB-005 and KB-006 once approved.
+
 ## 2026-10-27
 
 - **Decisions for João:**
