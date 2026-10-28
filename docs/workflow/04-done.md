@@ -53,6 +53,15 @@ Entry template:
 - **Documentation:** `.env.example` (API_URL for the Vite dev proxy); no new endpoints, so no `docs/api.md` change; no ADR required
 - **Lessons:** the Vite proxy was only reviewed, not exercised at runtime; `/health` is not under `/api` so it is not proxied (planner suggestion). The finisher could not run `git log`/`git diff`/`git show` with paths in the sandbox, so "no production commits after the tested commit" rests on the commit list in the session context (only two docs(workflow) commits follow 488703d).
 
+### KB-010 · Fractional indexing utility and ordering/conflict ADR — done on 2026-10-28
+
+- **Approving test report:** Report 1 (2026-10-28), commit ee1160d (later commits are workflow records and a tester test file only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** the shared package now has the ordering functions that boards will use to place columns and cards, and an ADR that fixes how concurrent edits and moves are resolved.
+- **CHANGELOG:** "Added: Groundwork for ordering cards and columns on the board: a reliable way to place an item between two others, plus documented rules for what happens when several people edit or move the same card at once (KB-010)."
+- **Documentation:** ADR `docs/adr/0001-ordering-and-conflict-handling.md`; no new endpoints (`docs/api.md` unchanged); no new environment variables
+- **Lessons:** D5 (Yjs/PostgreSQL authority) is still pending, so ADR section 7 is provisional and sections 3, 5 and 6 may need revision. Planner suggestions: position columns need `COLLATE "C"` (KB-011, KB-012 migrations); the stale-neighbour rule is for KB-015 to implement. The finisher's secret-pattern search was denied by the sandbox; the check rests on the commit only adding ordering code, tests, an ADR and a dev dependency (`fast-check`).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
