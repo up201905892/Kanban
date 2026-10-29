@@ -78,3 +78,32 @@ main,
   text-align: center;
   padding: 1rem;
 }
+
+.password-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.password-row input {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.form-error {
+  color: #b00020;
+}
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

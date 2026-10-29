@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router';
 import type { QueryClient } from '@tanstack/react-query';
 import type { DataRouter } from 'react-router';
 import { AnnouncerProvider } from './components';
+import { handleUnauthorized } from './features/auth/unauthorized';
 import { createQueryClient } from './lib/api';
 import { createAppRouter } from './router';
 
@@ -14,8 +15,11 @@ export interface AppProps {
 }
 
 export function App({ router, queryClient }: AppProps) {
-  const [client] = useState(() => queryClient ?? createQueryClient());
   const [appRouter] = useState(() => router ?? createAppRouter());
+  const [client] = useState(
+    () =>
+      queryClient ?? createQueryClient({ onUnauthorized: (c) => handleUnauthorized(c, appRouter) }),
+  );
   return (
     <QueryClientProvider client={client}>
       <AnnouncerProvider>
