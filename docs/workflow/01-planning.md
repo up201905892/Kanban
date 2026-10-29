@@ -12,7 +12,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-002 | Local PostgreSQL, Prisma and validated configuration | Foundations | High | KB-001 | Done |
 | KB-003 | API conventions and E2E harness | Foundations | High | KB-001 | Done |
 | KB-004 | Web app shell, data layer and minimal local components | Foundations | High | KB-003 | Done |
-| KB-005 | Authentication core: accounts and cookie sessions | Authentication and workspaces | High | KB-002, KB-003 | Planned |
+| KB-005 | Authentication core: accounts and cookie sessions | Authentication and workspaces | High | KB-002, KB-003 | Ready for test |
 | KB-006 | Sign-up, log-in and log-out UI with protected routes | Authentication and workspaces | High | KB-004, KB-005 | Planned |
 | KB-007 | Workspaces, memberships and the authorization policy | Authentication and workspaces | High | KB-005, KB-006 | Planned |
 | KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Planned |
@@ -365,6 +365,8 @@ Task template (copy for each new task):
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · D6 answered by João (approvals.md, 2026-10-28): no email in v1.0; the operator CLI is the password-reset path · spec unchanged except "(D6 working assumption)" → "(D6)"
 - 2026-10-29 · planner · Proposed → Planned · approved by João (approvals.md, 2026-10-28)
+- 2026-10-29 · developer · Planned → In development · started
+- 2026-10-29 · developer · In development → Ready for test · commit 2b198b3
 
 ### KB-006 · Sign-up, log-in and log-out UI with protected routes
 

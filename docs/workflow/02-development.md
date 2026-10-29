@@ -139,3 +139,26 @@ Entry template:
   - The ADR states that position columns need `COLLATE "C"` so database order matches code-unit order; KB-011 and KB-012 migrations should apply it (suggestion for the planner).
   - The ADR's stale-neighbour rule (section 3) is a proposal for KB-015 to implement and test.
   - `pnpm test:e2e` not run (no E2E or web changes).
+
+### KB-005 · Authentication core: accounts and cookie sessions
+
+**Iteration 1 — 2026-10-29**
+
+- **Status at the end:** Ready for test
+- **What was done:** Shared Zod contracts (`signupRequestSchema`, `loginRequestSchema`, `userSchema`, `authResponseSchema`, new error codes `EMAIL_TAKEN` and `INVALID_CREDENTIALS`). Prisma models `User` and `Session` with a migration (includes a `CHECK` that emails are lowercase). API module `apps/api/src/modules/auth`: argon2id hashing (`@node-rs/argon2`, OWASP minimum parameters, dummy-hash verification for unknown emails), 32-byte tokens stored as SHA-256, cookie helpers, session service with 30-day sliding expiry (renewed at most daily, expired sessions deleted), routes `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`. A global `preValidation` guard does the Origin check (403 `CSRF_REJECTED`) and `requireAuth` for everything not in the explicit `PUBLIC_ROUTES` set; `getSessionFromCookieHeader()` is exported for KB-016. In-memory rate limiter (10 per minute per IP + email) on signup/login with `Retry-After`. Operator CLI `admin:reset-password`. Test helpers `createUserAndLogin()` (`apps/api/src/test-utils/auth.ts`) and Playwright `signUpViaApi()`/`logInViaApi()`. ADR 0002 and `docs/api.md` updated.
+- **Changed files:** `packages/shared/src/{auth.ts,auth.test.ts,errors.ts,index.ts}`, `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/20261029162144_add_users_and_sessions/migration.sql`, `apps/api/src/{app.ts,server.ts}`, `apps/api/src/lib/{origin-check.ts,rate-limiter.ts}`, `apps/api/src/modules/auth/{password,tokens,session,service,guard,routes,admin}.ts`, `apps/api/src/modules/auth/{auth.test.ts,auth-units.test.ts}`, `apps/api/src/cli/reset-password.ts`, `apps/api/src/test-utils/auth.ts`, `apps/api/package.json`, `pnpm-lock.yaml`, `e2e/fixtures.ts`, `e2e/auth-api.spec.ts`, `docs/adr/0002-authentication-and-sessions.md`, `docs/api.md`
+- **Migrations:** `20261029162144_add_users_and_sessions` (created with `--create-only`, one `CHECK` constraint appended before applying; applied cleanly on the previous schema)
+- **Commit(s):** `2b198b3` feat(api): KB-005 add email and password authentication with cookie sessions
+- **Acceptance criteria covered:** ADR (`docs/adr/0002-...`); migration; signup/login/logout/me with the specified status codes and identical 401 bodies (`auth.test.ts`); argon2id and no `passwordHash` in responses; token/cookie/sliding expiry (`auth-units.test.ts`, `auth.test.ts`); Origin check and rate limit; `requireAuth`, public route list, `getSessionFromCookieHeader`; test helpers; CLI (`resetPassword` tested, script run by hand for the unknown-email case); G1 to G4, G6 to G8, A1 to A3, A5, A7.
+- **Tests written by the developer:** shared `auth.test.ts` (schemas); api `auth-units.test.ts` (hash round trip, token hashing, cookie options per `NODE_ENV`, Origin check, sliding-expiry rule, rate limiter) and `auth.test.ts` (signup 201/400/409 and concurrent signup, login 200/401/429, logout then me, me with no/tampered/expired cookie, sliding renewal, Origin 403, cascade delete, CLI function); `e2e/auth-api.spec.ts` (Playwright helpers through the Vite proxy, two independent sessions).
+- **Local checks:** build ✔ · lint ✔ · typecheck ✔ · test ✔ (shared 38, web 18, api 91) · test:e2e ✔ (8 passed)
+- **New dependencies (G9):** api runtime `@node-rs/argon2` (the task requires argon2id; chosen over `argon2` because it ships prebuilt binaries and needs no blocked install script). No cookie or rate-limit library: both are small in-house modules.
+- **Notes for the tester:**
+  - The task says `pnpm --filter api admin:reset-password`; pnpm resolves `api` to `@kanban/api` and it works.
+  - The auth guard is only installed when `buildApp` receives a `prisma` client; `buildApp()` without one (existing unit tests) exposes only the health routes and no auth.
+  - Unknown paths return 404 for anonymous users too (the guard skips unmatched routes).
+  - Logout requires a valid session (401 otherwise) and, being a POST, the Origin header.
+  - `req.ip` is used for the rate-limit key; behind Railway's proxy `trustProxy` must be enabled (recorded in the ADR for KB-031).
+  - The E2E spec creates real accounts (random emails) in whatever database the api uses; CI uses the test database.
+  - Suggestions for the planner: KB-031 should set Fastify `trustProxy`; KB-006 can use `signUpViaApi` for its fixtures.
+  - Sandbox note: shell heredocs were denied; files were written with the Write/Edit tools.
