@@ -12,7 +12,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-002 | Local PostgreSQL, Prisma and validated configuration | Foundations | High | KB-001 | Done |
 | KB-003 | API conventions and E2E harness | Foundations | High | KB-001 | Done |
 | KB-004 | Web app shell, data layer and minimal local components | Foundations | High | KB-003 | Done |
-| KB-005 | Authentication core: accounts and cookie sessions | Authentication and workspaces | High | KB-002, KB-003 | Passed |
+| KB-005 | Authentication core: accounts and cookie sessions | Authentication and workspaces | High | KB-002, KB-003 | Done |
 | KB-006 | Sign-up, log-in and log-out UI with protected routes | Authentication and workspaces | High | KB-004, KB-005 | Planned |
 | KB-007 | Workspaces, memberships and the authorization policy | Authentication and workspaces | High | KB-005, KB-006 | Planned || KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Planned |
 | KB-009 | Invite links, members and roles | Authentication and workspaces | Medium | KB-007 | Planned |
@@ -368,6 +368,7 @@ Task template (copy for each new task):
 - 2026-10-29 · developer · In development → Ready for test · commit 2b198b3
 - 2026-10-29 · tester · Ready for test → In test · testing started
 - 2026-10-29 · tester · In test → Passed · report 1, all criteria verified, zero failures
+- 2026-10-29 · finisher · Passed → Done · definition of done met; CHANGELOG updated, done record written
 
 ### KB-006 · Sign-up, log-in and log-out UI with protected routes
 

@@ -62,6 +62,15 @@ Entry template:
 - **Documentation:** ADR `docs/adr/0001-ordering-and-conflict-handling.md`; no new endpoints (`docs/api.md` unchanged); no new environment variables
 - **Lessons:** D5 (Yjs/PostgreSQL authority) is still pending, so ADR section 7 is provisional and sections 3, 5 and 6 may need revision. Planner suggestions: position columns need `COLLATE "C"` (KB-011, KB-012 migrations); the stale-neighbour rule is for KB-015 to implement. The finisher's secret-pattern search was denied by the sandbox; the check rests on the commit only adding ordering code, tests, an ADR and a dev dependency (`fast-check`).
 
+### KB-005 · Authentication core: accounts and cookie sessions — done on 2026-10-29
+
+- **Approving test report:** Report 1 (2026-10-29), commit 2b198b3 (later commits are workflow records and a tester test file only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** the API now supports sign-up, log-in, log-out and "current user" with secure cookie sessions, an Origin check, rate limits, a guard that protects every route by default, and an operator command to reset a password.
+- **CHANGELOG:** "Added: People can now create an account with email and password, log in and log out; sessions last 30 days and sign-up and log-in attempts are rate limited to protect accounts (KB-005)."
+- **Documentation:** ADR `docs/adr/0002-authentication-and-sessions.md`; `docs/api.md` (auth endpoints and CLI); no new environment variables (`SESSION_SECRET` already in `.env.example`)
+- **Lessons:** tester observations for the planner: the dummy hash is computed lazily, so the first unknown-email login after start-up is slower (warm it at start-up); `trustProxy` is for KB-031; the empty-database migration run was checked indirectly (CI runs it). Secret search found only fake passwords in test files.
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
