@@ -162,3 +162,25 @@ Entry template:
   - The E2E spec creates real accounts (random emails) in whatever database the api uses; CI uses the test database.
   - Suggestions for the planner: KB-031 should set Fastify `trustProxy`; KB-006 can use `signUpViaApi` for its fixtures.
   - Sandbox note: shell heredocs were denied; files were written with the Write/Edit tools.
+
+### KB-006 · Sign-up, log-in and log-out UI with protected routes
+
+**Iteration 1 — 2026-10-29**
+
+- **Status at the end:** Ready for test
+- **What was done:** `/signup` and `/login` pages (`apps/web/src/routes/`) with client-side validation using the shared Zod schemas, field errors from API `details`, `EMAIL_TAKEN` mapped to the email field, other API messages (401 `INVALID_CREDENTIALS`, 429) shown as a form-level message. Errors are announced assertively through the shared announcer and focus moves to the first invalid field. `PasswordField` has a show/hide button with `aria-pressed`. Auth data layer in `features/auth/api` (`useCurrentUser` on `/api/auth/me`, where 401 means `null`; `useLogin`, `useSignup`, `useLogout`). `RequireAuth` layout route (spinner, error state with Retry, redirect to `/login?next=<path>`); every private route goes under it. `sanitizeNext` accepts only same-origin relative paths. `createQueryClient({ onUnauthorized })` reacts to any 401 `UNAUTHENTICATED` from a query or mutation: `handleUnauthorized` clears the cache and navigates to login keeping the path in `next` (a wrong password is `INVALID_CREDENTIALS` and does not trigger it; logout opts out through mutation `meta`). Header shows the user name and a "Log out" button, which clears the cache and goes to `/login`. Logged-in users who open `/login` or `/signup` are sent to `next`.
+- **Changed files:** `apps/web/src/features/auth/{safe-next.ts,form-errors.ts,useAuthForm.ts,PasswordField.tsx,RequireAuth.tsx,unauthorized.ts}`, `apps/web/src/features/auth/api/{auth.ts,index.ts}`, `apps/web/src/routes/{LoginPage.tsx,SignupPage.tsx,RootLayout.tsx}`, `apps/web/src/{router.tsx,App.tsx,styles.css}`, `apps/web/src/lib/api/query-client.ts`, `apps/web/src/components/TextField.tsx` (forwards `ref`), tests below
+- **Migrations:** none
+- **Commit(s):** `f26ab7e` feat(web): KB-006 add sign-up, log-in and log-out UI with protected routes
+- **Acceptance criteria covered:** pages and error mapping (`auth-flow.test.tsx`, `e2e/auth-ui.spec.ts`); `useCurrentUser` and protected route with `next` (`auth-flow.test.tsx`, E2E); 401 handling (`unauthorized.test.tsx`); log out (unit and E2E); password toggle with `aria-pressed`; G1, U1 to U5, U8 to U10.
+- **Tests written by the developer:** web `safe-next.test.ts` (absolute, protocol-relative, backslash, `javascript:`, control characters), `auth-flow.test.tsx` (redirect, retry state, login with `next`, open-redirect ignored, 401 and 429 messages, field errors and focus, password toggle, signup, logout), `unauthorized.test.tsx`, updated `App.test.tsx`; shared test helper `src/test-utils/fetch.ts`; E2E `e2e/auth-ui.spec.ts` (signup to home, logout, protected redirect, login returns, `next` honoured and external `next` ignored, wrong password, duplicate email, expired session, keyboard-only signup and login, focus on first invalid field, axe on both pages with and without errors, 360 px).
+- **Local checks:** build ✔ · lint ✔ · typecheck ✔ · test ✔ (shared 38, web 54, api 100) · test:e2e ✔ (20 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - `/me` returning 401 is treated as "not logged in" (cache value `null`), not as an error, so it does not trigger the global redirect.
+  - After logout and after the global 401 handler the cache is cleared and `['auth','me']` is set to `null` so mounted observers do not keep a stale user.
+  - The password toggle label stays "Show password" and the state is carried by `aria-pressed`.
+  - The existing 404 and smoke E2E tests still pass; the home page is now protected, so `/` redirects to `/login` when anonymous.
+  - No Retry-After countdown is shown for 429; only the API message.
+  - Observation for the planner: the Planning index table has the KB-007 and KB-008 rows joined on one line (pre-existing formatting error); I did not touch it.
+  - Sandbox note: heredocs were denied again; files were written with the Write/Edit tools.
