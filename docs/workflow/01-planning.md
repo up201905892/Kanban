@@ -12,11 +12,11 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-002 | Local PostgreSQL, Prisma and validated configuration | Foundations | High | KB-001 | Done |
 | KB-003 | API conventions and E2E harness | Foundations | High | KB-001 | Done |
 | KB-004 | Web app shell, data layer and minimal local components | Foundations | High | KB-003 | Done |
-| KB-005 | Authentication core: accounts and cookie sessions | Authentication and workspaces | High | KB-002, KB-003 | Proposed |
-| KB-006 | Sign-up, log-in and log-out UI with protected routes | Authentication and workspaces | High | KB-004, KB-005 | Proposed |
-| KB-007 | Workspaces, memberships and the authorization policy | Authentication and workspaces | High | KB-005, KB-006 | Proposed |
-| KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Proposed |
-| KB-009 | Invite links, members and roles | Authentication and workspaces | Medium | KB-007 | Proposed |
+| KB-005 | Authentication core: accounts and cookie sessions | Authentication and workspaces | High | KB-002, KB-003 | Planned |
+| KB-006 | Sign-up, log-in and log-out UI with protected routes | Authentication and workspaces | High | KB-004, KB-005 | Planned |
+| KB-007 | Workspaces, memberships and the authorization policy | Authentication and workspaces | High | KB-005, KB-006 | Planned |
+| KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Planned |
+| KB-009 | Invite links, members and roles | Authentication and workspaces | Medium | KB-007 | Planned |
 | KB-010 | Fractional indexing utility and ordering/conflict ADR | Board | High | KB-001 | Done |
 | KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Proposed |
 | KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Proposed |
@@ -69,18 +69,26 @@ Rationale: no external dependency or vendor for a core security path; sessions a
 Railway: one long-running Docker container that serves the API, the WebSocket endpoint and the built web app (same origin), plus Railway managed PostgreSQL.
 Rationale: supports long-lived WebSocket connections in an always-on container (serverless platforms do not); one service and one database in the same project with private networking; Dockerfile-based builds keep the app portable. Constraint carried into the plan: **exactly one instance** (Yjs rooms live in memory) and app sleeping disabled. Agents prepare the files (KB-031); João connects the deploy. Affects KB-031, KB-032.
 
-### D5 · Scope of Yjs authority (structured data vs collaborative text) — **Pending — awaiting João**
+### D5 · Scope of Yjs authority (structured data vs collaborative text) — **Decided** (João, 2026-10-28, `approvals.md`)
+
+**Decision:** hybrid (the working assumption below). Yjs is the authority for card descriptions and presence; PostgreSQL, written through the REST API, is the authority for structured data (columns, cards, fields, positions, sprints), with changes broadcast as board events. ADR 0001 section 7 was written for this option; it is marked Accepted in KB-011, and the real-time ADR (KB-016) records the same split. The tasks listed under "Alternative" keep their current specifications.
+
+Original question, kept for the record:
 
 `CLAUDE.md` says "the Yjs document is the authority; the server updates the database from it", without saying which data lives in Yjs.
 
-- **Working assumption (recommended):** hybrid. Collaborative text (card descriptions) and presence live in Yjs; the Yjs document is the authority for them and the server projects the text into PostgreSQL. Structured data (columns, cards, fields, positions, sprints) is written through the REST API with server-side validation and authorization, PostgreSQL is the authority, and changes are broadcast to other clients as board events over the same WebSocket. Why: field-level validation and authorization (e.g. an assignee must be a member, a viewer cannot edit, a sprint must belong to the project) are enforceable per request; reports and history query relational data directly; Yjs is used where a CRDT clearly wins (concurrent text editing).
+- **Working assumption (recommended, chosen):** hybrid. Collaborative text (card descriptions) and presence live in Yjs; the Yjs document is the authority for them and the server projects the text into PostgreSQL. Structured data (columns, cards, fields, positions, sprints) is written through the REST API with server-side validation and authorization, PostgreSQL is the authority, and changes are broadcast to other clients as board events over the same WebSocket. Why: field-level validation and authorization (e.g. an assignee must be a member, a viewer cannot edit, a sprint must belong to the project) are enforceable per request; reports and history query relational data directly; Yjs is used where a CRDT clearly wins (concurrent text editing).
 - **Alternative:** the whole board state in one Yjs document per board, projected into PostgreSQL by the server. Simpler offline story for moves, but server-side validation of CRDT updates is hard, invalid updates can only be repaired after the fact, and reports depend on a projection.
 - **If the alternative is chosen, these tasks change substantially:** KB-010, KB-012, KB-013, KB-014, KB-015, KB-016, KB-018, KB-021, KB-022, KB-024.
 - **Must be answered before KB-010 and KB-012 are approved.**
 
-### D6 · Email delivery and account recovery in v1.0 — **Pending — awaiting João**
+### D6 · Email delivery and account recovery in v1.0 — **Decided** (João, 2026-10-28, `approvals.md`)
 
-- **Working assumption (recommended):** no email in v1.0. Invites are links copied and shared by the owner (KB-009); forgotten passwords are handled by an operator CLI that sets a temporary password and revokes the user's sessions (KB-005). Why: avoids an email provider, domain setup (SPF/DKIM) and extra failure modes in a 7–8 week plan; the user base is João and his groups.
+**Decision:** no email in v1.0 (the working assumption below). Invites are links copied and shared by the owner (KB-009); forgotten passwords are handled by the operator CLI in KB-005. No email task is added; email reset and emailed invites are candidates for v1.1.
+
+Original question, kept for the record:
+
+- **Working assumption (recommended, chosen):** no email in v1.0. Invites are links copied and shared by the owner (KB-009); forgotten passwords are handled by an operator CLI that sets a temporary password and revokes the user's sessions (KB-005). Why: avoids an email provider, domain setup (SPF/DKIM) and extra failure modes in a 7–8 week plan; the user base is João and his groups.
 - **Alternative:** an email provider (e.g. Resend or Postmark over SMTP) for password reset and emailed invites: about one extra M task, plus a provider account and a sending domain.
 - **If the alternative is chosen:** KB-005 (CLI replaced or complemented by a reset flow), KB-009 (optional email invite), KB-031 (new variables); a new task is added.
 
@@ -140,6 +148,11 @@ Lines from `approvals.md` already handled by the planner (prevents applying the 
 
 | Decision date | Decision | IDs | Applied on |
 | --- | --- | --- | --- |
+| 2026-10-28 | Approve | KB-005 to KB-009 | 2026-10-29 |
+| 2026-10-28 | Answer | D6 | 2026-10-29 |
+| 2026-10-28 | Answer | D5 | 2026-10-29 |
+
+Note: the first row of the `approvals.md` table (`YYYY-MM-DD · Approve · KB-001 to KB-008`, in italics) is the usage example, not a decision; it is not applied. KB-001 to KB-004 and KB-010 were approved in the conversation on 2026-10-24.
 
 ## Specifications
 
@@ -337,7 +350,7 @@ Task template (copy for each new task):
 - [ ] Origin check for state-changing requests and rate limit on login/signup (10 per minute per IP + email) per A3/A5.
 - [ ] `requireAuth` hook exposing `request.user`; public routes listed explicitly (signup, login, health); `getSessionFromCookieHeader()` helper exported for the WebSocket upgrade (KB-016).
 - [ ] Test helpers: `createUserAndLogin()` for API tests and a Playwright helper that logs in through the API and stores the cookie.
-- [ ] Operator CLI `pnpm --filter api admin:reset-password <email>` sets a random temporary password, prints it once and deletes all of that user's sessions (D6 working assumption).
+- [ ] Operator CLI `pnpm --filter api admin:reset-password <email>` sets a random temporary password, prints it once and deletes all of that user's sessions (D6).
 - [ ] Common criteria: G1–G4, G6–G8, A1–A3, A5, A7.
 
 **Required tests:**
@@ -350,6 +363,8 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-10-29 · planner · D6 answered by João (approvals.md, 2026-10-28): no email in v1.0; the operator CLI is the password-reset path · spec unchanged except "(D6 working assumption)" → "(D6)"
+- 2026-10-29 · planner · Proposed → Planned · approved by João (approvals.md, 2026-10-28)
 
 ### KB-006 · Sign-up, log-in and log-out UI with protected routes
 
@@ -378,6 +393,8 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-10-29 · planner · D6 answered by João (approvals.md, 2026-10-28): no password-reset UI in v1.0 · spec unchanged
+- 2026-10-29 · planner · Proposed → Planned · approved by João (approvals.md, 2026-10-28)
 
 ### KB-007 · Workspaces, memberships and the authorization policy
 
@@ -407,6 +424,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-10-29 · planner · Proposed → Planned · approved by João (approvals.md, 2026-10-28)
 
 ### KB-008 · Projects within a workspace
 
@@ -434,6 +452,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-10-29 · planner · Proposed → Planned · approved by João (approvals.md, 2026-10-28)
 
 ### KB-009 · Invite links, members and roles
 
@@ -465,6 +484,8 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · re-check under João's rule: not on the critical path and blocks only Medium tasks (KB-013, KB-029)
+- 2026-10-29 · planner · D6 answered by João (approvals.md, 2026-10-28): invites are shared links only, no email invites in v1.0 · spec unchanged
+- 2026-10-29 · planner · Proposed → Planned · approved by João (approvals.md, 2026-10-28)
 
 ### KB-010 · Fractional indexing utility and ordering/conflict ADR
 
@@ -498,6 +519,7 @@ Task template (copy for each new task):
 - 2026-10-28 · tester · Ready for test → In test · testing started
 - 2026-10-28 · tester · In test → Passed · Report 1 in 03-testing.md, all criteria verified
 - 2026-10-28 · finisher · Passed → Done · CHANGELOG updated, ADR 0001 present, entry in 04-done.md (D5 still pending, ADR section 7 provisional)
+- 2026-10-29 · planner · D5 answered by João (approvals.md, 2026-10-28): hybrid, the option ADR 0001 section 7 already assumes; sections 3, 5 and 6 stay valid and no rework is needed · marking section 7 as Accepted is assigned to KB-011 (this task stays Done)
 
 ### KB-011 · Board and configurable columns
 
@@ -509,7 +531,8 @@ Task template (copy for each new task):
 **Goal:** Each project has a board whose columns users can add, rename, reorder, delete and mark as the "Done" column (needed by sprints and burndown).
 
 **Acceptance criteria:**
-- [ ] Migration: `Board` (1:1 with Project) and `Column` (id, boardId, name 1–50, position key, isDone; index (boardId, position)); a data migration creates boards for existing projects.
+- [ ] Migration: `Board` (1:1 with Project) and `Column` (id, boardId, name 1–50, position key with `COLLATE "C"` per ADR 0001 section 1, isDone; index (boardId, position, id)); a data migration creates boards for existing projects.
+- [ ] ADR 0001 amended for D5 (decided: hybrid): the Status line and the section 7 heading no longer say "Provisional/pending"; section 7 states the decision and its date and references D5; the original assumption text is kept (amend, do not rewrite history).
 - [ ] New projects get "To do", "In progress" and "Done" (Done flagged) in the same transaction as the project.
 - [ ] Exactly one Done column per board: setting `isDone` on one column clears it on the other in one transaction; removing the flag without setting another → `409 DONE_COLUMN_REQUIRED`.
 - [ ] `GET /api/projects/:pid/board` (board + ordered columns); `POST /api/boards/:bid/columns` (A6); `PATCH /api/columns/:id` (name, position via neighbours, isDone); `DELETE /api/columns/:id` → 204 (the Done column → 409 `DONE_COLUMN_REQUIRED`). Owner and member manage; viewer reads.
@@ -518,7 +541,7 @@ Task template (copy for each new task):
 
 **Required tests:**
 - Unit: neighbour selection for move left/right at the edges.
-- API: get board 200 / 401 / 404 non-member; create 201, same id again → 200 with no duplicate; invalid name 400; viewer 403; Done flag exclusivity; deleting the Done column → 409; a column id from another board → 404.
+- API: get board 200 / 401 / 404 non-member; create 201, same id again → 200 with no duplicate; invalid name 400; viewer 403; Done flag exclusivity; deleting the Done column → 409; a column id from another board → 404; columns whose keys differ only in letter case (e.g. `a0` and `Z0`) are returned in code-unit order (proves the binary collation).
 - E2E: add, rename, reorder by keyboard and delete a column; state persists after reload; axe on the board.
 - Accessibility: column menu reachable by Tab and opened with Enter; moves announced ("Column In progress moved to position 2 of 3").
 
@@ -526,6 +549,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-10-29 · planner · spec revised after D5 answer (approvals.md, 2026-10-28): added the ADR 0001 section 7 amendment and the `COLLATE "C"` requirement from ADR 0001 (finisher's KB-010 lesson) · stays Proposed
 
 ### KB-012 · Cards: create, view, edit and delete
 
@@ -537,7 +561,7 @@ Task template (copy for each new task):
 **Goal:** Deliver the core card lifecycle (with a markdown description) and the activity-log foundation that history and burndown rely on.
 
 **Acceptance criteria:**
-- [ ] Migration: `Card` (id, boardId, columnId, number unique per project, title 1–200, description markdown ≤ 20,000 chars, position key, version, createdById, createdAt, updatedAt, deletedAt) and `ActivityEvent` (id, cardId, actorId, type, data JSONB, createdAt; index (cardId, createdAt)).
+- [ ] Migration: `Card` (id, boardId, columnId, number unique per project, title 1–200, description markdown ≤ 20,000 chars, position key with `COLLATE "C"` (ADR 0001 section 1; index (columnId, position, id)), version, createdById, createdAt, updatedAt, deletedAt) and `ActivityEvent` (id, cardId, actorId, type, data JSONB, createdAt; index (cardId, createdAt)).
 - [ ] Card number taken from `Project.nextCardNumber` with an atomic increment in the creation transaction (no duplicates under concurrency).
 - [ ] `POST /api/columns/:cid/cards` (A6; appended at the end unless neighbours are given) → 201; `GET /api/cards/:id`; `PATCH /api/cards/:id` {title?, description?} increments `version`; `DELETE /api/cards/:id` → 204 soft delete (`deletedAt`); deleted cards are excluded from every read and later mutations → 404.
 - [ ] `GET /api/projects/:pid/board` includes non-deleted cards per column ordered by (position, id).
@@ -545,6 +569,7 @@ Task template (copy for each new task):
 - [ ] Activity per G5: `created`, `title_changed`, `description_changed` (stores lengths, not the text), `deleted`, `column_deleted_moved`.
 - [ ] Markdown rendered without raw HTML (no `rehype-raw`); `javascript:` links removed.
 - [ ] UI: "Add card" at the bottom of each column (Enter creates and keeps the field open for the next card); tiles show `KEY-number` and title; card detail dialog at `/projects/:pid/cards/:number` (deep link); inline title edit; description textarea with Edit/Preview and an explicit "Save" (replaced by KB-019); delete with confirmation; read-only for viewers.
+- [ ] Authority per D5 (hybrid): every card field, including `description` for now, is written only through REST with PostgreSQL as the authority. The REST `description` path is interim: KB-019 makes the Yjs document its authority and removes `description` from PATCH, so no client-side description logic beyond the textarea is built here.
 - [ ] Common criteria: G1–G5, G8, A1–A7, U1–U10.
 
 **Required tests:**
@@ -557,6 +582,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-10-29 · planner · spec revised after D5 answer (approvals.md, 2026-10-28): the hybrid split matches the existing spec; added an explicit authority criterion (interim REST description until KB-019) and the `COLLATE "C"` position column from ADR 0001 · stays Proposed
 
 ### KB-013 · Card fields: assignee, priority and estimate
 
@@ -673,6 +699,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-10-29 · planner · D5 answered by João (approvals.md, 2026-10-28): hybrid; the ADR records Yjs as authority for descriptions and presence and PostgreSQL for structured data, consistent with ADR 0001 section 7 · spec unchanged
 
 ### KB-017 · Yjs document persistence in PostgreSQL
 
