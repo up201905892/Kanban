@@ -282,3 +282,39 @@ Report template:
 - `prisma migrate reset --force` was refused by Prisma's AI-safety guard (no user consent in this unattended run) and was not bypassed. Applying the migrations to an empty database was therefore checked indirectly: the test database was built from these two migrations, status is up to date and the schema diff is empty. CI runs the migrations on an empty service database.
 - The dummy hash is computed lazily, so the first unknown-email login after a process start is slower (about 67 ms against 14 ms measured, including connection warm-up). It is slower, not faster, and affects one request; the developer may warm it at start-up.
 - Rate-limit buckets are per IP and email, so one IP can try many different emails (as specified); `trustProxy` is for KB-031.
+
+### KB-006 · Sign-up, log-in and log-out UI with protected routes — Report 1 — 2026-10-29
+
+- **Commit tested:** f26ab7e (in `develop` history, HEAD aeb4224; working tree clean before the tester's test file)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 38, web 54, api 100; plus 9 web tests added by the tester) | ✔ |
+| E2E | `CI=1 pnpm test:e2e` (20 passed) | ✔ |
+| Authorization | protected routes: private routes sit under `RequireAuth`; 401 handling code and tests read | ✔ |
+| Database | no migrations in this task | n.a. |
+| Real time | not touched | n.a. |
+| Accessibility | E2E: keyboard-only sign-up and log-in, focus on first invalid field, axe on both pages (with and without errors), 360 px; code read for `aria-pressed`, assertive announcer, `:focus-visible` style | ✔ |
+
+**Acceptance criteria:**
+- [x] `/signup` and `/login` with field-level errors from `details` and API messages for 401/409/429: `form-errors.ts` read; unit tests (`auth-flow.test.tsx`) and E2E (wrong password, duplicate email) pass.
+- [x] `useCurrentUser()` on `/api/auth/me`; `RequireAuth` redirects to `/login?next=<path>` and login returns there; `next` sanitized (E2E: login returns to the page; external `next` ignored). Code read of `safe-next.ts`.
+- [x] Any 401 `UNAUTHENTICATED` clears the cache and redirects keeping the path (`unauthorized.test.tsx`, E2E expired session). A wrong password (`INVALID_CREDENTIALS`) does not trigger it.
+- [x] "Log out" in the header clears the cache and goes to `/login` (unit and E2E; protected URL then redirects).
+- [x] Password show/hide toggle with `aria-pressed` (unit test; code read; reachable by Tab).
+- [x] Common criteria G1, U1 to U5, U8 to U10: checks green, loading (spinner), error (retry) and submit-disabled states present, errors announced assertively, 360 px layout, axe clean.
+
+**Required tests:** sanitizer unit tests (absolute, protocol-relative, backslash, `javascript:`, control chars) exist and assert real behaviour; E2E covers every listed flow, axe on both pages and keyboard-only completion; API n/a.
+
+**Tests added by the tester:** `apps/web/src/features/auth/safe-next.edge.test.ts` (9 tests: NUL, CRLF, DEL, triple slash, `/\/`, `https:/`, `mailto:`, `vbscript:`, encoded slashes, `loginPathFor` with unsafe input); all pass.
+
+**Failures:** none
+
+**Observations (not failures):**
+- On logout, `RequireAuth` and the logout handler both navigate; the last navigation (`/login`, no `next`) wins and E2E confirms the result.
+- No Retry-After countdown for 429, as the developer noted and the spec allows.
+- The Planning index rows for KB-007 and KB-008 are joined on one line (pre-existing; for the planner).
