@@ -71,6 +71,15 @@ Entry template:
 - **Documentation:** ADR `docs/adr/0002-authentication-and-sessions.md`; `docs/api.md` (auth endpoints and CLI); no new environment variables (`SESSION_SECRET` already in `.env.example`)
 - **Lessons:** tester observations for the planner: the dummy hash is computed lazily, so the first unknown-email login after start-up is slower (warm it at start-up); `trustProxy` is for KB-031; the empty-database migration run was checked indirectly (CI runs it). Secret search found only fake passwords in test files.
 
+### KB-006 · Sign-up, log-in and log-out UI with protected routes — done on 2026-10-29
+
+- **Approving test report:** Report 1 (2026-10-29), commit f26ab7e (later commits are workflow records and a tester test file only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** people can sign up, log in and log out in the browser, private pages are protected and return the user to where they were, and an expired session sends them to log in.
+- **CHANGELOG:** "Added: People can now sign up, log in and log out in the browser; private pages send you to the log-in page and bring you back afterwards, and the password field has a show/hide button (KB-006)."
+- **Documentation:** no new endpoints (UI over the KB-005 endpoints, already in `docs/api.md`); no new environment variables; no ADR required
+- **Lessons:** no Retry-After countdown for 429 (allowed by the spec). Planner: the Planning index rows for KB-007 and KB-008 are still joined on one line. No TODO left; no secret patterns found in the task's files.
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
