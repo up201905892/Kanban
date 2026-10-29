@@ -241,3 +241,44 @@ Report template:
 **Observations (not failures):**
 - D5 is still pending, so ADR section 7 and the dependent sections 3, 5 and 6 may need revision; the ADR states this openly.
 - `COLLATE "C"` for position columns and the stale-neighbour rule are for KB-011, KB-012 and KB-015 to implement and test.
+
+### KB-005 · Authentication core: accounts and cookie sessions — Report 1 — 2026-10-29
+
+- **Commit tested:** 2b198b3 (in `develop` history, HEAD 22bbc86; working tree clean before the tester's test file)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 38, web 18, api 91, plus 9 added by the tester) | ✔ |
+| E2E | `CI=1 pnpm test:e2e` (8 passed) | ✔ |
+| Authorization | see criteria; protected by default, explicit public list | ✔ |
+| Database | `prisma migrate status` up to date; `migrate diff` DB vs schema: no difference; migration SQL read | ✔ (see observations) |
+| Real time / accessibility | not touched (n.a. per spec) | n.a. |
+
+**Acceptance criteria:**
+- [x] ADR: `docs/adr/0002-authentication-and-sessions.md` read; covers hashing, token, cookie, expiry, CSRF, rate limits, enumeration trade-off and why D3.
+- [x] Migration: `users` and `sessions` columns, unique email and token hash, FK with `ON DELETE CASCADE`, lowercase `CHECK`; checked in the SQL and by a no-drift diff against the schema.
+- [x] Signup: 201 plus cookie; 400 for invalid email, short (9) and long (129) password, unknown field, malformed JSON, empty body, array body; 10 and 128 characters accepted; 409 `EMAIL_TAKEN` also for a different email case. Verified with the developer tests and `auth.edge.test.ts`.
+- [x] Login: 200 plus cookie; unknown email and wrong password give byte-identical 401 bodies; dummy hash verified (code read); email is trimmed and case-insensitive.
+- [x] Logout: 204, empty body, session row deleted, cleared cookie (`Max-Age=0`), other sessions of the same user untouched; `me` then 401; `me` 401 with no, empty, junk, oversized and tampered cookies.
+- [x] argon2id (`$argon2id$` prefix checked), `passwordHash` not in any response; test logs checked: no password, cookie or `passwordHash` in captured log lines, and a 400 body does not echo the password.
+- [x] Token and cookie: 32 random bytes, only SHA-256 stored, `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` only in production, 30-day sliding expiry renewed at most daily, expired sessions rejected and deleted (code read and developer unit/API tests).
+- [x] Origin check: missing, `null`, look-alike and trailing-slash origins give 403 `CSRF_REJECTED` in the error format; rate limit 429 with `Retry-After` after 10 attempts per IP and email (limiter keyed on the normalised email).
+- [x] `requireAuth` on everything outside the explicit `PUBLIC_ROUTES`; `/health` public; unknown paths 404 without leaking; `getSessionFromCookieHeader()` exported.
+- [x] Test helpers `createUserAndLogin()` and Playwright `signUpViaApi`/`logInViaApi` exist and are used by passing tests.
+- [x] CLI `admin:reset-password`: unknown email exits 1 with a message, no argument exits 2 with usage, invalid email exits 1 without a stack trace; the function resetting the password and deleting all sessions is covered by the developer tests.
+- [x] Common criteria G1 to G4, G6 to G8, A1 to A3, A5, A7: checks green, errors in the project format, no secrets in the repository, new dependency `@node-rs/argon2` justified.
+
+**Required tests:** all listed unit and API tests exist and assert real behaviour (hash round trip, token hashing, cookie options per `NODE_ENV`, Origin check, sliding expiry, signup/login/logout/me matrix, 429, no `passwordHash`, CLI). E2E and accessibility n.a.
+
+**Tests added by the tester:** `apps/api/src/modules/auth/auth.edge.test.ts` (9 tests: hostile Origin values, malformed bodies, password length boundaries, email case, log and body leakage, junk cookies, logout without Origin or session and per-session deletion, byte-identical 401 bodies, public and unknown routes); all pass.
+
+**Failures:** none
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was refused by Prisma's AI-safety guard (no user consent in this unattended run) and was not bypassed. Applying the migrations to an empty database was therefore checked indirectly: the test database was built from these two migrations, status is up to date and the schema diff is empty. CI runs the migrations on an empty service database.
+- The dummy hash is computed lazily, so the first unknown-email login after a process start is slower (about 67 ms against 14 ms measured, including connection warm-up). It is slower, not faster, and affects one request; the developer may warm it at start-up.
+- Rate-limit buckets are per IP and email, so one IP can try many different emails (as specified); `trustProxy` is for KB-031.
