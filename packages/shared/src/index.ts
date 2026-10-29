@@ -24,3 +24,16 @@ export {
   type HealthResponse,
   type ReadyResponse,
 } from './health.js';
+export {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  emailSchema,
+  signupRequestSchema,
+  loginRequestSchema,
+  userSchema,
+  authResponseSchema,
+  type SignupRequest,
+  type LoginRequest,
+  type User,
+  type AuthResponse,
+} from './auth.js';

@@ -8,6 +8,33 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  /// Always stored lowercased (the API normalises it).
+  email        String    @unique
+  name         String
+  passwordHash String    @map("password_hash")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  sessions     Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  /// SHA-256 (hex) of the opaque cookie token; the token itself is never stored.
+  tokenHash  String   @unique @map("token_hash")
+  expiresAt  DateTime @map("expires_at")
+  lastUsedAt DateTime @map("last_used_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
 /// Technical (non-domain) key/value table. It gives the `init` migration real content
 /// (Prisma creates no migration for an empty schema) and is a place for app-level flags.
 model AppMeta {

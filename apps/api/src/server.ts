@@ -6,7 +6,7 @@ loadDotEnv();
 const config = loadConfigOrExit();
 
 const prisma = createPrismaClient(config.DATABASE_URL);
-const app = buildApp({ prisma });
+const app = buildApp({ prisma, webOrigin: config.WEB_ORIGIN });
 app.addHook('onClose', async () => {
   await prisma.$disconnect();
 });
