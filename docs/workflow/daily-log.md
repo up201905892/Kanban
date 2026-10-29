@@ -16,6 +16,20 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-10-29
+
+- **Decisions for João:**
+  - Approve more tasks so work is not starved. Only KB-007 can start tomorrow (KB-008 and KB-009 wait behind it). Suggested line: `2026-10-29 | Approve | KB-011 to KB-013, KB-015 to KB-017`.
+  - Raise KB-009 from Medium to High? It now blocks KB-016 (High, critical path). The planner added KB-009 as a dependency of KB-016 and did not change the priority of an already `Planned` task. Answer with `Change`.
+  - Optional: a small S task for a `packages/shared` watch mode in `pnpm dev` and the placeholder `app_meta` table; `/health` is still not proxied by Vite.
+- **Done:** KB-005, KB-006
+- **Tested:** KB-005 (Passed; 9 edge-case tests added), KB-006 (Passed; 9 open-redirect edge-case tests added)
+- **Developed:** KB-005 (account and cookie-session auth, ADR 0002, `@node-rs/argon2`), KB-006 (sign-up, log-in, log-out UI and protected routes)
+- **Proposals awaiting approval:** KB-011 to KB-032 (KB-027 also waits for `@up201905892/ui` on npm)
+- **Applied decisions:** KB-005 to KB-009 approved; D5 (hybrid Yjs/REST) and D6 (no email in v1.0) decided. KB-011 and KB-012 specs aligned with D5; ADR 0001 section 7 is still marked provisional, and KB-011 includes updating it.
+- **Rule violations found:** none. The KB-007/KB-008 index rows were joined on one line; the planner fixed them. KB-031 gained the `trustProxy` and argon2 warm-up follow-ups.
+- **Next step:** develop KB-007 (workspaces and the authorization policy), then KB-008 and KB-009.
+
 ## 2026-10-28
 
 - **Decisions for João:**
