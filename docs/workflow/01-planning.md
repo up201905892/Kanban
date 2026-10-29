@@ -14,7 +14,8 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-004 | Web app shell, data layer and minimal local components | Foundations | High | KB-003 | Done |
 | KB-005 | Authentication core: accounts and cookie sessions | Authentication and workspaces | High | KB-002, KB-003 | Done |
 | KB-006 | Sign-up, log-in and log-out UI with protected routes | Authentication and workspaces | High | KB-004, KB-005 | Done |
-| KB-007 | Workspaces, memberships and the authorization policy | Authentication and workspaces | High | KB-005, KB-006 | Planned || KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Planned |
+| KB-007 | Workspaces, memberships and the authorization policy | Authentication and workspaces | High | KB-005, KB-006 | Planned |
+| KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Planned |
 | KB-009 | Invite links, members and roles | Authentication and workspaces | Medium | KB-007 | Planned |
 | KB-010 | Fractional indexing utility and ordering/conflict ADR | Board | High | KB-001 | Done |
 | KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Proposed |
@@ -22,7 +23,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Proposed |
 | KB-014 | Labels | Board | Low | KB-012, KB-018 | Proposed |
 | KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | Proposed |
-| KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007 | Proposed |
+| KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Proposed |
 | KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Proposed |
 | KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Proposed |
 | KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Proposed |
@@ -434,6 +435,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · Proposed → Planned · approved by João (approvals.md, 2026-10-28)
+- 2026-10-29 · planner · Planned (no status change) · formatting correction: the KB-007 and KB-008 index rows were joined on one line and are now separate rows; no content removed
 
 ### KB-008 · Projects within a workspace
 
@@ -462,6 +464,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · Proposed → Planned · approved by João (approvals.md, 2026-10-28)
+- 2026-10-29 · planner · Planned (no status change) · formatting correction: the KB-007 and KB-008 index rows were joined on one line and are now separate rows; no content removed
 
 ### KB-009 · Invite links, members and roles
 
@@ -682,7 +685,7 @@ Task template (copy for each new task):
 
 - **MVP phase:** Real time
 - **Priority:** High
-- **Depends on:** KB-007
+- **Depends on:** KB-007, KB-009
 - **Estimate:** L
 - **ADR required:** real-time architecture and Yjs↔DB authority (D1, D5)
 
@@ -709,6 +712,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · D5 answered by João (approvals.md, 2026-10-28): hybrid; the ADR records Yjs as authority for descriptions and presence and PostgreSQL for structured data, consistent with ADR 0001 section 7 · spec unchanged
+- 2026-10-29 · planner · dependency KB-009 added: the socket close/re-authorization criterion and its "removing a member closes their socket" test need KB-009's member removal and role change; KB-009 is Planned, so there is no cycle · stays Proposed
 
 ### KB-017 · Yjs document persistence in PostgreSQL
 
@@ -1112,14 +1116,16 @@ Task template (copy for each new task):
 - [ ] The process runs as `node …` (no shell wrapper), so SIGTERM reaches it and the KB-017 graceful shutdown runs on redeploy.
 - [ ] `railway.json` (config as code): Dockerfile builder, healthcheck path `/health/ready`, pre-deploy command running `prisma migrate deploy`, restart policy on failure, 1 replica.
 - [ ] Production hardening: `trustProxy` for Railway's proxy, `Secure` cookies, `WEB_ORIGIN` set to the public Railway/custom domain, security headers (`@fastify/helmet`, CSP compatible with the app and its WebSocket), request body limit.
+- [ ] `trustProxy` comes from a validated config variable (e.g. `TRUST_PROXY` as a hop count, default off so local and test runs ignore `X-Forwarded-*`), added to `.env.example` and `docs/deployment.md` per G6; when it is on, `request.ip` (the KB-005 rate-limit key) is the client address from `X-Forwarded-For`, not the proxy's.
+- [ ] The argon2 dummy hash used for unknown-email logins (KB-005) is computed once at start-up, before the server starts listening, instead of lazily on the first unknown-email login. This way the first such login after a deploy takes about as long as any other (tester observation on KB-005).
 - [ ] `docs/deployment.md`: variables table (name, required, example, where it comes from — e.g. `DATABASE_URL` as a reference to the Railway PostgreSQL service), Railway setup steps (service from Dockerfile, PostgreSQL plugin, private networking, app sleeping disabled, exactly one replica because Yjs rooms are in memory), backups (Railway database backups where the plan allows plus a tested `pg_dump`/`pg_restore` runbook), rollback steps.
 - [ ] `docs/deploy/railway-deploy.yml` (proposed workflow for João to copy into `.github/workflows/`): manual dispatch and/or tag push, runs after CI succeeds, deploys with the Railway CLI using a `RAILWAY_TOKEN` repository secret and the service name as a variable; no secrets in the file. A request to copy it is added to "Decisions for João" in the daily log.
 - [ ] Local verification documented: `docker build` and `docker run` against the compose database serve the app at `http://localhost:8080`, and `pnpm test:e2e --grep @smoke` with `BASE_URL` pointing at the container passes (if agents lack permission for `docker build`, the step is handed to João in the daily log).
 - [ ] Common criteria: G1, G6, G7.
 
 **Required tests:**
-- Unit: config rejects a production environment without `Secure`-compatible settings (e.g. `WEB_ORIGIN` not https).
-- API: static web files and SPA fallback served by the api; `/api/*` unknown routes still return A1 404 (not the SPA); security headers present.
+- Unit: config rejects a production environment without `Secure`-compatible settings (e.g. `WEB_ORIGIN` not https); `TRUST_PROXY` accepts a non-negative integer, defaults to off and rejects invalid values; the dummy hash is ready right after `buildApp()` resolves, before any login request.
+- API: static web files and SPA fallback served by the api; `/api/*` unknown routes still return A1 404 (not the SPA); security headers present; with `TRUST_PROXY` on, logins with two different `X-Forwarded-For` addresses use separate rate-limit buckets; with it off, a changing `X-Forwarded-For` header does not get around the limit (still `429`).
 - E2E: `@smoke` tag on the sign-up → create workspace flow, runnable against `BASE_URL`.
 - Accessibility: n/a.
 
@@ -1128,6 +1134,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · João's decision (2026-10-24): release preparation at the end of the plan, blocks only the Medium KB-032
+- 2026-10-29 · planner · spec revised from the KB-005 developer, tester and finisher notes: `trustProxy` made configurable (`TRUST_PROXY`) and testable (rate-limit key behind the proxy); argon2 dummy hash warmed at start-up · stays Proposed
 
 ### KB-032 · README with demo
 
