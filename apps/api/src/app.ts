@@ -8,6 +8,7 @@ import { normalizeOrigin } from './lib/origin-check.js';
 import { registerAuthGuard } from './modules/auth/guard.js';
 import { authRoutes } from './modules/auth/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
+import { workspaceRoutes } from './modules/workspaces/routes.js';
 
 export interface AppOptions {
   /** Database client. Without it only the unauthenticated health routes exist (tests). */
@@ -72,6 +73,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       nodeEnv,
     });
     void app.register(authRoutes({ prisma: options.prisma, nodeEnv }));
+    void app.register(workspaceRoutes({ prisma: options.prisma }));
   }
 
   void app.register(healthRoutes(options.prisma));

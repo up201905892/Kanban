@@ -2,6 +2,7 @@ import { APP_NAME } from '@kanban/shared';
 import { Link, Outlet } from 'react-router';
 import { Button } from '../components';
 import { useCurrentUser, useLogout } from '../features/auth/api';
+import { WorkspaceSwitcher } from '../features/workspaces/WorkspaceSwitcher';
 
 export function RootLayout() {
   const { data: user } = useCurrentUser();
@@ -16,6 +17,7 @@ export function RootLayout() {
         <nav aria-label="Main">
           <Link to="/">{APP_NAME}</Link>
         </nav>
+        {user && <WorkspaceSwitcher />}
         {user && (
           <div className="user-menu">
             <span>{user.name}</span>

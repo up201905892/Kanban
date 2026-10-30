@@ -107,3 +107,19 @@ main,
   align-items: center;
   gap: 0.5rem;
 }
+
+.dialog-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.app-header .field {
+  margin-bottom: 0;
+  flex-direction: row;
+  align-items: center;
+}
+
+.workspace-list {
+  padding-left: 1.25rem;
+}

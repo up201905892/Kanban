@@ -7,6 +7,8 @@ import { NotFoundPage } from './routes/NotFoundPage';
 import { RootLayout } from './routes/RootLayout';
 import { RouteError } from './routes/RouteError';
 import { SignupPage } from './routes/SignupPage';
+import { WorkspacePage } from './routes/WorkspacePage';
+import { WorkspaceSettingsPage } from './routes/WorkspaceSettingsPage';
 
 export const routes: RouteObject[] = [
   {
@@ -19,7 +21,11 @@ export const routes: RouteObject[] = [
       {
         // Every private route goes under this layout route.
         element: <RequireAuth />,
-        children: [{ index: true, element: <HomePage /> }],
+        children: [
+          { index: true, element: <HomePage /> },
+          { path: 'workspaces/:id', element: <WorkspacePage /> },
+          { path: 'workspaces/:id/settings', element: <WorkspaceSettingsPage /> },
+        ],
       },
       { path: '*', element: <NotFoundPage /> },
     ],

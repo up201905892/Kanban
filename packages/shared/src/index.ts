@@ -25,6 +25,33 @@ export {
   type ReadyResponse,
 } from './health.js';
 export {
+  ROLES,
+  ACTIONS,
+  ROLE_PERMISSIONS,
+  roleSchema,
+  actionSchema,
+  can,
+  type Role,
+  type Action,
+} from './authz.js';
+export {
+  WORKSPACE_NAME_MAX_LENGTH,
+  workspaceNameSchema,
+  workspaceParamsSchema,
+  createWorkspaceRequestSchema,
+  updateWorkspaceRequestSchema,
+  deleteWorkspaceRequestSchema,
+  workspaceSchema,
+  workspaceResponseSchema,
+  workspaceListResponseSchema,
+  type CreateWorkspaceRequest,
+  type UpdateWorkspaceRequest,
+  type DeleteWorkspaceRequest,
+  type Workspace,
+  type WorkspaceResponse,
+  type WorkspaceListResponse,
+} from './workspaces.js';
+export {
   PASSWORD_MIN_LENGTH,
   PASSWORD_MAX_LENGTH,
   emailSchema,

@@ -30,6 +30,26 @@ Authenticated. Response `204`; the session is deleted and the cookie cleared.
 
 Authenticated. Response `200 { user }`, or `401 UNAUTHENTICATED`.
 
+### POST /api/workspaces
+
+Authenticated. Body `{ name }` (1 to 80 characters, trimmed). Creates the workspace and makes the caller its owner in one transaction. Response `201 { workspace }` where `workspace` is `{ id, name, createdAt, role }`. Errors: `400`, `401`.
+
+### GET /api/workspaces
+
+Authenticated. Response `200 { workspaces }`: only the workspaces the caller belongs to, oldest first, each with the caller's `role`.
+
+### GET /api/workspaces/:id
+
+Any role. Response `200 { workspace }`. A workspace the caller does not belong to answers exactly like an unknown ID: `404 NOT_FOUND`.
+
+### PATCH /api/workspaces/:id
+
+Owner only. Body `{ name }`. Response `200 { workspace }`. Errors: `400`, `401`, `403 FORBIDDEN` (member, viewer), `404`.
+
+### DELETE /api/workspaces/:id
+
+Owner only. Body `{ confirmName }` must equal the workspace name exactly, otherwise `400 VALIDATION_ERROR`. Response `204`; memberships (and later everything below the workspace) are removed by cascade. Errors: `400`, `401`, `403`, `404`.
+
 ### Operator command
 
 `pnpm --filter api admin:reset-password <email>` sets a random temporary password, prints it once and deletes all sessions of that user (no email in v1.0).

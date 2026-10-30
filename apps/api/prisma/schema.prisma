@@ -16,8 +16,40 @@ model User {
   passwordHash String    @map("password_hash")
   createdAt    DateTime  @default(now()) @map("created_at")
   sessions     Session[]
+  memberships  Membership[]
 
   @@map("users")
+}
+
+enum WorkspaceRole {
+  owner
+  member
+  viewer
+
+  @@map("workspace_role")
+}
+
+model Workspace {
+  id          String       @id @default(uuid(7)) @db.Uuid
+  name        String
+  createdAt   DateTime     @default(now()) @map("created_at")
+  memberships Membership[]
+
+  @@map("workspaces")
+}
+
+model Membership {
+  id          String        @id @default(uuid(7)) @db.Uuid
+  workspaceId String        @map("workspace_id") @db.Uuid
+  userId      String        @map("user_id") @db.Uuid
+  role        WorkspaceRole
+  createdAt   DateTime      @default(now()) @map("created_at")
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("memberships")
 }
 
 model Session {
