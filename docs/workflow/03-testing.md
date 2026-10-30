@@ -354,3 +354,37 @@ Report template:
 - `prisma migrate reset --force` was not run (Prisma's AI-safety guard refused it in earlier unattended runs); the test database is built from the three migrations with none pending. CI applies them to an empty database.
 - The planning criterion mentions a project resolver; it is deferred to KB-008 (its criterion list includes it) because no `Project` table exists yet.
 - A non-member sending a malformed or empty body to a real workspace ID gets 400 before authorization, identical to a random ID, so nothing leaks.
+
+### KB-008 · Projects within a workspace — Report 1 — 2026-10-30
+
+- **Commit tested:** 1ce8f22 (in `develop` history; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 89, web 85, api 154) | ✔ |
+| E2E | `CI=1 pnpm test:e2e` (27 passed) | ✔ |
+| Authorization | `service.ts`, `routes.ts`, `authorize.ts` read; every route calls `authorize()` with the right action; API tests for 401, identical 404 (non-member vs unknown), 403 viewer and member | ✔ |
+| Database | migration SQL read (table, unique `(workspace_id, key)`, `next_card_number` default 1, cascade FK); applied in the test database; cascade tested | ✔ (see observations) |
+| Real time | not touched | n.a. |
+| Accessibility | E2E: axe on workspace page, settings and not-found; keyboard-only create dialog with Escape focus return; project list is a `ul` (aria-label Projects) of links | ✔ |
+
+**Acceptance criteria:**
+- [x] Migration `Project` (id, workspaceId FK cascade, name, key, nextCardNumber default 1, createdAt): SQL read; name 1-80 and key `^[A-Z]{2,5}$` enforced by the shared Zod schemas (shared and API tests).
+- [x] Endpoints POST (owner, member) 201, GET list and GET one (any role), PATCH (owner, member), DELETE (owner) 204 with cascade; duplicate key gives `409 PROJECT_KEY_TAKEN`: routes read and API tests (create, 400 matrix, 409, concurrent creates, roles, cascade from workspace delete).
+- [x] Authz project resolver added (project to workspace): `authorize.ts` read; exercised by the project routes and a direct `authorize()` test.
+- [x] UI: workspace page lists projects with loading, empty and error (Retry) states; create dialog suggests the key from the name; settings with rename and owner-only delete with typed-name confirmation: web flow tests and E2E.
+- [x] Common criteria G1-G4, A1-A5, A7, U1-U10: checks green, contracts in `packages/shared`, errors in the project format, axe in E2E.
+
+**Required tests:** key suggestion unit ("Kanban Board" to "KB"); API (201, 400 invalid key, 409, 401, 404 non-member, 403 viewer, list isolation, delete 403 member and 204 owner); E2E (create, open, rename, delete, axe); keyboard dialog test. All exist and assert real behaviour.
+
+**Tests added by the tester:** none (existing coverage judged sufficient).
+
+**Failures:** none
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was not run (Prisma's AI-safety guard refuses it in unattended runs); the test database is built from the migrations. CI applies them to an empty database.
+- PATCH accepts only `name` (key immutable, since card IDs will use it) and the API delete has no typed-name confirmation (UI only); both match the task text, which does not require otherwise.
