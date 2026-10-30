@@ -89,6 +89,15 @@ Entry template:
 - **Documentation:** ADR `docs/adr/0003-authorization-model.md`; `docs/api.md` (the five `/api/workspaces` endpoints); no new environment variables
 - **Lessons:** the `project` resolver of the policy module is deferred to KB-008 (the `Project` table does not exist yet; KB-008 lists it as a criterion). KB-009 must add the last-owner rule when members can leave. `prisma migrate reset` was not run (Prisma guard); CI applies the three migrations to an empty database. The finisher's secret-pattern search and `git log` with paths were denied by the sandbox; the check rests on the commit list (only `docs(workflow)` and `test(api)` commits follow 3175dc4) and a TODO search that found nothing. The Planning index rows are now separate.
 
+### KB-008 · Projects within a workspace — done on 2026-10-30
+
+- **Approving test report:** Report 1 (2026-10-30), commit 1ce8f22 (later commits are the development record and the test report only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** workspaces now hold projects; owners and members can create, rename and open them, only owners can delete them, and the authorization policy resolves a project to its workspace.
+- **CHANGELOG:** "Added: Workspaces now hold projects: owners and members can create projects (with a short key suggested from the name), rename them and open them; only owners can delete a project, after typing its name to confirm (KB-008)."
+- **Documentation:** `docs/api.md` (five project endpoints); ADR 0003 updated (project resolver); no new environment variables
+- **Lessons:** the project key is immutable after creation (card IDs will use it in KB-012) and the typed-name delete confirmation is UI only; both match the task text. Planner: confirm key edits are not wanted. `prisma migrate reset` was not run (Prisma guard); CI applies the migrations to an empty database. No TODO left; no secret patterns found in the task's changes. Milestone "Authentication and workspaces" not yet reached (KB-009 is Planned).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
