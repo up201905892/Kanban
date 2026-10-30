@@ -62,6 +62,42 @@ Entry template:
 - **Documentation:** ADR `docs/adr/0001-ordering-and-conflict-handling.md`; no new endpoints (`docs/api.md` unchanged); no new environment variables
 - **Lessons:** D5 (Yjs/PostgreSQL authority) is still pending, so ADR section 7 is provisional and sections 3, 5 and 6 may need revision. Planner suggestions: position columns need `COLLATE "C"` (KB-011, KB-012 migrations); the stale-neighbour rule is for KB-015 to implement. The finisher's secret-pattern search was denied by the sandbox; the check rests on the commit only adding ordering code, tests, an ADR and a dev dependency (`fast-check`).
 
+### KB-005 · Authentication core: accounts and cookie sessions — done on 2026-10-29
+
+- **Approving test report:** Report 1 (2026-10-29), commit 2b198b3 (later commits are workflow records and a tester test file only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** the API now supports sign-up, log-in, log-out and "current user" with secure cookie sessions, an Origin check, rate limits, a guard that protects every route by default, and an operator command to reset a password.
+- **CHANGELOG:** "Added: People can now create an account with email and password, log in and log out; sessions last 30 days and sign-up and log-in attempts are rate limited to protect accounts (KB-005)."
+- **Documentation:** ADR `docs/adr/0002-authentication-and-sessions.md`; `docs/api.md` (auth endpoints and CLI); no new environment variables (`SESSION_SECRET` already in `.env.example`)
+- **Lessons:** tester observations for the planner: the dummy hash is computed lazily, so the first unknown-email login after start-up is slower (warm it at start-up); `trustProxy` is for KB-031; the empty-database migration run was checked indirectly (CI runs it). Secret search found only fake passwords in test files.
+
+### KB-006 · Sign-up, log-in and log-out UI with protected routes — done on 2026-10-29
+
+- **Approving test report:** Report 1 (2026-10-29), commit f26ab7e (later commits are workflow records and a tester test file only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** people can sign up, log in and log out in the browser, private pages are protected and return the user to where they were, and an expired session sends them to log in.
+- **CHANGELOG:** "Added: People can now sign up, log in and log out in the browser; private pages send you to the log-in page and bring you back afterwards, and the password field has a show/hide button (KB-006)."
+- **Documentation:** no new endpoints (UI over the KB-005 endpoints, already in `docs/api.md`); no new environment variables; no ADR required
+- **Lessons:** no Retry-After countdown for 429 (allowed by the spec). Planner: the Planning index rows for KB-007 and KB-008 are still joined on one line. No TODO left; no secret patterns found in the task's files.
+
+### KB-007 · Workspaces, memberships and the authorization policy — done on 2026-10-30
+
+- **Approving test report:** Report 1 (2026-10-30), commit 3175dc4 (later commits are the development record, a tester test file and the test report only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** people can create, list, switch between, rename and delete workspaces, and every workspace has owners, members and viewers whose permissions are enforced on the server without revealing other people's workspaces.
+- **CHANGELOG:** "Added: People can now create workspaces, switch between them, rename them and delete them (with a typed-name confirmation); every workspace has owners, members and viewers, and what each can do is enforced on the server without revealing other people's workspaces (KB-007)."
+- **Documentation:** ADR `docs/adr/0003-authorization-model.md`; `docs/api.md` (the five `/api/workspaces` endpoints); no new environment variables
+- **Lessons:** the `project` resolver of the policy module is deferred to KB-008 (the `Project` table does not exist yet; KB-008 lists it as a criterion). KB-009 must add the last-owner rule when members can leave. `prisma migrate reset` was not run (Prisma guard); CI applies the three migrations to an empty database. The finisher's secret-pattern search and `git log` with paths were denied by the sandbox; the check rests on the commit list (only `docs(workflow)` and `test(api)` commits follow 3175dc4) and a TODO search that found nothing. The Planning index rows are now separate.
+
+### KB-008 · Projects within a workspace — done on 2026-10-30
+
+- **Approving test report:** Report 1 (2026-10-30), commit 1ce8f22 (later commits are the development record and the test report only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** workspaces now hold projects; owners and members can create, rename and open them, only owners can delete them, and the authorization policy resolves a project to its workspace.
+- **CHANGELOG:** "Added: Workspaces now hold projects: owners and members can create projects (with a short key suggested from the name), rename them and open them; only owners can delete a project, after typing its name to confirm (KB-008)."
+- **Documentation:** `docs/api.md` (five project endpoints); ADR 0003 updated (project resolver); no new environment variables
+- **Lessons:** the project key is immutable after creation (card IDs will use it in KB-012) and the typed-name delete confirmation is UI only; both match the task text. Planner: confirm key edits are not wanted. `prisma migrate reset` was not run (Prisma guard); CI applies the migrations to an empty database. No TODO left; no secret patterns found in the task's changes. Milestone "Authentication and workspaces" not yet reached (KB-009 is Planned).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->

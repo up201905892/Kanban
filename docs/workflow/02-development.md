@@ -139,3 +139,95 @@ Entry template:
   - The ADR states that position columns need `COLLATE "C"` so database order matches code-unit order; KB-011 and KB-012 migrations should apply it (suggestion for the planner).
   - The ADR's stale-neighbour rule (section 3) is a proposal for KB-015 to implement and test.
   - `pnpm test:e2e` not run (no E2E or web changes).
+
+### KB-005 · Authentication core: accounts and cookie sessions
+
+**Iteration 1 — 2026-10-29**
+
+- **Status at the end:** Ready for test
+- **What was done:** Shared Zod contracts (`signupRequestSchema`, `loginRequestSchema`, `userSchema`, `authResponseSchema`, new error codes `EMAIL_TAKEN` and `INVALID_CREDENTIALS`). Prisma models `User` and `Session` with a migration (includes a `CHECK` that emails are lowercase). API module `apps/api/src/modules/auth`: argon2id hashing (`@node-rs/argon2`, OWASP minimum parameters, dummy-hash verification for unknown emails), 32-byte tokens stored as SHA-256, cookie helpers, session service with 30-day sliding expiry (renewed at most daily, expired sessions deleted), routes `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`. A global `preValidation` guard does the Origin check (403 `CSRF_REJECTED`) and `requireAuth` for everything not in the explicit `PUBLIC_ROUTES` set; `getSessionFromCookieHeader()` is exported for KB-016. In-memory rate limiter (10 per minute per IP + email) on signup/login with `Retry-After`. Operator CLI `admin:reset-password`. Test helpers `createUserAndLogin()` (`apps/api/src/test-utils/auth.ts`) and Playwright `signUpViaApi()`/`logInViaApi()`. ADR 0002 and `docs/api.md` updated.
+- **Changed files:** `packages/shared/src/{auth.ts,auth.test.ts,errors.ts,index.ts}`, `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/20261029162144_add_users_and_sessions/migration.sql`, `apps/api/src/{app.ts,server.ts}`, `apps/api/src/lib/{origin-check.ts,rate-limiter.ts}`, `apps/api/src/modules/auth/{password,tokens,session,service,guard,routes,admin}.ts`, `apps/api/src/modules/auth/{auth.test.ts,auth-units.test.ts}`, `apps/api/src/cli/reset-password.ts`, `apps/api/src/test-utils/auth.ts`, `apps/api/package.json`, `pnpm-lock.yaml`, `e2e/fixtures.ts`, `e2e/auth-api.spec.ts`, `docs/adr/0002-authentication-and-sessions.md`, `docs/api.md`
+- **Migrations:** `20261029162144_add_users_and_sessions` (created with `--create-only`, one `CHECK` constraint appended before applying; applied cleanly on the previous schema)
+- **Commit(s):** `2b198b3` feat(api): KB-005 add email and password authentication with cookie sessions
+- **Acceptance criteria covered:** ADR (`docs/adr/0002-...`); migration; signup/login/logout/me with the specified status codes and identical 401 bodies (`auth.test.ts`); argon2id and no `passwordHash` in responses; token/cookie/sliding expiry (`auth-units.test.ts`, `auth.test.ts`); Origin check and rate limit; `requireAuth`, public route list, `getSessionFromCookieHeader`; test helpers; CLI (`resetPassword` tested, script run by hand for the unknown-email case); G1 to G4, G6 to G8, A1 to A3, A5, A7.
+- **Tests written by the developer:** shared `auth.test.ts` (schemas); api `auth-units.test.ts` (hash round trip, token hashing, cookie options per `NODE_ENV`, Origin check, sliding-expiry rule, rate limiter) and `auth.test.ts` (signup 201/400/409 and concurrent signup, login 200/401/429, logout then me, me with no/tampered/expired cookie, sliding renewal, Origin 403, cascade delete, CLI function); `e2e/auth-api.spec.ts` (Playwright helpers through the Vite proxy, two independent sessions).
+- **Local checks:** build ✔ · lint ✔ · typecheck ✔ · test ✔ (shared 38, web 18, api 91) · test:e2e ✔ (8 passed)
+- **New dependencies (G9):** api runtime `@node-rs/argon2` (the task requires argon2id; chosen over `argon2` because it ships prebuilt binaries and needs no blocked install script). No cookie or rate-limit library: both are small in-house modules.
+- **Notes for the tester:**
+  - The task says `pnpm --filter api admin:reset-password`; pnpm resolves `api` to `@kanban/api` and it works.
+  - The auth guard is only installed when `buildApp` receives a `prisma` client; `buildApp()` without one (existing unit tests) exposes only the health routes and no auth.
+  - Unknown paths return 404 for anonymous users too (the guard skips unmatched routes).
+  - Logout requires a valid session (401 otherwise) and, being a POST, the Origin header.
+  - `req.ip` is used for the rate-limit key; behind Railway's proxy `trustProxy` must be enabled (recorded in the ADR for KB-031).
+  - The E2E spec creates real accounts (random emails) in whatever database the api uses; CI uses the test database.
+  - Suggestions for the planner: KB-031 should set Fastify `trustProxy`; KB-006 can use `signUpViaApi` for its fixtures.
+  - Sandbox note: shell heredocs were denied; files were written with the Write/Edit tools.
+
+### KB-006 · Sign-up, log-in and log-out UI with protected routes
+
+**Iteration 1 — 2026-10-29**
+
+- **Status at the end:** Ready for test
+- **What was done:** `/signup` and `/login` pages (`apps/web/src/routes/`) with client-side validation using the shared Zod schemas, field errors from API `details`, `EMAIL_TAKEN` mapped to the email field, other API messages (401 `INVALID_CREDENTIALS`, 429) shown as a form-level message. Errors are announced assertively through the shared announcer and focus moves to the first invalid field. `PasswordField` has a show/hide button with `aria-pressed`. Auth data layer in `features/auth/api` (`useCurrentUser` on `/api/auth/me`, where 401 means `null`; `useLogin`, `useSignup`, `useLogout`). `RequireAuth` layout route (spinner, error state with Retry, redirect to `/login?next=<path>`); every private route goes under it. `sanitizeNext` accepts only same-origin relative paths. `createQueryClient({ onUnauthorized })` reacts to any 401 `UNAUTHENTICATED` from a query or mutation: `handleUnauthorized` clears the cache and navigates to login keeping the path in `next` (a wrong password is `INVALID_CREDENTIALS` and does not trigger it; logout opts out through mutation `meta`). Header shows the user name and a "Log out" button, which clears the cache and goes to `/login`. Logged-in users who open `/login` or `/signup` are sent to `next`.
+- **Changed files:** `apps/web/src/features/auth/{safe-next.ts,form-errors.ts,useAuthForm.ts,PasswordField.tsx,RequireAuth.tsx,unauthorized.ts}`, `apps/web/src/features/auth/api/{auth.ts,index.ts}`, `apps/web/src/routes/{LoginPage.tsx,SignupPage.tsx,RootLayout.tsx}`, `apps/web/src/{router.tsx,App.tsx,styles.css}`, `apps/web/src/lib/api/query-client.ts`, `apps/web/src/components/TextField.tsx` (forwards `ref`), tests below
+- **Migrations:** none
+- **Commit(s):** `f26ab7e` feat(web): KB-006 add sign-up, log-in and log-out UI with protected routes
+- **Acceptance criteria covered:** pages and error mapping (`auth-flow.test.tsx`, `e2e/auth-ui.spec.ts`); `useCurrentUser` and protected route with `next` (`auth-flow.test.tsx`, E2E); 401 handling (`unauthorized.test.tsx`); log out (unit and E2E); password toggle with `aria-pressed`; G1, U1 to U5, U8 to U10.
+- **Tests written by the developer:** web `safe-next.test.ts` (absolute, protocol-relative, backslash, `javascript:`, control characters), `auth-flow.test.tsx` (redirect, retry state, login with `next`, open-redirect ignored, 401 and 429 messages, field errors and focus, password toggle, signup, logout), `unauthorized.test.tsx`, updated `App.test.tsx`; shared test helper `src/test-utils/fetch.ts`; E2E `e2e/auth-ui.spec.ts` (signup to home, logout, protected redirect, login returns, `next` honoured and external `next` ignored, wrong password, duplicate email, expired session, keyboard-only signup and login, focus on first invalid field, axe on both pages with and without errors, 360 px).
+- **Local checks:** build ✔ · lint ✔ · typecheck ✔ · test ✔ (shared 38, web 54, api 100) · test:e2e ✔ (20 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - `/me` returning 401 is treated as "not logged in" (cache value `null`), not as an error, so it does not trigger the global redirect.
+  - After logout and after the global 401 handler the cache is cleared and `['auth','me']` is set to `null` so mounted observers do not keep a stale user.
+  - The password toggle label stays "Show password" and the state is carried by `aria-pressed`.
+  - The existing 404 and smoke E2E tests still pass; the home page is now protected, so `/` redirects to `/login` when anonymous.
+  - No Retry-After countdown is shown for 429; only the API message.
+  - Observation for the planner: the Planning index table has the KB-007 and KB-008 rows joined on one line (pre-existing formatting error); I did not touch it.
+  - Sandbox note: heredocs were denied again; files were written with the Write/Edit tools.
+
+### KB-007 · Workspaces, memberships and the authorization policy
+
+**Iteration 1 — 2026-10-30**
+
+- **Status at the end:** Ready for test
+- **What was done:** Shared contracts `packages/shared/src/authz.ts` (roles, actions, the `ROLE_PERMISSIONS` matrix and `can(role, action)`) and `workspaces.ts` (request, params and response schemas). Prisma models `Workspace` and `Membership` (`workspace_role` enum, unique `(workspace_id, user_id)`, cascade on workspace and user delete) with a migration. Policy module `apps/api/src/modules/authz` (`authorize(db, user, resource, action)`: a resolver per resource type maps the resource to its workspace, then loads the membership; non-member or missing resource gives the same `404 NOT_FOUND`, a weak role gives `403 FORBIDDEN`; the resolver map currently has `workspace` only). Module `apps/api/src/modules/workspaces` with `POST/GET /api/workspaces`, `GET/PATCH/DELETE /api/workspaces/:id` (create in one nested write; delete requires `confirmName` equal to the name, checked after authorization; a concurrent delete during rename maps to 404). UI in `features/workspaces`: TanStack Query hooks (optimistic rename and delete with rollback and invalidation), create dialog, header workspace switcher (native select), home page list with loading, empty and error states, workspace placeholder page and settings page (rename, typed-name delete dialog; read-only with explanation for non-owners per U7). ADR 0003 holds the role matrix, the 404-vs-403 rule and the resolver design. `docs/api.md` and `CHANGELOG.md` updated.
+- **Changed files:** `packages/shared/src/{authz.ts,authz.test.ts,workspaces.ts,workspaces.test.ts,index.ts}`, `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/20261030160412_add_workspaces_and_memberships/migration.sql`, `apps/api/src/app.ts`, `apps/api/src/modules/authz/{authorize.ts,index.ts}`, `apps/api/src/modules/workspaces/{service.ts,routes.ts,workspaces.test.ts}`, `apps/web/src/features/workspaces/{api/workspaces.ts,api/index.ts,CreateWorkspaceDialog.tsx,WorkspaceSwitcher.tsx,workspaces-flow.test.tsx}`, `apps/web/src/routes/{HomePage.tsx,WorkspacePage.tsx,WorkspaceSettingsPage.tsx,RootLayout.tsx}`, `apps/web/src/{router.tsx,styles.css}`, `apps/web/src/lib/api/index.ts` (exports `request`), `e2e/workspaces.spec.ts`, `docs/adr/0003-authorization-model.md`, `docs/api.md`, `CHANGELOG.md`
+- **Migrations:** `20261030160412_add_workspaces_and_memberships`
+- **Commit(s):** `3175dc4` feat(api): KB-007 add workspaces, memberships and the authorization policy
+- **Acceptance criteria covered:** ADR (G7) `docs/adr/0003-...`; migration; policy module with workspace resolver; the five workspace endpoints; UI (home list, create dialog, switcher, settings with typed-name delete, owner-only); G1 to G4, G7, G8, A1 to A5 and A7, U1 to U10. A6 and A8 do not apply (the client does not generate workspace IDs; the list is per user).
+- **Tests written by the developer:** shared `authz.test.ts` (table-driven full role x action matrix) and `workspaces.test.ts` (schemas); api `workspaces.test.ts` (create 201/400/401/403 origin; list isolation and roles; get for each role and identical 404 body for non-member vs random id; patch 200/403/404/400/401; delete 204 with cascade, wrong or missing name 400, member and viewer 403, non-member 404, 401; `authorize()` directly); web `workspaces-flow.test.tsx` (empty state and create dialog, list and switcher, Enter to open and Escape to close with focus return, error and Retry, optimistic rename with rollback, typed-name delete, read-only for member and viewer, not-found message); E2E `e2e/workspaces.spec.ts` (full create, list, switcher, rename, delete flow, axe on home, settings and the not-found view, keyboard dialog, keyboard switcher, a second user sees nothing).
+- **Local checks:** build ✔ · lint ✔ · typecheck ✔ · test ✔ (shared 69, web 73, api 119) · test:e2e ✔ (24 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - Role x action matrix decision (ADR 0003): members can edit cards and manage columns, labels, sprints and projects; `project:delete`, `members:manage`, rename and delete workspace are owner-only. This matches the KB-008 and KB-009 criteria; tell the planner if the matrix should differ.
+  - The `project` resolver is not added here because the `Project` table arrives in KB-008, whose criteria list the resolver; the resolver map is typed so adding a variant is a compile-checked change.
+  - The home page keeps `h1` "Kanban" (existing E2E tests rely on it) with an `h2` "Your workspaces".
+  - `/workspaces/:id` is a placeholder page (name, role, link to settings) so the switcher has a target; KB-008 fills it with projects.
+  - The workspace forms reuse `useAuthForm` and `form-errors` from `features/auth` (generic helpers); a later refactor could move them to `lib/`.
+  - A malformed workspace ID answers `400 VALIDATION_ERROR` (A2); only well-formed unknown IDs are indistinguishable from other people's workspaces.
+  - Deleting the last user-owned workspace is allowed; a user may have zero workspaces.
+  - Suggestions for the planner: nothing blocking. KB-009 must add the last-owner rule when members can leave.
+
+### KB-008 · Projects within a workspace
+
+**Iteration 1 — 2026-10-30**
+
+- **Status at the end:** Ready for test
+- **What was done:** Shared contracts `packages/shared/src/projects.ts` (name, key `^[A-Z]{2,5}$`, params, create/update/response schemas, `suggestProjectKey`) and the new error code `PROJECT_KEY_TAKEN`. Prisma model `Project` (unique `(workspace_id, key)`, `next_card_number` default 1, cascade from workspace) with a migration. The authorization `project` resolver (project to workspace, one lookup) was added to `apps/api/src/modules/authz`, as deferred from KB-007. Module `apps/api/src/modules/projects` with `POST/GET /api/workspaces/:wid/projects` and `GET/PATCH/DELETE /api/projects/:pid`; a duplicate key is decided by the unique index (`P2002` to `409 PROJECT_KEY_TAKEN` with a `details` entry for `key`), so concurrent creates cannot both win. UI in `features/projects`: TanStack Query hooks (optimistic rename and delete with rollback), create dialog with the key suggested from the name until the key is edited by hand (input uppercased), the workspace page lists projects (loading, empty, error with Retry; creation hidden for viewers), project placeholder page and project settings (rename for owner and member, owner-only delete with typed-name confirmation, read-only for viewers). `docs/api.md`, `CHANGELOG.md` and ADR 0003 (resolver line) updated.
+- **Changed files:** `packages/shared/src/{projects.ts,projects.test.ts,errors.ts,index.ts}`, `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/20261030161347_add_projects/migration.sql`, `apps/api/src/app.ts`, `apps/api/src/modules/authz/authorize.ts`, `apps/api/src/modules/projects/{service.ts,routes.ts,projects.test.ts}`, `apps/web/src/features/projects/{api/projects.ts,api/index.ts,CreateProjectDialog.tsx,projects-flow.test.tsx}`, `apps/web/src/routes/{WorkspacePage.tsx,ProjectPage.tsx,ProjectSettingsPage.tsx}`, `apps/web/src/router.tsx`, `e2e/projects.spec.ts`, `docs/api.md`, `docs/adr/0003-authorization-model.md`, `CHANGELOG.md`
+- **Migrations:** `20261030161347_add_projects`
+- **Commit(s):** `1ce8f22` feat(api): KB-008 add projects within a workspace
+- **Acceptance criteria covered:** migration; the five endpoints with the specified roles and status codes; `PROJECT_KEY_TAKEN`; project resolver; UI (list with three states, create dialog with suggested key, settings with rename and typed-name owner-only delete); G1 to G4, A1 to A5 and A7, U1 to U10.
+- **Tests written by the developer:** shared `projects.test.ts` (key suggestion including "Kanban Board" to "KB", key and name schemas); api `projects.test.ts` (create 201 for owner and member, 400 matrix, 409, same key in two workspaces, concurrent creates, 401, identical 404 for non-member and unknown workspace, 403 viewer; list for each role and isolation; get with identical 404; patch rules; delete 204, 403 member and viewer, 404, 401, key reuse, cascade from workspace delete; `authorize()` with a project); web `projects-flow.test.tsx` (empty state and create, key suggestion following and stopping, key validation and 409 on the key field with focus, list as links, error and Retry, viewer without create, rename with rollback, rename, typed-name delete, member and viewer on settings, not found); E2E `e2e/projects.spec.ts` (create, open, rename, delete, duplicate key, axe on workspace page, settings and not-found; keyboard-only create dialog with Escape focus return; second user gets 404).
+- **Local checks:** build ✔ · lint ✔ · typecheck ✔ · test ✔ (shared 89, web 85, api 154) · test:e2e ✔ (27 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - The key cannot be changed after creation (`PATCH` accepts only `name`; unknown fields give 400) because card IDs will be built from it (KB-012). The task text says only "PATCH (owner, member)"; tell the planner if key edits were intended.
+  - `DELETE /api/projects/:pid` takes no body; the typed-name confirmation is enforced in the UI only (the task asks for it in the UI, not the API), unlike workspace delete.
+  - Project responses carry no role; the settings page reads the role from the workspace (`GET /api/workspaces/:id`), and the workspace page does the same.
+  - Create is not optimistic (the server decides on key uniqueness); rename and delete are optimistic with rollback.
+  - A malformed ID answers `400 VALIDATION_ERROR`; a well-formed unknown one is indistinguishable from another person's project (404).
+  - The key suggestion uses initials of up to five words, or the first three letters of a single word ("Kanban" to "KAN"); names with no letters suggest an empty key.
+  - After running `prisma migrate dev`, the generated client under `apps/api/src/generated` is regenerated by `pnpm build` (it is not committed).
+  - Sandbox note: the first heredocs were denied; files were written with the Write/Edit tools.
+  - Suggestions for the planner: none blocking.

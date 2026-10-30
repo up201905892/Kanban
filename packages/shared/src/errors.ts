@@ -10,6 +10,9 @@ export const ErrorCode = {
   CSRF_REJECTED: 'CSRF_REJECTED',
   CONFLICT: 'CONFLICT',
   RATE_LIMITED: 'RATE_LIMITED',
+  EMAIL_TAKEN: 'EMAIL_TAKEN',
+  INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
+  PROJECT_KEY_TAKEN: 'PROJECT_KEY_TAKEN',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

@@ -241,3 +241,150 @@ Report template:
 **Observations (not failures):**
 - D5 is still pending, so ADR section 7 and the dependent sections 3, 5 and 6 may need revision; the ADR states this openly.
 - `COLLATE "C"` for position columns and the stale-neighbour rule are for KB-011, KB-012 and KB-015 to implement and test.
+
+### KB-005 · Authentication core: accounts and cookie sessions — Report 1 — 2026-10-29
+
+- **Commit tested:** 2b198b3 (in `develop` history, HEAD 22bbc86; working tree clean before the tester's test file)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 38, web 18, api 91, plus 9 added by the tester) | ✔ |
+| E2E | `CI=1 pnpm test:e2e` (8 passed) | ✔ |
+| Authorization | see criteria; protected by default, explicit public list | ✔ |
+| Database | `prisma migrate status` up to date; `migrate diff` DB vs schema: no difference; migration SQL read | ✔ (see observations) |
+| Real time / accessibility | not touched (n.a. per spec) | n.a. |
+
+**Acceptance criteria:**
+- [x] ADR: `docs/adr/0002-authentication-and-sessions.md` read; covers hashing, token, cookie, expiry, CSRF, rate limits, enumeration trade-off and why D3.
+- [x] Migration: `users` and `sessions` columns, unique email and token hash, FK with `ON DELETE CASCADE`, lowercase `CHECK`; checked in the SQL and by a no-drift diff against the schema.
+- [x] Signup: 201 plus cookie; 400 for invalid email, short (9) and long (129) password, unknown field, malformed JSON, empty body, array body; 10 and 128 characters accepted; 409 `EMAIL_TAKEN` also for a different email case. Verified with the developer tests and `auth.edge.test.ts`.
+- [x] Login: 200 plus cookie; unknown email and wrong password give byte-identical 401 bodies; dummy hash verified (code read); email is trimmed and case-insensitive.
+- [x] Logout: 204, empty body, session row deleted, cleared cookie (`Max-Age=0`), other sessions of the same user untouched; `me` then 401; `me` 401 with no, empty, junk, oversized and tampered cookies.
+- [x] argon2id (`$argon2id$` prefix checked), `passwordHash` not in any response; test logs checked: no password, cookie or `passwordHash` in captured log lines, and a 400 body does not echo the password.
+- [x] Token and cookie: 32 random bytes, only SHA-256 stored, `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` only in production, 30-day sliding expiry renewed at most daily, expired sessions rejected and deleted (code read and developer unit/API tests).
+- [x] Origin check: missing, `null`, look-alike and trailing-slash origins give 403 `CSRF_REJECTED` in the error format; rate limit 429 with `Retry-After` after 10 attempts per IP and email (limiter keyed on the normalised email).
+- [x] `requireAuth` on everything outside the explicit `PUBLIC_ROUTES`; `/health` public; unknown paths 404 without leaking; `getSessionFromCookieHeader()` exported.
+- [x] Test helpers `createUserAndLogin()` and Playwright `signUpViaApi`/`logInViaApi` exist and are used by passing tests.
+- [x] CLI `admin:reset-password`: unknown email exits 1 with a message, no argument exits 2 with usage, invalid email exits 1 without a stack trace; the function resetting the password and deleting all sessions is covered by the developer tests.
+- [x] Common criteria G1 to G4, G6 to G8, A1 to A3, A5, A7: checks green, errors in the project format, no secrets in the repository, new dependency `@node-rs/argon2` justified.
+
+**Required tests:** all listed unit and API tests exist and assert real behaviour (hash round trip, token hashing, cookie options per `NODE_ENV`, Origin check, sliding expiry, signup/login/logout/me matrix, 429, no `passwordHash`, CLI). E2E and accessibility n.a.
+
+**Tests added by the tester:** `apps/api/src/modules/auth/auth.edge.test.ts` (9 tests: hostile Origin values, malformed bodies, password length boundaries, email case, log and body leakage, junk cookies, logout without Origin or session and per-session deletion, byte-identical 401 bodies, public and unknown routes); all pass.
+
+**Failures:** none
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was refused by Prisma's AI-safety guard (no user consent in this unattended run) and was not bypassed. Applying the migrations to an empty database was therefore checked indirectly: the test database was built from these two migrations, status is up to date and the schema diff is empty. CI runs the migrations on an empty service database.
+- The dummy hash is computed lazily, so the first unknown-email login after a process start is slower (about 67 ms against 14 ms measured, including connection warm-up). It is slower, not faster, and affects one request; the developer may warm it at start-up.
+- Rate-limit buckets are per IP and email, so one IP can try many different emails (as specified); `trustProxy` is for KB-031.
+
+### KB-006 · Sign-up, log-in and log-out UI with protected routes — Report 1 — 2026-10-29
+
+- **Commit tested:** f26ab7e (in `develop` history, HEAD aeb4224; working tree clean before the tester's test file)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 38, web 54, api 100; plus 9 web tests added by the tester) | ✔ |
+| E2E | `CI=1 pnpm test:e2e` (20 passed) | ✔ |
+| Authorization | protected routes: private routes sit under `RequireAuth`; 401 handling code and tests read | ✔ |
+| Database | no migrations in this task | n.a. |
+| Real time | not touched | n.a. |
+| Accessibility | E2E: keyboard-only sign-up and log-in, focus on first invalid field, axe on both pages (with and without errors), 360 px; code read for `aria-pressed`, assertive announcer, `:focus-visible` style | ✔ |
+
+**Acceptance criteria:**
+- [x] `/signup` and `/login` with field-level errors from `details` and API messages for 401/409/429: `form-errors.ts` read; unit tests (`auth-flow.test.tsx`) and E2E (wrong password, duplicate email) pass.
+- [x] `useCurrentUser()` on `/api/auth/me`; `RequireAuth` redirects to `/login?next=<path>` and login returns there; `next` sanitized (E2E: login returns to the page; external `next` ignored). Code read of `safe-next.ts`.
+- [x] Any 401 `UNAUTHENTICATED` clears the cache and redirects keeping the path (`unauthorized.test.tsx`, E2E expired session). A wrong password (`INVALID_CREDENTIALS`) does not trigger it.
+- [x] "Log out" in the header clears the cache and goes to `/login` (unit and E2E; protected URL then redirects).
+- [x] Password show/hide toggle with `aria-pressed` (unit test; code read; reachable by Tab).
+- [x] Common criteria G1, U1 to U5, U8 to U10: checks green, loading (spinner), error (retry) and submit-disabled states present, errors announced assertively, 360 px layout, axe clean.
+
+**Required tests:** sanitizer unit tests (absolute, protocol-relative, backslash, `javascript:`, control chars) exist and assert real behaviour; E2E covers every listed flow, axe on both pages and keyboard-only completion; API n/a.
+
+**Tests added by the tester:** `apps/web/src/features/auth/safe-next.edge.test.ts` (9 tests: NUL, CRLF, DEL, triple slash, `/\/`, `https:/`, `mailto:`, `vbscript:`, encoded slashes, `loginPathFor` with unsafe input); all pass.
+
+**Failures:** none
+
+**Observations (not failures):**
+- On logout, `RequireAuth` and the logout handler both navigate; the last navigation (`/login`, no `next`) wins and E2E confirms the result.
+- No Retry-After countdown for 429, as the developer noted and the spec allows.
+- The Planning index rows for KB-007 and KB-008 are joined on one line (pre-existing; for the planner).
+
+### KB-007 · Workspaces, memberships and the authorization policy — Report 1 — 2026-10-30
+
+- **Commit tested:** 3175dc4 (in `develop` history; working tree clean before the tester's test file)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 69, web 73, api 119; plus 5 api tests added by the tester) | ✔ |
+| E2E | `CI=1 pnpm test:e2e` (24 passed) | ✔ |
+| Authorization | `authorize.ts`, `service.ts`, `routes.ts` read; API tests and tester edge tests | ✔ |
+| Database | migration SQL read (enum, unique index, cascades); test database is up to date with 3 migrations | ✔ (see observations) |
+| Real time | not touched | n.a. |
+| Accessibility | E2E: axe on home, settings and not-found, keyboard dialog (Enter/Escape, focus return), keyboard switcher | ✔ |
+
+**Acceptance criteria:**
+- [x] ADR 0003 exists with Context, Decision, Alternatives considered, Consequences (headings checked); the role matrix is covered by the table-driven `authz.test.ts`.
+- [x] Migration: `Workspace` and `Membership` with role enum, unique `(workspace_id, user_id)`, cascade on workspace delete (SQL read; cascade verified by API test and tester test).
+- [x] Policy module `authz`: `authorize()` resolves the workspace, loads the membership, 404 for missing or non-member (identical body, tested with a real versus random id), 403 for a weak role. The project resolver is not present because the `Project` table arrives in KB-008, which lists the resolver as its own criterion (see observations).
+- [x] Endpoints: create 201 (owner membership in one nested write), list only mine with role, get, patch (owner), delete (owner, `confirmName`) 204 with cascade; 400/401/403/404 verified by developer tests and tester edge tests.
+- [x] UI: home list with empty state, create dialog, header switcher, settings with rename and typed-name delete, read-only for non-owners; covered by web flow tests and E2E.
+- [x] Common criteria G1 to G4, G7, G8, A1 to A5, A7, U1 to U10: checks green, schemas strict and in `packages/shared`, errors in the project format, 360 px and axe covered by E2E. A6 and A8 do not apply.
+
+**Required tests:** role x action matrix unit test, API matrix (201/400/401, isolation, identical 404, 403 for member and viewer, 204 with cascade, wrong name 400), E2E (create, list, switcher, rename, delete, axe) and keyboard tests all exist and assert real behaviour.
+
+**Tests added by the tester:** `apps/api/src/modules/workspaces/workspaces.edge.test.ts` (5 tests: non-member delete with a wrong name gives the same 404 as a random id; exact, case-sensitive confirmation; whitespace-only rename rejected; foreign Origin 403 and malformed id 400 with no change; empty list and delete isolation between workspaces); all pass.
+
+**Failures:** none
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was not run (Prisma's AI-safety guard refused it in earlier unattended runs); the test database is built from the three migrations with none pending. CI applies them to an empty database.
+- The planning criterion mentions a project resolver; it is deferred to KB-008 (its criterion list includes it) because no `Project` table exists yet.
+- A non-member sending a malformed or empty body to a real workspace ID gets 400 before authorization, identical to a random ID, so nothing leaks.
+
+### KB-008 · Projects within a workspace — Report 1 — 2026-10-30
+
+- **Commit tested:** 1ce8f22 (in `develop` history; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 89, web 85, api 154) | ✔ |
+| E2E | `CI=1 pnpm test:e2e` (27 passed) | ✔ |
+| Authorization | `service.ts`, `routes.ts`, `authorize.ts` read; every route calls `authorize()` with the right action; API tests for 401, identical 404 (non-member vs unknown), 403 viewer and member | ✔ |
+| Database | migration SQL read (table, unique `(workspace_id, key)`, `next_card_number` default 1, cascade FK); applied in the test database; cascade tested | ✔ (see observations) |
+| Real time | not touched | n.a. |
+| Accessibility | E2E: axe on workspace page, settings and not-found; keyboard-only create dialog with Escape focus return; project list is a `ul` (aria-label Projects) of links | ✔ |
+
+**Acceptance criteria:**
+- [x] Migration `Project` (id, workspaceId FK cascade, name, key, nextCardNumber default 1, createdAt): SQL read; name 1-80 and key `^[A-Z]{2,5}$` enforced by the shared Zod schemas (shared and API tests).
+- [x] Endpoints POST (owner, member) 201, GET list and GET one (any role), PATCH (owner, member), DELETE (owner) 204 with cascade; duplicate key gives `409 PROJECT_KEY_TAKEN`: routes read and API tests (create, 400 matrix, 409, concurrent creates, roles, cascade from workspace delete).
+- [x] Authz project resolver added (project to workspace): `authorize.ts` read; exercised by the project routes and a direct `authorize()` test.
+- [x] UI: workspace page lists projects with loading, empty and error (Retry) states; create dialog suggests the key from the name; settings with rename and owner-only delete with typed-name confirmation: web flow tests and E2E.
+- [x] Common criteria G1-G4, A1-A5, A7, U1-U10: checks green, contracts in `packages/shared`, errors in the project format, axe in E2E.
+
+**Required tests:** key suggestion unit ("Kanban Board" to "KB"); API (201, 400 invalid key, 409, 401, 404 non-member, 403 viewer, list isolation, delete 403 member and 204 owner); E2E (create, open, rename, delete, axe); keyboard dialog test. All exist and assert real behaviour.
+
+**Tests added by the tester:** none (existing coverage judged sufficient).
+
+**Failures:** none
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was not run (Prisma's AI-safety guard refuses it in unattended runs); the test database is built from the migrations. CI applies them to an empty database.
+- PATCH accepts only `name` (key immutable, since card IDs will use it) and the API delete has no typed-name confirmation (UI only); both match the task text, which does not require otherwise.

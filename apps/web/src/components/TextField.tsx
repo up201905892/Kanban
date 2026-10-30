@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import type { InputHTMLAttributes } from 'react';
+import type { InputHTMLAttributes, Ref } from 'react';
 import { fieldIds } from './field';
 
 export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> {
@@ -7,6 +7,8 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
   hint?: string;
   error?: string;
   id?: string;
+  /** Forwarded to the input (React 19 passes `ref` as a regular prop). */
+  ref?: Ref<HTMLInputElement>;
 }
 
 export function TextField({ label, hint, error, id, ...props }: TextFieldProps) {

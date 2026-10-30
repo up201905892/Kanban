@@ -16,6 +16,35 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-10-30
+
+- **Decisions for João:**
+  - Approve more tasks: after KB-009 the cycle has nothing left to develop. KB-011 (Board and columns) is now unblocked (KB-008 and KB-010 are Done). Suggested line: `2026-10-30 | Approve | KB-011, KB-012, KB-015`, and add `KB-016, KB-017` if KB-009 is done by then. The first line from the previous log (`KB-011 to KB-013, KB-015 to KB-017`) still stands.
+  - Still open from yesterday: raise KB-009 from Medium to High (it blocks KB-016); answer with `Change`.
+  - Confirm that the project key is fixed after creation (`PATCH` accepts only `name`, because card IDs will be built from the key in KB-012). Say so with `Change` on KB-008 if key edits are wanted.
+  - Confirm the role matrix chosen in KB-007 (ADR 0003): members can edit cards and manage columns, labels, sprints and projects; deleting a project, managing members and renaming or deleting the workspace are owner-only.
+  - FYI: project delete's typed-name confirmation is UI-only (no body on `DELETE /api/projects/:pid`), as the task specified.
+- **Done:** KB-007, KB-008
+- **Tested:** KB-007 (Passed; 5 edge-case tests added), KB-008 (Passed)
+- **Developed:** KB-007 (workspaces, memberships, authorization policy, ADR 0003), KB-008 (projects, project resolver in the policy)
+- **Proposals awaiting approval:** KB-011 to KB-032 (no new proposals; the whole backlog is already proposed, so the planner was not called)
+- **Rule violations found:** none. The KB-007 history was missing the tester steps; the finisher added them as new history lines. The testers could not run `prisma migrate reset` (blocked by Prisma's guard in unattended runs) and the finisher could not run a secret scan for KB-007; the tables were built from the migrations and CI covers an empty database.
+- **Next step:** develop KB-009 (invite links, members and roles; it must add the last-owner rule). After that nothing is developable until more tasks are approved.
+
+## 2026-10-29
+
+- **Decisions for João:**
+  - Approve more tasks so work is not starved. Only KB-007 can start tomorrow (KB-008 and KB-009 wait behind it). Suggested line: `2026-10-29 | Approve | KB-011 to KB-013, KB-015 to KB-017`.
+  - Raise KB-009 from Medium to High? It now blocks KB-016 (High, critical path). The planner added KB-009 as a dependency of KB-016 and did not change the priority of an already `Planned` task. Answer with `Change`.
+  - Optional: a small S task for a `packages/shared` watch mode in `pnpm dev` and the placeholder `app_meta` table; `/health` is still not proxied by Vite.
+- **Done:** KB-005, KB-006
+- **Tested:** KB-005 (Passed; 9 edge-case tests added), KB-006 (Passed; 9 open-redirect edge-case tests added)
+- **Developed:** KB-005 (account and cookie-session auth, ADR 0002, `@node-rs/argon2`), KB-006 (sign-up, log-in, log-out UI and protected routes)
+- **Proposals awaiting approval:** KB-011 to KB-032 (KB-027 also waits for `@up201905892/ui` on npm)
+- **Applied decisions:** KB-005 to KB-009 approved; D5 (hybrid Yjs/REST) and D6 (no email in v1.0) decided. KB-011 and KB-012 specs aligned with D5; ADR 0001 section 7 is still marked provisional, and KB-011 includes updating it.
+- **Rule violations found:** none. The KB-007/KB-008 index rows were joined on one line; the planner fixed them. KB-031 gained the `trustProxy` and argon2 warm-up follow-ups.
+- **Next step:** develop KB-007 (workspaces and the authorization policy), then KB-008 and KB-009.
+
 ## 2026-10-28
 
 - **Decisions for João:**
