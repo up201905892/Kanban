@@ -318,3 +318,39 @@ Report template:
 - On logout, `RequireAuth` and the logout handler both navigate; the last navigation (`/login`, no `next`) wins and E2E confirms the result.
 - No Retry-After countdown for 429, as the developer noted and the spec allows.
 - The Planning index rows for KB-007 and KB-008 are joined on one line (pre-existing; for the planner).
+
+### KB-007 · Workspaces, memberships and the authorization policy — Report 1 — 2026-10-30
+
+- **Commit tested:** 3175dc4 (in `develop` history; working tree clean before the tester's test file)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 69, web 73, api 119; plus 5 api tests added by the tester) | ✔ |
+| E2E | `CI=1 pnpm test:e2e` (24 passed) | ✔ |
+| Authorization | `authorize.ts`, `service.ts`, `routes.ts` read; API tests and tester edge tests | ✔ |
+| Database | migration SQL read (enum, unique index, cascades); test database is up to date with 3 migrations | ✔ (see observations) |
+| Real time | not touched | n.a. |
+| Accessibility | E2E: axe on home, settings and not-found, keyboard dialog (Enter/Escape, focus return), keyboard switcher | ✔ |
+
+**Acceptance criteria:**
+- [x] ADR 0003 exists with Context, Decision, Alternatives considered, Consequences (headings checked); the role matrix is covered by the table-driven `authz.test.ts`.
+- [x] Migration: `Workspace` and `Membership` with role enum, unique `(workspace_id, user_id)`, cascade on workspace delete (SQL read; cascade verified by API test and tester test).
+- [x] Policy module `authz`: `authorize()` resolves the workspace, loads the membership, 404 for missing or non-member (identical body, tested with a real versus random id), 403 for a weak role. The project resolver is not present because the `Project` table arrives in KB-008, which lists the resolver as its own criterion (see observations).
+- [x] Endpoints: create 201 (owner membership in one nested write), list only mine with role, get, patch (owner), delete (owner, `confirmName`) 204 with cascade; 400/401/403/404 verified by developer tests and tester edge tests.
+- [x] UI: home list with empty state, create dialog, header switcher, settings with rename and typed-name delete, read-only for non-owners; covered by web flow tests and E2E.
+- [x] Common criteria G1 to G4, G7, G8, A1 to A5, A7, U1 to U10: checks green, schemas strict and in `packages/shared`, errors in the project format, 360 px and axe covered by E2E. A6 and A8 do not apply.
+
+**Required tests:** role x action matrix unit test, API matrix (201/400/401, isolation, identical 404, 403 for member and viewer, 204 with cascade, wrong name 400), E2E (create, list, switcher, rename, delete, axe) and keyboard tests all exist and assert real behaviour.
+
+**Tests added by the tester:** `apps/api/src/modules/workspaces/workspaces.edge.test.ts` (5 tests: non-member delete with a wrong name gives the same 404 as a random id; exact, case-sensitive confirmation; whitespace-only rename rejected; foreign Origin 403 and malformed id 400 with no change; empty list and delete isolation between workspaces); all pass.
+
+**Failures:** none
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was not run (Prisma's AI-safety guard refused it in earlier unattended runs); the test database is built from the three migrations with none pending. CI applies them to an empty database.
+- The planning criterion mentions a project resolver; it is deferred to KB-008 (its criterion list includes it) because no `Project` table exists yet.
+- A non-member sending a malformed or empty body to a real workspace ID gets 400 before authorization, identical to a random ID, so nothing leaks.

@@ -14,7 +14,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-004 | Web app shell, data layer and minimal local components | Foundations | High | KB-003 | Done |
 | KB-005 | Authentication core: accounts and cookie sessions | Authentication and workspaces | High | KB-002, KB-003 | Done |
 | KB-006 | Sign-up, log-in and log-out UI with protected routes | Authentication and workspaces | High | KB-004, KB-005 | Done |
-| KB-007 | Workspaces, memberships and the authorization policy | Authentication and workspaces | High | KB-005, KB-006 | Ready for test |
+| KB-007 | Workspaces, memberships and the authorization policy | Authentication and workspaces | High | KB-005, KB-006 | Passed |
 | KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Planned |
 | KB-009 | Invite links, members and roles | Authentication and workspaces | Medium | KB-007 | Planned |
 | KB-010 | Fractional indexing utility and ordering/conflict ADR | Board | High | KB-001 | Done |
@@ -438,6 +438,8 @@ Task template (copy for each new task):
 - 2026-10-29 · planner · Planned (no status change) · formatting correction: the KB-007 and KB-008 index rows were joined on one line and are now separate rows; no content removed
 - 2026-10-30 · developer · Planned → In development · started
 - 2026-10-30 · developer · In development → Ready for test · commit 3175dc4
+- 2026-10-30 · tester · Ready for test → In test · testing started on commit 3175dc4
+- 2026-10-30 · tester · In test → Passed · report 1, all criteria verified, zero failures
 
 ### KB-008 · Projects within a workspace
 
