@@ -80,6 +80,15 @@ Entry template:
 - **Documentation:** no new endpoints (UI over the KB-005 endpoints, already in `docs/api.md`); no new environment variables; no ADR required
 - **Lessons:** no Retry-After countdown for 429 (allowed by the spec). Planner: the Planning index rows for KB-007 and KB-008 are still joined on one line. No TODO left; no secret patterns found in the task's files.
 
+### KB-007 · Workspaces, memberships and the authorization policy — done on 2026-10-30
+
+- **Approving test report:** Report 1 (2026-10-30), commit 3175dc4 (later commits are the development record, a tester test file and the test report only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** people can create, list, switch between, rename and delete workspaces, and every workspace has owners, members and viewers whose permissions are enforced on the server without revealing other people's workspaces.
+- **CHANGELOG:** "Added: People can now create workspaces, switch between them, rename them and delete them (with a typed-name confirmation); every workspace has owners, members and viewers, and what each can do is enforced on the server without revealing other people's workspaces (KB-007)."
+- **Documentation:** ADR `docs/adr/0003-authorization-model.md`; `docs/api.md` (the five `/api/workspaces` endpoints); no new environment variables
+- **Lessons:** the `project` resolver of the policy module is deferred to KB-008 (the `Project` table does not exist yet; KB-008 lists it as a criterion). KB-009 must add the last-owner rule when members can leave. `prisma migrate reset` was not run (Prisma guard); CI applies the three migrations to an empty database. The finisher's secret-pattern search and `git log` with paths were denied by the sandbox; the check rests on the commit list (only `docs(workflow)` and `test(api)` commits follow 3175dc4) and a TODO search that found nothing. The Planning index rows are now separate.
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
