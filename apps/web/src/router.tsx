@@ -4,6 +4,8 @@ import { RequireAuth } from './features/auth/RequireAuth';
 import { HomePage } from './routes/HomePage';
 import { LoginPage } from './routes/LoginPage';
 import { NotFoundPage } from './routes/NotFoundPage';
+import { ProjectPage } from './routes/ProjectPage';
+import { ProjectSettingsPage } from './routes/ProjectSettingsPage';
 import { RootLayout } from './routes/RootLayout';
 import { RouteError } from './routes/RouteError';
 import { SignupPage } from './routes/SignupPage';
@@ -25,6 +27,8 @@ export const routes: RouteObject[] = [
           { index: true, element: <HomePage /> },
           { path: 'workspaces/:id', element: <WorkspacePage /> },
           { path: 'workspaces/:id/settings', element: <WorkspaceSettingsPage /> },
+          { path: 'projects/:pid', element: <ProjectPage /> },
+          { path: 'projects/:pid/settings', element: <ProjectSettingsPage /> },
         ],
       },
       { path: '*', element: <NotFoundPage /> },

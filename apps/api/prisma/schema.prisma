@@ -34,6 +34,7 @@ model Workspace {
   name        String
   createdAt   DateTime     @default(now()) @map("created_at")
   memberships Membership[]
+  projects    Project[]
 
   @@map("workspaces")
 }
@@ -50,6 +51,20 @@ model Membership {
   @@unique([workspaceId, userId])
   @@index([userId])
   @@map("memberships")
+}
+
+model Project {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  workspaceId    String    @map("workspace_id") @db.Uuid
+  name           String
+  key            String
+  /// Next card number to hand out (KB-012 increments it atomically).
+  nextCardNumber Int       @default(1) @map("next_card_number")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, key])
+  @@map("projects")
 }
 
 model Session {

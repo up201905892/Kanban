@@ -50,6 +50,26 @@ Owner only. Body `{ name }`. Response `200 { workspace }`. Errors: `400`, `401`,
 
 Owner only. Body `{ confirmName }` must equal the workspace name exactly, otherwise `400 VALIDATION_ERROR`. Response `204`; memberships (and later everything below the workspace) are removed by cascade. Errors: `400`, `401`, `403`, `404`.
 
+### POST /api/workspaces/:wid/projects
+
+Owner or member. Body `{ name, key }`: `name` 1 to 80 characters (trimmed), `key` 2 to 5 uppercase letters `A-Z`, unique per workspace (the key is fixed after creation). Response `201 { project }` with `{ id, workspaceId, name, key, createdAt }`. Errors: `400`, `401`, `403 FORBIDDEN` (viewer), `404` (unknown workspace or not a member, identical bodies), `409 PROJECT_KEY_TAKEN` (with a `details` entry for `key`).
+
+### GET /api/workspaces/:wid/projects
+
+Any role. Response `200 { projects }`, oldest first, only the projects of that workspace. Errors: `400`, `401`, `404`.
+
+### GET /api/projects/:pid
+
+Any role. Response `200 { project }`. A project of a workspace the caller does not belong to answers exactly like an unknown ID: `404 NOT_FOUND`.
+
+### PATCH /api/projects/:pid
+
+Owner or member. Body `{ name }` (the key cannot be changed; unknown fields are rejected). Response `200 { project }`. Errors: `400`, `401`, `403` (viewer), `404`.
+
+### DELETE /api/projects/:pid
+
+Owner only. No body. Response `204`; everything below the project is removed by cascade and the key becomes free again. Errors: `400`, `401`, `403` (member, viewer), `404`.
+
 ### Operator command
 
 `pnpm --filter api admin:reset-password <email>` sets a random temporary password, prints it once and deletes all sessions of that user (no email in v1.0).

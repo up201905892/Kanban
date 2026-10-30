@@ -8,6 +8,7 @@ import { normalizeOrigin } from './lib/origin-check.js';
 import { registerAuthGuard } from './modules/auth/guard.js';
 import { authRoutes } from './modules/auth/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
+import { projectRoutes } from './modules/projects/routes.js';
 import { workspaceRoutes } from './modules/workspaces/routes.js';
 
 export interface AppOptions {
@@ -74,6 +75,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     });
     void app.register(authRoutes({ prisma: options.prisma, nodeEnv }));
     void app.register(workspaceRoutes({ prisma: options.prisma }));
+    void app.register(projectRoutes({ prisma: options.prisma }));
   }
 
   void app.register(healthRoutes(options.prisma));

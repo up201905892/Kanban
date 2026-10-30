@@ -6,9 +6,9 @@ import { AppError, notFound } from '../../lib/app-error.js';
  * A resource reference. Later tasks add variants (project, board, column, card, ...) together with
  * a resolver in `RESOLVERS` that maps the resource to the ID of its workspace.
  */
-export type ResourceRef = { type: 'workspace'; id: string };
+export type ResourceRef = { type: 'workspace'; id: string } | { type: 'project'; id: string };
 
-type Db = Pick<PrismaClient, 'membership'>;
+type Db = Pick<PrismaClient, 'membership' | 'project'>;
 type Resolver<T extends ResourceRef['type']> = (
   db: Db,
   id: Extract<ResourceRef, { type: T }>['id'],
@@ -17,6 +17,10 @@ type Resolver<T extends ResourceRef['type']> = (
 const RESOLVERS: { [T in ResourceRef['type']]: Resolver<T> } = {
   // A workspace resolves to itself; a missing workspace has no membership and is a 404 below.
   workspace: async (_db, id) => id,
+  // A project resolves to its workspace with one indexed lookup.
+  project: async (db, id) =>
+    (await db.project.findUnique({ where: { id }, select: { workspaceId: true } }))?.workspaceId ??
+    null,
 };
 
 export interface AuthzContext {

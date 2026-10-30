@@ -52,6 +52,26 @@ export {
   type WorkspaceListResponse,
 } from './workspaces.js';
 export {
+  PROJECT_NAME_MAX_LENGTH,
+  PROJECT_KEY_MIN_LENGTH,
+  PROJECT_KEY_MAX_LENGTH,
+  projectNameSchema,
+  projectKeySchema,
+  workspaceProjectsParamsSchema,
+  projectParamsSchema,
+  createProjectRequestSchema,
+  updateProjectRequestSchema,
+  projectSchema,
+  projectResponseSchema,
+  projectListResponseSchema,
+  suggestProjectKey,
+  type CreateProjectRequest,
+  type UpdateProjectRequest,
+  type Project,
+  type ProjectResponse,
+  type ProjectListResponse,
+} from './projects.js';
+export {
   PASSWORD_MIN_LENGTH,
   PASSWORD_MAX_LENGTH,
   emailSchema,
