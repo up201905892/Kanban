@@ -15,7 +15,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-005 | Authentication core: accounts and cookie sessions | Authentication and workspaces | High | KB-002, KB-003 | Done |
 | KB-006 | Sign-up, log-in and log-out UI with protected routes | Authentication and workspaces | High | KB-004, KB-005 | Done |
 | KB-007 | Workspaces, memberships and the authorization policy | Authentication and workspaces | High | KB-005, KB-006 | Done |
-| KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Planned |
+| KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Ready for test |
 | KB-009 | Invite links, members and roles | Authentication and workspaces | Medium | KB-007 | Planned |
 | KB-010 | Fractional indexing utility and ordering/conflict ADR | Board | High | KB-001 | Done |
 | KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Proposed |
@@ -472,6 +472,8 @@ Task template (copy for each new task):
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · Proposed → Planned · approved by João (approvals.md, 2026-10-28)
 - 2026-10-29 · planner · Planned (no status change) · formatting correction: the KB-007 and KB-008 index rows were joined on one line and are now separate rows; no content removed
+- 2026-10-30 · developer · Planned → In development · dependency KB-007 is Done
+- 2026-10-30 · developer · In development → Ready for test · commit 1ce8f22
 
 ### KB-009 · Invite links, members and roles
 

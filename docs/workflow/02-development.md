@@ -207,3 +207,27 @@ Entry template:
   - A malformed workspace ID answers `400 VALIDATION_ERROR` (A2); only well-formed unknown IDs are indistinguishable from other people's workspaces.
   - Deleting the last user-owned workspace is allowed; a user may have zero workspaces.
   - Suggestions for the planner: nothing blocking. KB-009 must add the last-owner rule when members can leave.
+
+### KB-008 · Projects within a workspace
+
+**Iteration 1 — 2026-10-30**
+
+- **Status at the end:** Ready for test
+- **What was done:** Shared contracts `packages/shared/src/projects.ts` (name, key `^[A-Z]{2,5}$`, params, create/update/response schemas, `suggestProjectKey`) and the new error code `PROJECT_KEY_TAKEN`. Prisma model `Project` (unique `(workspace_id, key)`, `next_card_number` default 1, cascade from workspace) with a migration. The authorization `project` resolver (project to workspace, one lookup) was added to `apps/api/src/modules/authz`, as deferred from KB-007. Module `apps/api/src/modules/projects` with `POST/GET /api/workspaces/:wid/projects` and `GET/PATCH/DELETE /api/projects/:pid`; a duplicate key is decided by the unique index (`P2002` to `409 PROJECT_KEY_TAKEN` with a `details` entry for `key`), so concurrent creates cannot both win. UI in `features/projects`: TanStack Query hooks (optimistic rename and delete with rollback), create dialog with the key suggested from the name until the key is edited by hand (input uppercased), the workspace page lists projects (loading, empty, error with Retry; creation hidden for viewers), project placeholder page and project settings (rename for owner and member, owner-only delete with typed-name confirmation, read-only for viewers). `docs/api.md`, `CHANGELOG.md` and ADR 0003 (resolver line) updated.
+- **Changed files:** `packages/shared/src/{projects.ts,projects.test.ts,errors.ts,index.ts}`, `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/20261030161347_add_projects/migration.sql`, `apps/api/src/app.ts`, `apps/api/src/modules/authz/authorize.ts`, `apps/api/src/modules/projects/{service.ts,routes.ts,projects.test.ts}`, `apps/web/src/features/projects/{api/projects.ts,api/index.ts,CreateProjectDialog.tsx,projects-flow.test.tsx}`, `apps/web/src/routes/{WorkspacePage.tsx,ProjectPage.tsx,ProjectSettingsPage.tsx}`, `apps/web/src/router.tsx`, `e2e/projects.spec.ts`, `docs/api.md`, `docs/adr/0003-authorization-model.md`, `CHANGELOG.md`
+- **Migrations:** `20261030161347_add_projects`
+- **Commit(s):** `1ce8f22` feat(api): KB-008 add projects within a workspace
+- **Acceptance criteria covered:** migration; the five endpoints with the specified roles and status codes; `PROJECT_KEY_TAKEN`; project resolver; UI (list with three states, create dialog with suggested key, settings with rename and typed-name owner-only delete); G1 to G4, A1 to A5 and A7, U1 to U10.
+- **Tests written by the developer:** shared `projects.test.ts` (key suggestion including "Kanban Board" to "KB", key and name schemas); api `projects.test.ts` (create 201 for owner and member, 400 matrix, 409, same key in two workspaces, concurrent creates, 401, identical 404 for non-member and unknown workspace, 403 viewer; list for each role and isolation; get with identical 404; patch rules; delete 204, 403 member and viewer, 404, 401, key reuse, cascade from workspace delete; `authorize()` with a project); web `projects-flow.test.tsx` (empty state and create, key suggestion following and stopping, key validation and 409 on the key field with focus, list as links, error and Retry, viewer without create, rename with rollback, rename, typed-name delete, member and viewer on settings, not found); E2E `e2e/projects.spec.ts` (create, open, rename, delete, duplicate key, axe on workspace page, settings and not-found; keyboard-only create dialog with Escape focus return; second user gets 404).
+- **Local checks:** build ✔ · lint ✔ · typecheck ✔ · test ✔ (shared 89, web 85, api 154) · test:e2e ✔ (27 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - The key cannot be changed after creation (`PATCH` accepts only `name`; unknown fields give 400) because card IDs will be built from it (KB-012). The task text says only "PATCH (owner, member)"; tell the planner if key edits were intended.
+  - `DELETE /api/projects/:pid` takes no body; the typed-name confirmation is enforced in the UI only (the task asks for it in the UI, not the API), unlike workspace delete.
+  - Project responses carry no role; the settings page reads the role from the workspace (`GET /api/workspaces/:id`), and the workspace page does the same.
+  - Create is not optimistic (the server decides on key uniqueness); rename and delete are optimistic with rollback.
+  - A malformed ID answers `400 VALIDATION_ERROR`; a well-formed unknown one is indistinguishable from another person's project (404).
+  - The key suggestion uses initials of up to five words, or the first three letters of a single word ("Kanban" to "KAN"); names with no letters suggest an empty key.
+  - After running `prisma migrate dev`, the generated client under `apps/api/src/generated` is regenerated by `pnpm build` (it is not committed).
+  - Sandbox note: the first heredocs were denied; files were written with the Write/Edit tools.
+  - Suggestions for the planner: none blocking.
