@@ -16,6 +16,21 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-10-30
+
+- **Decisions for João:**
+  - Approve more tasks: after KB-009 the cycle has nothing left to develop. KB-011 (Board and columns) is now unblocked (KB-008 and KB-010 are Done). Suggested line: `2026-10-30 | Approve | KB-011, KB-012, KB-015`, and add `KB-016, KB-017` if KB-009 is done by then. The first line from the previous log (`KB-011 to KB-013, KB-015 to KB-017`) still stands.
+  - Still open from yesterday: raise KB-009 from Medium to High (it blocks KB-016); answer with `Change`.
+  - Confirm that the project key is fixed after creation (`PATCH` accepts only `name`, because card IDs will be built from the key in KB-012). Say so with `Change` on KB-008 if key edits are wanted.
+  - Confirm the role matrix chosen in KB-007 (ADR 0003): members can edit cards and manage columns, labels, sprints and projects; deleting a project, managing members and renaming or deleting the workspace are owner-only.
+  - FYI: project delete's typed-name confirmation is UI-only (no body on `DELETE /api/projects/:pid`), as the task specified.
+- **Done:** KB-007, KB-008
+- **Tested:** KB-007 (Passed; 5 edge-case tests added), KB-008 (Passed)
+- **Developed:** KB-007 (workspaces, memberships, authorization policy, ADR 0003), KB-008 (projects, project resolver in the policy)
+- **Proposals awaiting approval:** KB-011 to KB-032 (no new proposals; the whole backlog is already proposed, so the planner was not called)
+- **Rule violations found:** none. The KB-007 history was missing the tester steps; the finisher added them as new history lines. The testers could not run `prisma migrate reset` (blocked by Prisma's guard in unattended runs) and the finisher could not run a secret scan for KB-007; the tables were built from the migrations and CI covers an empty database.
+- **Next step:** develop KB-009 (invite links, members and roles; it must add the last-owner rule). After that nothing is developable until more tasks are approved.
+
 ## 2026-10-29
 
 - **Decisions for João:**
