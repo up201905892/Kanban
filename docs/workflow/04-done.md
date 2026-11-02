@@ -98,8 +98,18 @@ Entry template:
 - **Documentation:** `docs/api.md` (five project endpoints); ADR 0003 updated (project resolver); no new environment variables
 - **Lessons:** the project key is immutable after creation (card IDs will use it in KB-012) and the typed-name delete confirmation is UI only; both match the task text. Planner: confirm key edits are not wanted. `prisma migrate reset` was not run (Prisma guard); CI applies the migrations to an empty database. No TODO left; no secret patterns found in the task's changes. Milestone "Authentication and workspaces" not yet reached (KB-009 is Planned).
 
+### KB-009 · Invite links, members and roles — done on 2026-11-02
+
+- **Approving test report:** Report 1 (2026-11-02), commit dbdd2e9 (later commits are the development record and the test report only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** owners can invite people with a shareable link (member or viewer, with expiry and optional use limit), revoke links, change roles and remove members; anyone can leave a workspace, but the last owner cannot.
+- **CHANGELOG:** "Added: Owners can now invite people with a shareable link (as member or viewer, with an expiry date and an optional use limit), see and revoke active links, change people's roles and remove them; anyone can leave a workspace, but the last owner cannot (KB-009)."
+- **Documentation:** `docs/api.md` (invite and member endpoints); ADR 0003 item 9; no new environment variables (`WEB_ORIGIN` already in `.env.example`)
+- **Lessons:** the loser of a concurrent mutual demotion gets 403 instead of 409 (invariant holds). Closing live sockets on removal stays with KB-016. `prisma migrate reset` was not run (Prisma guard); CI applies migrations to an empty database. No TODO left; no secret found in the task's changes.
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
 
 - Foundations done — 2026-10-27 (KB-001, KB-002, KB-003, KB-004)
+- Authentication and workspaces done — 2026-11-02 (KB-005, KB-006, KB-007, KB-008, KB-009)
