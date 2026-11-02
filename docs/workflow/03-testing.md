@@ -388,3 +388,41 @@ Report template:
 **Observations (not failures):**
 - `prisma migrate reset --force` was not run (Prisma's AI-safety guard refuses it in unattended runs); the test database is built from the migrations. CI applies them to an empty database.
 - PATCH accepts only `name` (key immutable, since card IDs will use it) and the API delete has no typed-name confirmation (UI only); both match the task text, which does not require otherwise.
+
+### KB-009 · Invite links, members and roles — Report 1 — 2026-11-02
+
+- **Commit tested:** dbdd2e9 (with b5df221; both in `develop` history; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 104, web 94, api 185) | ✔ |
+| E2E | `CI=1 pnpm test:e2e` (29 passed) | ✔ |
+| Authorization | invites and members `service.ts`/`routes.ts` read; every route calls `authorize()` (`members:manage` for create, list, revoke, role change, remove others; `workspace:read` for list and leave); API tests for 401, identical 404 (non-member vs unknown), 403 member and viewer | ✔ |
+| Database | migration SQL read (unique `token_hash`, role enum, cascade FKs, `uses` default 0, workspace index); applied in the test database | ✔ (see observations) |
+| Real time | not touched (socket closing is KB-016) | n.a. |
+| Accessibility | E2E: axe on invite and members pages, keyboard-only invite creation and copy; "Link copied" announced via `announce`; role select `aria-label` "Role for <name>"; Revoke buttons labelled; loading, empty and error (Retry) states present; `role="alert"` on errors | ✔ |
+
+**Acceptance criteria:**
+- [x] Migration `Invite`: SQL read, matches the field list.
+- [x] Create 201 with link once (`no-store`, only the SHA-256 stored), list active (owner), revoke 204 (idempotent): routes read and API tests (400 matrix, 401, 403, 404).
+- [x] Public preview 200; unknown, expired, revoked and exhausted give the same `404 INVITE_INVALID`: API test compares them.
+- [x] Accept: conditional `updateMany` plus membership insert in one transaction; parallel accepts on `maxUses=1` give exactly one membership (test); existing member 200, no role change, no use consumed.
+- [x] Members list (any role), PATCH role (owner), DELETE (owner or self); `409 LAST_OWNER` on demote, remove and leave; workspace row locked `FOR UPDATE` against concurrent demotion (test).
+- [x] Removed member keeps their created data, session stays valid, workspace access gives 404 at once (API and E2E).
+- [x] UI: invite page with `next` round trip, members page (role select, confirm removal, invite dialog with Copy link, active list with Revoke): web flow tests and E2E.
+- [x] Common criteria G1-G4, G8, A1-A8, U1-U10: checks green, contracts in `packages/shared`, project error format, axe in E2E.
+
+**Required tests:** unit validity (valid, expired boundary, revoked, exhausted); API matrix as listed; E2E two contexts (viewer invite, read-only, promote, create project after reload, axe); accessibility (keyboard copy announcement, labelled role select). All exist and assert real behaviour.
+
+**Tests added by the tester:** none (existing coverage judged sufficient).
+
+**Failures:** none
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was not run (Prisma's AI-safety guard refuses it in unattended runs); the test database is built from the migrations. CI applies them to an empty database.
+- The loser of a concurrent mutual demotion gets 403 rather than 409 (documented by the developer); the invariant of one owner holds.
+- Members can read each other's email on the members list, as the criteria require.

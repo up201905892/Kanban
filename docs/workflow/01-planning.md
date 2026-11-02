@@ -16,7 +16,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-006 | Sign-up, log-in and log-out UI with protected routes | Authentication and workspaces | High | KB-004, KB-005 | Done |
 | KB-007 | Workspaces, memberships and the authorization policy | Authentication and workspaces | High | KB-005, KB-006 | Done |
 | KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Done |
-| KB-009 | Invite links, members and roles | Authentication and workspaces | Medium | KB-007 | Ready for test |
+| KB-009 | Invite links, members and roles | Authentication and workspaces | Medium | KB-007 | Passed |
 | KB-010 | Fractional indexing utility and ordering/conflict ADR | Board | High | KB-001 | Done |
 | KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Proposed |
 | KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Proposed |
@@ -512,6 +512,8 @@ Task template (copy for each new task):
 - 2026-10-29 · planner · Proposed → Planned · approved by João (approvals.md, 2026-10-28)
 - 2026-11-02 · developer · Planned → In development · dependency KB-007 is Done
 - 2026-11-02 · developer · In development → Ready for test · commit dbdd2e9
+- 2026-11-02 · tester · Ready for test → In test · testing started
+- 2026-11-02 · tester · In test → Passed · report 1, all checks green, zero failures
 
 ### KB-010 · Fractional indexing utility and ordering/conflict ADR
 
