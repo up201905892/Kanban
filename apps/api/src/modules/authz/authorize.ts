@@ -6,9 +6,12 @@ import { AppError, notFound } from '../../lib/app-error.js';
  * A resource reference. Later tasks add variants (project, board, column, card, ...) together with
  * a resolver in `RESOLVERS` that maps the resource to the ID of its workspace.
  */
-export type ResourceRef = { type: 'workspace'; id: string } | { type: 'project'; id: string };
+export type ResourceRef =
+  | { type: 'workspace'; id: string }
+  | { type: 'project'; id: string }
+  | { type: 'invite'; id: string };
 
-type Db = Pick<PrismaClient, 'membership' | 'project'>;
+type Db = Pick<PrismaClient, 'membership' | 'project' | 'invite'>;
 type Resolver<T extends ResourceRef['type']> = (
   db: Db,
   id: Extract<ResourceRef, { type: T }>['id'],
@@ -20,6 +23,10 @@ const RESOLVERS: { [T in ResourceRef['type']]: Resolver<T> } = {
   // A project resolves to its workspace with one indexed lookup.
   project: async (db, id) =>
     (await db.project.findUnique({ where: { id }, select: { workspaceId: true } }))?.workspaceId ??
+    null,
+  // An invite resolves to its workspace with one indexed lookup.
+  invite: async (db, id) =>
+    (await db.invite.findUnique({ where: { id }, select: { workspaceId: true } }))?.workspaceId ??
     null,
 };
 

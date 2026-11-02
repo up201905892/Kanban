@@ -36,6 +36,7 @@ Data belongs to a workspace (the tenant). Users join workspaces with a role. Eve
 6. **Lists.** List endpoints filter by membership in the query itself (`GET /api/workspaces` joins on the caller's memberships) instead of fetching and filtering.
 7. **Reuse by the WebSocket server.** KB-016 calls the same `authorize` with the user from `getSessionFromCookieHeader`; viewers get `workspace:read` only, which maps to receive-only rooms.
 8. **Deleting a workspace.** Owner only, and the body must repeat the exact workspace name (`400 VALIDATION_ERROR` otherwise). The database cascades to memberships and to everything added below the workspace later.
+9. **Invites and the last-owner rule (KB-009).** `invite` is a resource type that resolves to its workspace (one lookup on `invites.workspace_id`). Managing invites and roles needs `members:manage`; leaving (removing oneself) needs only `workspace:read`. A workspace must always keep at least one owner: demoting, removing or leaving as the only owner answers `409 LAST_OWNER`. The check and the change run in one transaction that first locks the workspace row (`SELECT ... FOR UPDATE`) and then re-runs `authorize`, so two owners acting at the same time are serialised and the loser sees the new state (for example `403` after being demoted). Ownership is never granted by invite; an owner promotes a member.
 
 ## Alternatives considered
 

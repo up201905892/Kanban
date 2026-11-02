@@ -8,6 +8,8 @@ import { normalizeOrigin } from './lib/origin-check.js';
 import { registerAuthGuard } from './modules/auth/guard.js';
 import { authRoutes } from './modules/auth/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
+import { inviteRoutes } from './modules/invites/routes.js';
+import { memberRoutes } from './modules/members/routes.js';
 import { projectRoutes } from './modules/projects/routes.js';
 import { workspaceRoutes } from './modules/workspaces/routes.js';
 
@@ -66,13 +68,12 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
 
   const nodeEnv = process.env['NODE_ENV'];
   if (options.prisma) {
-    registerAuthGuard(app, {
-      prisma: options.prisma,
-      webOrigin: normalizeOrigin(
-        options.webOrigin ?? process.env['WEB_ORIGIN'] ?? 'http://localhost:5173',
-      ),
-      nodeEnv,
-    });
+    const webOrigin = normalizeOrigin(
+      options.webOrigin ?? process.env['WEB_ORIGIN'] ?? 'http://localhost:5173',
+    );
+    registerAuthGuard(app, { prisma: options.prisma, webOrigin, nodeEnv });
+    void app.register(inviteRoutes({ prisma: options.prisma, webOrigin }));
+    void app.register(memberRoutes({ prisma: options.prisma }));
     void app.register(authRoutes({ prisma: options.prisma, nodeEnv }));
     void app.register(workspaceRoutes({ prisma: options.prisma }));
     void app.register(projectRoutes({ prisma: options.prisma }));

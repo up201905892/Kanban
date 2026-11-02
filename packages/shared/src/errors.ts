@@ -13,6 +13,8 @@ export const ErrorCode = {
   EMAIL_TAKEN: 'EMAIL_TAKEN',
   INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
   PROJECT_KEY_TAKEN: 'PROJECT_KEY_TAKEN',
+  INVITE_INVALID: 'INVITE_INVALID',
+  LAST_OWNER: 'LAST_OWNER',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

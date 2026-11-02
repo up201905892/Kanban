@@ -70,6 +70,38 @@ Owner or member. Body `{ name }` (the key cannot be changed; unknown fields are 
 
 Owner only. No body. Response `204`; everything below the project is removed by cascade and the key becomes free again. Errors: `400`, `401`, `403` (member, viewer), `404`.
 
+### POST /api/workspaces/:wid/invites
+
+Owner only. Body `{ role: "member" | "viewer", expiresInDays: 1-30, maxUses?: 1-1000 }` (an owner invite does not exist; promote a member instead). Response `201 { invite: { id, role, createdAt, expiresAt, maxUses, uses }, link }` with `Cache-Control: no-store`. The link (`<WEB_ORIGIN>/invite/<token>`) is shown only in this response; only the SHA-256 of the token is stored. Errors: `400`, `401`, `403` (member, viewer), `404`.
+
+### GET /api/workspaces/:wid/invites
+
+Owner only. Response `200 { invites }`: active invites only (not revoked, not expired, not exhausted), newest first. The list never contains links. Errors: `401`, `403`, `404`.
+
+### DELETE /api/invites/:id
+
+Owner only. Revokes the invite. Response `204` (repeating it is also `204`). Errors: `401`, `403`, `404` (non-member and unknown ID are identical).
+
+### GET /api/invites/:token
+
+Public (the token is the credential). Response `200 { workspaceName, role, expiresAt }`. Unknown, expired, revoked and exhausted tokens all answer the same `404 INVITE_INVALID`.
+
+### POST /api/invites/:token/accept
+
+Any logged-in user. Creates the membership with the invite's role and increments `uses` in one transaction, using a conditional update, so parallel accepts never exceed `maxUses`. Response `200 { workspaceId }`. Someone who is already a member also gets `200`, with no role change and no use consumed. Errors: `401`, `404 INVITE_INVALID`.
+
+### GET /api/workspaces/:wid/members
+
+Any member. Response `200 { members: [{ userId, name, email, role, joinedAt }] }`, oldest first. Errors: `401`, `404`.
+
+### PATCH /api/workspaces/:wid/members/:userId
+
+Owner only. Body `{ role: "owner" | "member" | "viewer" }`. Response `200 { member }`. Errors: `400`, `401`, `403`, `404`, `409 LAST_OWNER` (demoting the only owner).
+
+### DELETE /api/workspaces/:wid/members/:userId
+
+An owner removes anyone; any member may remove themselves (leave). Response `204`. The person keeps their session but gets `404` for the workspace at once; nothing they created is deleted. Errors: `401`, `403` (non-owner removing someone else), `404`, `409 LAST_OWNER` (removing or leaving as the only owner). Membership changes of one workspace are serialised with a row lock, so two owners cannot demote each other at the same time and leave none.
+
 ### Operator command
 
 `pnpm --filter api admin:reset-password <email>` sets a random temporary password, prints it once and deletes all sessions of that user (no email in v1.0).

@@ -20,6 +20,8 @@ export const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   'GET /health/ready',
   'POST /api/auth/signup',
   'POST /api/auth/login',
+  // The unguessable invite token is the credential; the preview exposes only name, role, expiry.
+  'GET /api/invites/:token',
 ]);
 
 export const routeKey = (method: string, url: string): string =>

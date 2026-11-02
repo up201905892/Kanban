@@ -26,6 +26,7 @@ export function WorkspacePage() {
       <h1>{workspace.name}</h1>
       <p>Your role: {workspace.role}.</p>
       <p>
+        <Link to={`/workspaces/${workspace.id}/members`}>Members</Link>{' '}
         <Link to={`/workspaces/${workspace.id}/settings`}>Workspace settings</Link>
       </p>
       <Projects workspace={workspace} />
