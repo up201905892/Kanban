@@ -16,6 +16,18 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-04
+
+- **Decisions for João:**
+  - The cycle is idle again: no `Planned` tasks, so nothing was developed. Approve more tasks in `approvals.md`. Suggested line: `2026-11-04 | Approve | KB-011, KB-012, KB-015, KB-016, KB-017` (KB-011 and KB-016 are unblocked now).
+  - Still open from earlier logs: confirm the project key is fixed after creation (KB-008) and the role matrix in ADR 0003.
+- **Done:** none
+- **Tested:** none
+- **Developed:** none
+- **Proposals awaiting approval:** KB-011 to KB-032 (no new proposals; the whole backlog is already proposed, so the planner was not called)
+- **Rule violations found:** none. `approvals.md` has no new lines, and the working tree was clean.
+- **Next step:** develop KB-011 and KB-016 as soon as they are approved.
+
 ## 2026-11-03
 
 - **Decisions for João:**
