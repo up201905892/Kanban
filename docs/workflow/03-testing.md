@@ -426,3 +426,41 @@ Report template:
 - `prisma migrate reset --force` was not run (Prisma's AI-safety guard refuses it in unattended runs); the test database is built from the migrations. CI applies them to an empty database.
 - The loser of a concurrent mutual demotion gets 403 rather than 409 (documented by the developer); the invariant of one owner holds.
 - Members can read each other's email on the members list, as the criteria require.
+
+### KB-011 · Board and configurable columns — Report 1 — 2026-11-05
+
+- **Commit tested:** 60565ef (in the history of `develop`; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` (zero warnings, Prettier clean) | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 112, web 111, api 230 = 453 tests) | ✔ |
+| E2E | `pnpm test:e2e` (31 tests, including `e2e/board.spec.ts`) | ✔ |
+| Authorization | 401 without session, 404 for non-members (same body as a missing id), 403 for viewers on writes, 404 for another board's neighbour id; checked in code and `boards.test.ts` | ✔ |
+| Real time | live updates are out of scope (KB-018) | n.a. |
+| Accessibility | keyboard menu, Enter/Escape in inline forms, aria-live announcements, axe in E2E | ✔ |
+
+**Acceptance criteria:**
+- [x] Migration `20261105173341_add_boards_and_columns`: read the SQL; `Board` 1:1 with `Project` (unique project_id, cascade), `Column.position` is `TEXT COLLATE "C"`, index `(board_id, position, id)`, `CHECK` on name length 1 to 50, partial unique index for one Done column per board, and a data migration that creates boards and the three default columns for existing projects. Migrations apply on the test database (`prisma migrate status`: up to date, 6 migrations).
+- [x] ADR 0001 amended: diff read; Status and the section 7 heading no longer say provisional, the decision, date and D5 are stated, the original text is kept.
+- [x] New projects get "To do", "In progress", "Done" (Done flagged) in the same transaction (nested create in the project service; covered by `boards.test.ts` default-board test).
+- [x] Exactly one Done column: service swaps the flag in one transaction under a board row lock, clearing the old one first; clearing directly and deleting the Done column return `409 DONE_COLUMN_REQUIRED`; the partial unique index backs it. Covered by the API tests, including a race test.
+- [x] Endpoints: `GET /api/projects/:pid/board`, `POST /api/boards/:bid/columns` (201 / repeated id 200 with no duplicate / other board's id 409), `PATCH /api/columns/:id` (name, move via neighbours, isDone), `DELETE /api/columns/:id` 204. Owner and member manage, viewer reads. Routes and tests read; strict Zod schemas give `400 VALIDATION_ERROR`.
+- [x] UI: add column inline form, inline rename (Enter saves, Escape cancels), column menu (Move left/right, Mark as Done, Delete with confirmation), optimistic updates with rollback; verified through `board-flow.test.tsx` and the passing E2E (add, rename, keyboard reorder, mark Done, delete, reload persistence).
+- [x] Common criteria: G1 (all checks green, no `.only`/`.skip` found in the new tests), G2 (schemas in `packages/shared/src/board.ts`), G3, G4 (transactions, FK, CHECK, partial unique index), A1 to A7 (error format, validation, CSRF/401 tests, no-leak 404, idempotent create, test matrix), U1 to U10 (axe in E2E, scroll container, announcements, role-aware UI).
+
+**Required tests:**
+- [x] Unit: neighbour selection for move left/right at the edges (`board.test.ts`, `ordering.test.ts`); non-trivial, assert both edges.
+- [x] API: get board 200/401/404; create 201 and same id again 200 with no duplicate; invalid name 400; viewer 403; Done exclusivity; deleting Done 409; another board's column id 404/409; `a0` vs `Z0` returned in code-unit order (binary collation).
+- [x] E2E: add, rename, reorder by keyboard, delete, reload persistence, axe on the board.
+- [x] Accessibility: menu reachable by Tab and opened with Enter; move announcement "Column In progress moved to position 2 of 3".
+
+**Failures:** none.
+
+**Observations (not failures):**
+- `prisma migrate reset --force` and creating a fresh database were not run (the sandbox did not allow them); the test database is built from the migrations and CI applies them to an empty database.
+- No tests were added by the tester.
+- The delete dialog says there are no cards yet; KB-012 must revise the deletion rules and wording.
