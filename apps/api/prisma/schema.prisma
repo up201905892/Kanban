@@ -84,9 +84,36 @@ model Project {
   nextCardNumber Int       @default(1) @map("next_card_number")
   createdAt      DateTime  @default(now()) @map("created_at")
   workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  board          Board?
 
   @@unique([workspaceId, key])
   @@map("projects")
+}
+
+/// One board per project (1:1). Created together with the project.
+model Board {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  projectId String   @unique @map("project_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  columns   Column[]
+
+  @@map("boards")
+}
+
+model Column {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  boardId   String   @map("board_id") @db.Uuid
+  name      String
+  /// Fractional-index key (ADR 0001). The migration gives the column `COLLATE "C"` so the
+  /// database sorts by code unit, matching `keyBetween`; Prisma cannot express that itself.
+  position  String
+  isDone    Boolean  @default(false) @map("is_done")
+  createdAt DateTime @default(now()) @map("created_at")
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([boardId, position, id])
+  @@map("columns")
 }
 
 model Session {

@@ -10,6 +10,7 @@ import { authRoutes } from './modules/auth/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
 import { inviteRoutes } from './modules/invites/routes.js';
 import { memberRoutes } from './modules/members/routes.js';
+import { boardRoutes } from './modules/boards/routes.js';
 import { projectRoutes } from './modules/projects/routes.js';
 import { workspaceRoutes } from './modules/workspaces/routes.js';
 
@@ -77,6 +78,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     void app.register(authRoutes({ prisma: options.prisma, nodeEnv }));
     void app.register(workspaceRoutes({ prisma: options.prisma }));
     void app.register(projectRoutes({ prisma: options.prisma }));
+    void app.register(boardRoutes({ prisma: options.prisma }));
   }
 
   void app.register(healthRoutes(options.prisma));

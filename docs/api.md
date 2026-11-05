@@ -70,6 +70,22 @@ Owner or member. Body `{ name }` (the key cannot be changed; unknown fields are 
 
 Owner only. No body. Response `204`; everything below the project is removed by cascade and the key becomes free again. Errors: `400`, `401`, `403` (member, viewer), `404`.
 
+### GET /api/projects/:pid/board
+
+Any role. Response `200 { board: { id, projectId }, columns }`, columns ordered by `(position, id)` (code-unit order; the `position` column uses the `"C"` collation). Every project has exactly one board, created with the project together with the columns "To do", "In progress" and "Done" (flagged). Errors: `400`, `401`, `404`.
+
+### POST /api/boards/:bid/columns
+
+Owner or member. Body `{ id?, name, afterColumnId?, beforeColumnId? }`: `id` is a client-generated UUID (repeating the same create answers `200` with the existing column and never duplicates it; an id used on another board is `409 CONFLICT`), `name` 1 to 50 characters (trimmed), the neighbours choose the place (the server computes the key; without neighbours the column goes last). A neighbour on another board is `404`. Response `201 { column: { id, boardId, name, position, isDone } }`. Errors: `400`, `401`, `403` (viewer), `404`, `409`.
+
+### PATCH /api/columns/:id
+
+Owner or member. Body with at least one of `name`, `isDone`, `afterColumnId` / `beforeColumnId` (moving: give the neighbours the column should end up between; `null` means the edge). `isDone: true` moves the Done flag here and clears it on the other column in one transaction; `isDone: false` on the Done column answers `409 DONE_COLUMN_REQUIRED` (mark another column instead). Response `200 { column }`. Errors: `400`, `401`, `403`, `404`, `409`.
+
+### DELETE /api/columns/:id
+
+Owner or member. Response `204`. The Done column cannot be deleted: `409 DONE_COLUMN_REQUIRED`. Errors: `400`, `401`, `403`, `404`, `409`.
+
 ### POST /api/workspaces/:wid/invites
 
 Owner only. Body `{ role: "member" | "viewer", expiresInDays: 1-30, maxUses?: 1-1000 }` (an owner invite does not exist; promote a member instead). Response `201 { invite: { id, role, createdAt, expiresAt, maxUses, uses }, link }` with `Cache-Control: no-store`. The link (`<WEB_ORIGIN>/invite/<token>`) is shown only in this response; only the SHA-256 of the token is stored. Errors: `400`, `401`, `403` (member, viewer), `404`.

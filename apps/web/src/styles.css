@@ -123,3 +123,60 @@ main,
 .workspace-list {
   padding-left: 1.25rem;
 }
+
+.board-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.board {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem;
+}
+
+.board-column {
+  flex: 0 0 16rem;
+  min-width: 16rem;
+}
+
+.column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.column-title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.column-menu {
+  position: relative;
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  z-index: 10;
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
+  background: #fff;
+  border: 1px solid #333;
+  min-width: 12rem;
+}
+
+.menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+
+.menu button[aria-disabled='true'] {
+  color: #595959;
+}
