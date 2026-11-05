@@ -16,6 +16,19 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-05
+
+- **Decisions for João:**
+  - Suggested next approval: `KB-014, KB-020 to KB-022` (the planner's recommendation). KB-027 also needs approval, but it is blocked until `@up201905892/ui` is published on npm.
+  - FYI, sandbox: the finisher's secret-pattern scan was denied again (KB-011 and KB-012), as were compound shell commands, `sed -i`, `python3` heredocs and `prisma migrate reset`. The scans were replaced by the developer and tester records; both tasks added no env variables.
+  - FYI, follow-ups: deleting a column also deletes its older soft-deleted cards and their events (matters for KB-024); the web bundle is about 620 kB (candidate for KB-028); the `e2e/members.spec.ts` "at least one owner" locator is flaky and should be scoped.
+- **Done:** KB-011 (board and configurable columns), KB-012 (cards: create, view, edit, delete)
+- **Tested:** KB-011 (Passed), KB-012 (Passed)
+- **Developed:** KB-011 and KB-012 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-014, KB-020 to KB-032
+- **Rule violations found:** none. João's 2026-11-04 approvals (KB-011 to KB-013, KB-015 to KB-019) and the answers on KB-007 and KB-008 were applied (decisions D7 and D8).
+- **Next step:** KB-013, KB-015 and KB-016 are `Planned` with their dependencies Done; the daily limit of 2 tasks was reached, so they are next.
+
 ## 2026-11-04
 
 - **Decisions for João:**
