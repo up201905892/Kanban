@@ -1,5 +1,7 @@
 import {
   ErrorCode,
+  keysBetween,
+  needsRebalance,
   type BoardResponse,
   type Column,
   type CreateColumnRequest,
@@ -8,9 +10,10 @@ import {
 import type { PrismaClient } from '../../db.js';
 import { AppError, notFound } from '../../lib/app-error.js';
 import { authorize } from '../authz/index.js';
+import { recordActivity } from '../cards/activity.js';
+import { toCardSummary } from '../cards/service.js';
+import { lockBoard, type Tx } from './lock.js';
 import { placeWithRebalance } from './position.js';
-
-type Tx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
 interface ColumnRow {
   id: string;
@@ -34,16 +37,6 @@ const doneRequired = (): AppError =>
     ErrorCode.DONE_COLUMN_REQUIRED,
     'A board needs a Done column. Mark another column as Done first.',
   );
-
-/**
- * Serialises every structural change of one board (moves compute keys from the current siblings, and
- * the Done flag must stay exclusive). Returns false when the board no longer exists.
- */
-async function lockBoard(tx: Tx, boardId: string): Promise<boolean> {
-  const rows = await tx.$queryRaw<{ id: string }[]>`
-    SELECT "id" FROM "boards" WHERE "id" = ${boardId}::uuid FOR UPDATE`;
-  return rows.length > 0;
-}
 
 /** Columns of a board in the deterministic order (position under the "C" collation, then id). */
 const orderedColumns = (tx: Pick<Tx, 'column'>, boardId: string) =>
@@ -74,12 +67,20 @@ export async function getBoard(
   await authorize(prisma, user, { type: 'project', id: projectId }, 'workspace:read');
   const board = await prisma.board.findUnique({
     where: { projectId },
-    include: { columns: { orderBy: [{ position: 'asc' }, { id: 'asc' }] } },
+    include: {
+      columns: { orderBy: [{ position: 'asc' }, { id: 'asc' }] },
+      // Soft-deleted cards never leave the database layer.
+      cards: {
+        where: { deletedAt: null },
+        orderBy: [{ columnId: 'asc' }, { position: 'asc' }, { id: 'asc' }],
+      },
+    },
   });
   if (!board) throw notFound();
   return {
     board: { id: board.id, projectId: board.projectId },
     columns: board.columns.map(toColumn),
+    cards: board.cards.map(toCardSummary),
   };
 }
 
@@ -171,6 +172,7 @@ export async function deleteColumn(
   prisma: PrismaClient,
   user: { id: string },
   id: string,
+  moveCardsTo?: string,
 ): Promise<void> {
   await authorize(prisma, user, { type: 'column', id }, 'board:manage');
   await prisma.$transaction(async (tx) => {
@@ -179,6 +181,78 @@ export async function deleteColumn(
     const column = await tx.column.findUnique({ where: { id } });
     if (!column) throw notFound();
     if (column.isDone) throw doneRequired();
+
+    // The destination must be another column of the same board; one on another board is never linked.
+    let target: { id: string; name: string } | null = null;
+    if (moveCardsTo !== undefined) {
+      if (moveCardsTo === id) {
+        throw new AppError(
+          400,
+          ErrorCode.VALIDATION_ERROR,
+          'Cards cannot be moved to the column being deleted',
+        );
+      }
+      const found = await tx.column.findUnique({ where: { id: moveCardsTo } });
+      if (!found || found.boardId !== column.boardId) throw notFound();
+      target = found;
+    }
+
+    const cards = await tx.card.findMany({
+      where: { columnId: id, deletedAt: null },
+      orderBy: [{ position: 'asc' }, { id: 'asc' }],
+    });
+    if (cards.length > 0) {
+      if (!target) {
+        throw new AppError(
+          409,
+          ErrorCode.COLUMN_NOT_EMPTY,
+          `This column still has ${cards.length} ${cards.length === 1 ? 'card' : 'cards'}. Choose a column to move them to.`,
+        );
+      }
+      await moveCardsToEnd(tx, user.id, cards, column, target);
+    }
+    // Cards soft-deleted earlier in this column go with it (cascade); live cards were moved above.
     await tx.column.delete({ where: { id } });
   });
+}
+
+/** Appends `cards` (already ordered) to the end of `target`, one transaction with their events. */
+async function moveCardsToEnd(
+  tx: Tx,
+  actorId: string,
+  cards: { id: string }[],
+  from: { id: string; name: string },
+  target: { id: string; name: string },
+): Promise<void> {
+  const existing = await tx.card.findMany({
+    where: { columnId: target.id, deletedAt: null },
+    orderBy: [{ position: 'asc' }, { id: 'asc' }],
+    select: { id: true, position: true },
+  });
+  const last = existing.at(-1)?.position ?? null;
+  let keys = keysBetween(last, null, cards.length);
+  if (needsRebalance(keys.at(-1) ?? '')) {
+    // Respace the destination as a whole (ADR 0001 section 4), then append after it.
+    const respaced = keysBetween(null, null, existing.length + cards.length);
+    for (const [index, card] of existing.entries()) {
+      await tx.card.update({
+        where: { id: card.id },
+        data: { position: respaced[index] as string },
+      });
+    }
+    keys = respaced.slice(existing.length);
+  }
+  for (const [index, card] of cards.entries()) {
+    await tx.card.update({
+      where: { id: card.id },
+      data: { columnId: target.id, position: keys[index] as string, version: { increment: 1 } },
+    });
+    await recordActivity(tx, card.id, actorId, {
+      type: 'column_deleted_moved',
+      data: {
+        from: { columnId: from.id, columnName: from.name },
+        to: { columnId: target.id, columnName: target.name },
+      },
+    });
+  }
 }

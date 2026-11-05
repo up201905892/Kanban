@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { cardSummarySchema } from './cards.js';
 
 export const COLUMN_NAME_MIN_LENGTH = 1;
 export const COLUMN_NAME_MAX_LENGTH = 50;
@@ -40,6 +41,8 @@ export const boardResponseSchema = z.object({
   board: boardSchema,
   /** Ordered by (position, id). */
   columns: z.array(columnSchema),
+  /** Live (not deleted) cards, ordered by column and then (position, id). */
+  cards: z.array(cardSummarySchema),
 });
 export type BoardResponse = z.infer<typeof boardResponseSchema>;
 

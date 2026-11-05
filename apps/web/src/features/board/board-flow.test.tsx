@@ -24,7 +24,16 @@ const initialColumns = (): Col[] => [
   { id: cid(3), boardId: BID, name: 'Done', position: 'a2', isDone: true },
 ];
 
-function server(role: string, columns: Col[] = initialColumns()) {
+interface Cd {
+  id: string;
+  columnId: string;
+  number: number;
+  title: string;
+  position: string;
+  version: number;
+}
+
+function server(role: string, columns: Col[] = initialColumns(), cards: Cd[] = []) {
   const handlers = {
     'GET /api/auth/me': () => jsonResponse(200, { user: USER }),
     'GET /api/workspaces': () => jsonResponse(200, { workspaces: [] }),
@@ -46,9 +55,10 @@ function server(role: string, columns: Col[] = initialColumns()) {
       jsonResponse(200, {
         board: { id: BID, projectId: PID },
         columns: [...columns].sort(compareByPosition),
+        cards: [...cards].sort(compareByPosition),
       }),
   };
-  return { handlers, columns };
+  return { handlers, columns, cards };
 }
 
 const renderBoard = () => {
@@ -301,5 +311,111 @@ describe('board page', () => {
     await waitFor(() =>
       expect(screen.getByTestId('live-polite')).toHaveTextContent('Column In progress deleted'),
     );
+  });
+
+  it('says the column is empty and sends no destination when it has no cards', async () => {
+    const { handlers, columns } = server('owner');
+    const mock = stubFetch({
+      ...handlers,
+      [`DELETE /api/columns/${cid(2)}`]: () => {
+        columns.splice(1, 1);
+        return new Response(null, { status: 204 });
+      },
+    });
+    const user = renderBoard();
+    await user.click(await screen.findByRole('button', { name: 'Actions for column In progress' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/is empty/)).toBeVisible();
+    expect(within(dialog).queryByLabelText('Move cards to')).toBeNull();
+    await user.click(within(dialog).getByRole('button', { name: 'Delete column' }));
+    await waitFor(() => expect(columnNames()).toEqual(['To do', 'Done']));
+    const del = mock.mock.calls.find(([, init]) => init?.method === 'DELETE');
+    expect(String(del?.[0])).toBe(`/api/columns/${cid(2)}`);
+  });
+
+  it('asks where the cards of a column go and moves them there', async () => {
+    const card = (n: number, columnId: string, position: string): Cd => ({
+      id: `0192f000-0000-7000-8000-0000000000d${n}`,
+      columnId,
+      number: n,
+      title: `Card ${n}`,
+      position,
+      version: 1,
+    });
+    const cards = [card(1, cid(2), 'a0'), card(2, cid(2), 'a1'), card(3, cid(3), 'a0')];
+    const { handlers, columns } = server('owner', initialColumns(), cards);
+    const mock = stubFetch({
+      ...handlers,
+      [`DELETE /api/columns/${cid(2)}?moveCardsTo=${cid(3)}`]: () => {
+        columns.splice(1, 1);
+        cards.forEach((c) => {
+          if (c.columnId === cid(2)) {
+            c.columnId = cid(3);
+            c.position = `b${c.number}`;
+          }
+        });
+        return new Response(null, { status: 204 });
+      },
+    });
+    const user = renderBoard();
+    await user.click(await screen.findByRole('button', { name: 'Actions for column In progress' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/This column has 2 cards/)).toBeVisible();
+    const select = within(dialog).getByLabelText('Move cards to');
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['To do', 'Done']);
+    await user.selectOptions(select, 'Done');
+    await user.click(within(dialog).getByRole('button', { name: 'Delete column' }));
+    await waitFor(() => expect(columnNames()).toEqual(['To do', 'Done']));
+    const doneColumn = screen.getByRole('region', { name: 'Column Done' });
+    await waitFor(() =>
+      expect(
+        within(doneColumn)
+          .getAllByRole('link')
+          .map((l) => l.textContent),
+      ).toEqual(['KB-3 Card 3', 'KB-1 Card 1', 'KB-2 Card 2']),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('live-polite')).toHaveTextContent(
+        'Column In progress deleted; 2 cards moved to Done',
+      ),
+    );
+    expect(mock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(true);
+  });
+
+  it('keeps the column and announces the error when the server refuses to delete it', async () => {
+    const cards = [
+      {
+        id: '0192f000-0000-7000-8000-0000000000d1',
+        columnId: cid(2),
+        number: 1,
+        title: 'Stuck',
+        position: 'a0',
+        version: 1,
+      },
+    ];
+    const { handlers } = server('owner', initialColumns(), cards);
+    stubFetch({
+      ...handlers,
+      [`DELETE /api/columns/${cid(2)}?moveCardsTo=${cid(1)}`]: () =>
+        jsonResponse(409, { error: { code: 'COLUMN_NOT_EMPTY', message: 'Not empty' } }),
+    });
+    const user = renderBoard();
+    await user.click(await screen.findByRole('button', { name: 'Actions for column In progress' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete column' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('live-assertive')).toHaveTextContent(
+        'Could not delete the column: Not empty',
+      ),
+    );
+    await waitFor(() => expect(columnNames()).toEqual(['To do', 'In progress', 'Done']));
   });
 });

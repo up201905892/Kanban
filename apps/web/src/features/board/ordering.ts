@@ -2,6 +2,7 @@ import {
   compareByPosition,
   keyBetween,
   type BoardResponse,
+  type CardSummary,
   type Column,
   type UpdateColumnRequest,
 } from '@kanban/shared';
@@ -42,6 +43,33 @@ export function placeColumn(
   const result = [...others];
   result.splice(index, 0, placed);
   return result;
+}
+
+/** Cards of one column in display order. */
+export const cardsOf = (board: BoardResponse, columnId: string): CardSummary[] =>
+  board.cards.filter((c) => c.columnId === columnId).sort(compareByPosition);
+
+/** Removes a column; its cards go to the end of `moveCardsTo`, as the server does. */
+export function applyColumnDelete(
+  board: BoardResponse,
+  id: string,
+  moveCardsTo: string | undefined,
+): BoardResponse {
+  const columns = board.columns.filter((c) => c.id !== id);
+  if (!moveCardsTo)
+    return { ...board, columns, cards: board.cards.filter((c) => c.columnId !== id) };
+  const moving = cardsOf(board, id);
+  let last = cardsOf(board, moveCardsTo).at(-1)?.position ?? null;
+  const moved = moving.map((card) => {
+    const position = hintKey(last ?? undefined, undefined) ?? card.position;
+    last = position;
+    return { ...card, columnId: moveCardsTo, position };
+  });
+  return {
+    ...board,
+    columns,
+    cards: [...board.cards.filter((c) => c.columnId !== id), ...moved],
+  };
 }
 
 /** Applies an update to the cached board the way the server will. */

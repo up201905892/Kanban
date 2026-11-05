@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { BoardResponse, Column } from '@kanban/shared';
-import { applyColumnUpdate, placeColumn, sortColumns } from './ordering';
+import type { BoardResponse, CardSummary, Column } from '@kanban/shared';
+import {
+  applyColumnDelete,
+  applyColumnUpdate,
+  cardsOf,
+  placeColumn,
+  sortColumns,
+} from './ordering';
 
 const col = (id: string, position: string, isDone = false): Column => ({
   id,
@@ -9,9 +15,18 @@ const col = (id: string, position: string, isDone = false): Column => ({
   position,
   isDone,
 });
+const card = (id: string, columnId: string, position: string, number: number): CardSummary => ({
+  id,
+  columnId,
+  number,
+  title: id,
+  position,
+  version: 1,
+});
 const board = (): BoardResponse => ({
   board: { id: 'b', projectId: 'p' },
   columns: [col('a', 'a0'), col('b', 'a1'), col('c', 'a2', true)],
+  cards: [card('x', 'a', 'a0', 1), card('y', 'a', 'a1', 2), card('z', 'b', 'a0', 3)],
 });
 const ids = (columns: Column[]) => sortColumns(columns).map((c) => c.id);
 
@@ -40,5 +55,33 @@ describe('applyColumnUpdate', () => {
   it('moves the Done flag to exactly one column', () => {
     const next = applyColumnUpdate(board(), 'b', { isDone: true });
     expect(next.columns.filter((c) => c.isDone).map((c) => c.id)).toEqual(['b']);
+  });
+});
+
+describe('cardsOf', () => {
+  it('returns the cards of one column in position order', () => {
+    const b = board();
+    b.cards.reverse();
+    expect(cardsOf(b, 'a').map((c) => c.id)).toEqual(['x', 'y']);
+    expect(cardsOf(b, 'c')).toEqual([]);
+  });
+});
+
+describe('applyColumnDelete', () => {
+  it('removes the column and appends its cards to the destination in order', () => {
+    const next = applyColumnDelete(board(), 'a', 'b');
+    expect(next.columns.map((c) => c.id)).toEqual(['b', 'c']);
+    expect(cardsOf(next, 'b').map((c) => c.id)).toEqual(['z', 'x', 'y']);
+    expect(next.cards.some((c) => c.columnId === 'a')).toBe(false);
+  });
+
+  it('drops the cards when no destination is given', () => {
+    const next = applyColumnDelete(board(), 'a', undefined);
+    expect(next.cards.map((c) => c.id)).toEqual(['z']);
+  });
+
+  it('moves into an empty destination', () => {
+    const next = applyColumnDelete(board(), 'a', 'c');
+    expect(cardsOf(next, 'c').map((c) => c.id)).toEqual(['x', 'y']);
   });
 });

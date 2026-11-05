@@ -18,6 +18,8 @@ model User {
   sessions     Session[]
   memberships  Membership[]
   invites      Invite[]
+  cards        Card[]
+  activity     ActivityEvent[]
 
   @@map("users")
 }
@@ -97,6 +99,7 @@ model Board {
   createdAt DateTime @default(now()) @map("created_at")
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   columns   Column[]
+  cards     Card[]
 
   @@map("boards")
 }
@@ -111,9 +114,54 @@ model Column {
   isDone    Boolean  @default(false) @map("is_done")
   createdAt DateTime @default(now()) @map("created_at")
   board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards     Card[]
 
   @@index([boardId, position, id])
   @@map("columns")
+}
+
+model Card {
+  id          String          @id @default(uuid(7)) @db.Uuid
+  boardId     String          @map("board_id") @db.Uuid
+  columnId    String          @map("column_id") @db.Uuid
+  /// Taken from `Project.nextCardNumber` (atomic increment). A board belongs to exactly one project,
+  /// so (board, number) is unique per project. Numbers are never reused, even after a soft delete.
+  number      Int
+  title       String
+  /// Markdown source, at most 20,000 characters (CHECK in the migration).
+  description String          @default("")
+  /// Fractional-index key (ADR 0001); the migration gives it `COLLATE "C"`.
+  position    String
+  version     Int             @default(1)
+  createdById String          @map("created_by_id") @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  /// Soft delete: set instead of removing the row, so history keeps its card.
+  deletedAt   DateTime?       @map("deleted_at")
+  board       Board           @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  column      Column          @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  createdBy   User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  activity    ActivityEvent[]
+
+  @@unique([boardId, number])
+  @@index([columnId, position, id])
+  @@map("cards")
+}
+
+/// Append-only history of card mutations, written in the same transaction as the change (G5).
+model ActivityEvent {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  cardId    String   @map("card_id") @db.Uuid
+  actorId   String   @map("actor_id") @db.Uuid
+  /// One of the `ACTIVITY_TYPES` of `@kanban/shared`; `data` has the matching shape.
+  type      String
+  data      Json
+  createdAt DateTime @default(now()) @map("created_at")
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  actor     User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([cardId, createdAt])
+  @@map("activity_events")
 }
 
 model Session {

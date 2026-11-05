@@ -8,6 +8,7 @@ import {
   columnParamsSchema,
   columnResponseSchema,
   createColumnRequestSchema,
+  deleteColumnQuerySchema,
   projectBoardParamsSchema,
   updateColumnRequestSchema,
 } from '@kanban/shared';
@@ -64,9 +65,15 @@ export function boardRoutes({ prisma }: { prisma: PrismaClient }) {
 
     r.delete(
       '/api/columns/:id',
-      { schema: { params: columnParamsSchema, response: { 204: z.null() } } },
+      {
+        schema: {
+          params: columnParamsSchema,
+          querystring: deleteColumnQuerySchema,
+          response: { 204: z.null() },
+        },
+      },
       async (req, reply) => {
-        await deleteColumn(prisma, userOf(req), req.params.id);
+        await deleteColumn(prisma, userOf(req), req.params.id, req.query.moveCardsTo);
         return reply.code(204).send(null);
       },
     );

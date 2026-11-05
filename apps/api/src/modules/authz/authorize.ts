@@ -11,9 +11,10 @@ export type ResourceRef =
   | { type: 'project'; id: string }
   | { type: 'invite'; id: string }
   | { type: 'board'; id: string }
-  | { type: 'column'; id: string };
+  | { type: 'column'; id: string }
+  | { type: 'card'; id: string };
 
-type Db = Pick<PrismaClient, 'membership' | 'project' | 'invite' | 'board' | 'column'>;
+type Db = Pick<PrismaClient, 'membership' | 'project' | 'invite' | 'board' | 'column' | 'card'>;
 type Resolver<T extends ResourceRef['type']> = (
   db: Db,
   id: Extract<ResourceRef, { type: T }>['id'],
@@ -43,6 +44,15 @@ const RESOLVERS: { [T in ResourceRef['type']]: Resolver<T> } = {
     (
       await db.column.findUnique({
         where: { id },
+        select: { board: { select: { project: { select: { workspaceId: true } } } } },
+      })
+    )?.board.project.workspaceId ?? null,
+  // A card resolves through its board and project. A soft-deleted card does not resolve at all, so
+  // every later request about it is a plain 404 for every role.
+  card: async (db, id) =>
+    (
+      await db.card.findFirst({
+        where: { id, deletedAt: null },
         select: { board: { select: { project: { select: { workspaceId: true } } } } },
       })
     )?.board.project.workspaceId ?? null,

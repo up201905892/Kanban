@@ -72,7 +72,7 @@ Owner only. No body. Response `204`; everything below the project is removed by 
 
 ### GET /api/projects/:pid/board
 
-Any role. Response `200 { board: { id, projectId }, columns }`, columns ordered by `(position, id)` (code-unit order; the `position` column uses the `"C"` collation). Every project has exactly one board, created with the project together with the columns "To do", "In progress" and "Done" (flagged). Errors: `400`, `401`, `404`.
+Any role. Response `200 { board: { id, projectId }, columns, cards }`, columns ordered by `(position, id)` (code-unit order; the `position` column uses the `"C"` collation); `cards` is a flat list of the non-deleted cards as summaries `{ id, columnId, number, title, position, version }`, ordered by column and then `(position, id)` (no description: fetch `GET /api/cards/:id`). Every project has exactly one board, created with the project together with the columns "To do", "In progress" and "Done" (flagged). Errors: `400`, `401`, `404`.
 
 ### POST /api/boards/:bid/columns
 
@@ -84,7 +84,23 @@ Owner or member. Body with at least one of `name`, `isDone`, `afterColumnId` / `
 
 ### DELETE /api/columns/:id
 
-Owner or member. Response `204`. The Done column cannot be deleted: `409 DONE_COLUMN_REQUIRED`. Errors: `400`, `401`, `403`, `404`, `409`.
+Owner or member. Optional query `moveCardsTo=<column id>`: a column of the same board that receives the live cards of the deleted column, appended at its end in their current order in one transaction (each moved card gets a `column_deleted_moved` event and a new `version`). Without it, a column that still has cards answers `409 COLUMN_NOT_EMPTY`; soft-deleted cards do not count and go away with the column. `moveCardsTo` on another board is `404`, equal to the column itself is `400`. The Done column cannot be deleted: `409 DONE_COLUMN_REQUIRED` (checked first). Response `204`. Errors: `400`, `401`, `403`, `404`, `409`.
+
+### POST /api/columns/:cid/cards
+
+Owner or member. Body `{ id?, title, description?, afterCardId?, beforeCardId? }`: `id` is a client-generated UUID (repeating the same create answers `200` with the existing card and never duplicates it; an id used on another board or by a deleted card is `409 CONFLICT`), `title` 1 to 200 characters (trimmed), `description` Markdown up to 20,000 characters, the neighbours (live cards of this column; another column is `404`) choose the place, without them the card goes last. The card number comes from `Project.nextCardNumber` with an atomic increment in the same transaction and is never reused. Writes a `created` activity event. Response `201 { card: { id, columnId, boardId, number, title, description, position, version, createdById, createdAt, updatedAt } }`. Errors: `400`, `401`, `403` (viewer), `404`, `409`.
+
+### GET /api/cards/:id
+
+Any role. Response `200 { card }`. A soft-deleted card is `404` for everyone. Errors: `400`, `401`, `404`.
+
+### PATCH /api/cards/:id
+
+Owner or member. Body with at least one of `title`, `description` (the description path is interim until KB-019). A change increments `version` and writes `title_changed` (`{ from, to }`) and/or `description_changed` (`{ from, to }` as lengths, never the text) in the same transaction; a request that changes nothing returns the card untouched. Response `200 { card }`. Errors: `400`, `401`, `403`, `404`.
+
+### DELETE /api/cards/:id
+
+Owner or member. Soft delete (`deletedAt`); writes a `deleted` event. Response `204`; afterwards `GET`, `PATCH` and `DELETE` answer `404` and the card disappears from the board. Errors: `400`, `401`, `403`, `404`.
 
 ### POST /api/workspaces/:wid/invites
 

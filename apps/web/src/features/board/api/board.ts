@@ -9,7 +9,7 @@ import {
 } from '@kanban/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, request } from '../../../lib/api';
-import { applyColumnUpdate, sortColumns } from '../ordering';
+import { applyColumnDelete, applyColumnUpdate, sortColumns } from '../ordering';
 
 export const boardKey = (projectId: string) => ['projects', projectId, 'board'] as const;
 
@@ -29,7 +29,7 @@ interface Context {
  * Shared optimistic plumbing: cancel in-flight reads, apply the change at once, restore the previous
  * board if the server refuses and always refetch so the UI matches the server afterwards (U6).
  */
-function useBoardMutation<TVars, TResult>(
+export function useBoardMutation<TVars, TResult>(
   projectId: string,
   mutationFn: (vars: TVars) => Promise<TResult>,
   apply: (board: BoardResponse, vars: TVars) => BoardResponse,
@@ -93,12 +93,19 @@ export function useUpdateColumn(projectId: string) {
   );
 }
 
+export interface DeleteColumnVars {
+  id: string;
+  /** Column that receives the cards; required by the server when the column has cards. */
+  moveCardsTo?: string;
+}
+
 export function useDeleteColumn(projectId: string) {
-  return useBoardMutation<string, void>(
+  return useBoardMutation<DeleteColumnVars, void>(
     projectId,
-    async (id) => {
-      await request(`/api/columns/${id}`, { method: 'DELETE' });
+    async ({ id, moveCardsTo }) => {
+      const query = moveCardsTo ? `?moveCardsTo=${encodeURIComponent(moveCardsTo)}` : '';
+      await request(`/api/columns/${id}${query}`, { method: 'DELETE' });
     },
-    (board, id) => ({ ...board, columns: board.columns.filter((c) => c.id !== id) }),
+    (board, { id, moveCardsTo }) => applyColumnDelete(board, id, moveCardsTo),
   );
 }
