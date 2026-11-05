@@ -116,6 +116,15 @@ Entry template:
 - **Documentation:** `docs/api.md` (board and column endpoints); ADR 0001 amended for D5 (hybrid), section 7 now Accepted; no new environment variables
 - **Lessons:** the PATCH move format (`afterColumnId`/`beforeColumnId`) is the one KB-015 will reuse. The delete dialog says there are no cards yet; KB-012 must revise deletion rules and wording. `prisma migrate reset` and a fresh database were not run (sandbox/Prisma guard); CI applies migrations to an empty database. No TODO found in source. The finisher's secret-pattern search was denied by the sandbox; the check rests on the developer and tester records (no new dependencies, no new environment variables).
 
+### KB-012 · Cards: create, view, edit and delete — done on 2026-11-05
+
+- **Approving test report:** Report 1 (2026-11-05), commit 512a5e9 (later commits are the development record and the test report only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** boards now hold cards: owners and members add, open (by deep link), edit (title and Markdown description) and delete cards, viewers read them; deleting a column with cards asks where to move them; every card change is recorded as an activity event.
+- **CHANGELOG:** "Added: Boards now hold cards: owners and members can add cards at the bottom of a column (several in a row with just the keyboard), open a card at its own link, edit its title and its Markdown description (with a preview) and delete it after confirming; viewers can read cards. Every change to a card is recorded for the history to come (KB-012)." and "Changed: Deleting a column that still has cards now asks where the cards should go and moves them to the end of that column instead of losing them (KB-012)."
+- **Documentation:** `docs/api.md` (card endpoints and `moveCardsTo` on column delete); no new environment variables; no ADR requested by the task
+- **Lessons:** the board response has a flat `cards` list instead of nesting per column. Deleting a column cascades to its earlier soft-deleted cards and their events, so that history is lost (flag for KB-024). The `members.spec.ts` "at least one owner" locator is flaky and should be scoped. Web bundle is about 620 kB (candidate for KB-028). `prisma migrate reset` was not run (sandbox); CI applies migrations to an empty database. No TODO found in the task's code. The finisher's secret-pattern search was denied by the sandbox (`This command requires approval`); the check rests on the developer and tester records (one new dependency, `react-markdown`; no new environment variables). Milestone "Board" not yet reached (KB-013, KB-015 are Planned, KB-014 is Proposed).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->

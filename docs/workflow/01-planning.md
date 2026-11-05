@@ -19,7 +19,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-009 | Invite links, members and roles | Authentication and workspaces | Medium | KB-007 | Done |
 | KB-010 | Fractional indexing utility and ordering/conflict ADR | Board | High | KB-001 | Done |
 | KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Done |
-| KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Passed |
+| KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Done |
 | KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Planned |
 | KB-014 | Labels | Board | Low | KB-012, KB-018 | Proposed |
 | KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | Planned |
@@ -646,6 +646,7 @@ Task template (copy for each new task):
 - 2026-11-05 · developer · In development → Ready for test · commit 512a5e9
 - 2026-11-05 · tester · Ready for test → In test · testing started
 - 2026-11-05 · tester · In test → Passed · report 1, commit 512a5e9, zero failures
+- 2026-11-05 · finisher · Passed → Done · CHANGELOG and docs/api.md up to date, no production code after the tested commit
 
 ### KB-013 · Card fields: assignee, priority and estimate
 
