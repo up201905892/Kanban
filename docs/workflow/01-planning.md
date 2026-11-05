@@ -18,7 +18,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Done |
 | KB-009 | Invite links, members and roles | Authentication and workspaces | Medium | KB-007 | Done |
 | KB-010 | Fractional indexing utility and ordering/conflict ADR | Board | High | KB-001 | Done |
-| KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Planned |
+| KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Ready for test |
 | KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Planned |
 | KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Planned |
 | KB-014 | Labels | Board | Low | KB-012, KB-018 | Proposed |
@@ -601,6 +601,8 @@ Task template (copy for each new task):
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · spec revised after D5 answer (approvals.md, 2026-10-28): added the ADR 0001 section 7 amendment and the `COLLATE "C"` requirement from ADR 0001 (finisher's KB-010 lesson) · stays Proposed
 - 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
+- 2026-11-05 · developer · Planned → In development · started
+- 2026-11-05 · developer · In development → Ready for test · commit 60565ef
 
 ### KB-012 · Cards: create, view, edit and delete
 
