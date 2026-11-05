@@ -464,3 +464,48 @@ Report template:
 - `prisma migrate reset --force` and creating a fresh database were not run (the sandbox did not allow them); the test database is built from the migrations and CI applies them to an empty database.
 - No tests were added by the tester.
 - The delete dialog says there are no cards yet; KB-012 must revise the deletion rules and wording.
+
+### KB-012 · Cards: create, view, edit and delete — Report 1 — 2026-11-05
+
+- **Commit tested:** 512a5e9 (in the history of `develop`; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` (ESLint and Prettier clean) | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 127, web 145, api 266 = 538 tests) | ✔ |
+| E2E | `pnpm test:e2e` (34 tests, including `e2e/cards.spec.ts`; no retries needed this run) | ✔ |
+| Authorization | 401 without session, 404 for non-members (same body as unknown id), 403 for viewers on writes, soft-deleted card resolves to 404 for every role, column or neighbour from another board 404; read in `authorize.ts`, `cards/service.ts` and `cards.test.ts` | ✔ |
+| Real time | live updates are out of scope (KB-018); concurrency covered by the board row lock and the 20-parallel-create test | n.a. |
+| Accessibility | tiles are links (Tab and Enter), dialog Escape returns focus to the tile, creation and deletion announced in aria-live, axe on board, dialog and confirmation in E2E | ✔ |
+
+**Acceptance criteria:**
+- [x] Migration `20261105174849_add_cards_and_activity_events`: read the SQL. `cards.position` is `TEXT COLLATE "C"`, index `(column_id, position, id)`, unique `(board_id, number)` (board is 1:1 with project), CHECKs on title 1 to 200, description at most 20,000, number and version positive, `deleted_at`; `activity_events` with JSONB `data` and index `(card_id, created_at)`. Migrations apply on the test database (7 found, none pending).
+- [x] Card number from `Project.nextCardNumber` with an atomic `increment` inside the creation transaction under the board lock; the "20 parallel creates give 20 distinct numbers" API test passes.
+- [x] Routes: `POST /api/columns/:cid/cards` returns 201 (200 on repeated id without duplicate), appended at the end unless `afterCardId`/`beforeCardId` are given; `GET`, `PATCH` (increments `version`) and `DELETE` (204, soft delete); GET, PATCH and DELETE afterwards give 404. Read the service and routes, and the passing tests.
+- [x] Board includes non-deleted cards ordered by (position, id) with `COLLATE "C"` (`Z0` before `a0` test). The response carries a flat `cards` list with `columnId` rather than nesting per column; the criterion's content and ordering are met (see observations).
+- [x] `DELETE /api/columns/:id`: `409 COLUMN_NOT_EMPTY` without `moveCardsTo`; with it cards are appended to the destination in one transaction; foreign destination 404, self 400; covered by API tests and the E2E column-delete test.
+- [x] Activity (G5): `created`, `title_changed`, `description_changed` (lengths only), `deleted`, `column_deleted_moved`, written in the same transaction; the injected-failure test (database trigger) leaves neither change nor event.
+- [x] Markdown: `react-markdown` without `rehype-raw`; unit tests strip `<script>`, inline handlers and `javascript:` links; the E2E XSS test stays inert.
+- [x] UI: Add card at the bottom of each column (Enter creates and keeps the field open), tiles show `KEY-number` and title, deep link `/projects/:pid/cards/:number`, inline title edit, description Edit/Preview with explicit Save, delete with confirmation, read-only for viewers; verified in `cards-flow.test.tsx` and `e2e/cards.spec.ts`.
+- [x] Authority per D5: description written only through REST `PATCH`; the web has no description logic beyond the textarea (read in `CardDialog.tsx`).
+- [x] Common criteria: G1 (all checks green), G2 (Zod schemas in `packages/shared/src/cards.ts`), G3, G4 (transactions, FK, CHECKs, unique index), G5, G8, A1 to A7 (error format, strict validation, CSRF/401 tests, no-leak 404, idempotent create), U1 to U10.
+
+**Required tests:**
+- [x] Unit: Markdown renderer strips script, handlers and `javascript:` links (`Markdown.test.tsx`).
+- [x] API: create 201 / 400 (empty and 201-char title) / 401 / 404 non-member / 403 viewer; repeated id 200 without duplicate; 20 parallel creates; PATCH version and `title_changed` with injected failure; delete 204 then GET/PATCH 404; column delete 409 and 204 with `moveCardsTo`; column from another workspace 404.
+- [x] E2E: keyboard-only creation, deep link, edit title and description, delete, axe on board and dialog.
+- [x] Accessibility: tiles focusable, Enter opens, Escape closes with focus return, creation and deletion announced.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- The board response uses a flat `cards` list, not cards nested per column (documented by the developer; ordering and content satisfy the criterion).
+- `prisma migrate reset --force` was not run (sandbox restrictions); the test database is built from the migrations and CI applies them to an empty database.
+- The pre-existing `members.spec.ts` locator flake noted by the developer did not occur in this run; worth scoping the locator in a future task.
+- Deleting a column cascades to its earlier soft-deleted cards and their events (history lost); flagged for KB-024.
+- Web bundle is about 620 kB; code splitting is a candidate for KB-028.
