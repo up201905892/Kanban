@@ -18,15 +18,15 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Done |
 | KB-009 | Invite links, members and roles | Authentication and workspaces | Medium | KB-007 | Done |
 | KB-010 | Fractional indexing utility and ordering/conflict ADR | Board | High | KB-001 | Done |
-| KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Proposed |
-| KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Proposed |
-| KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Proposed |
+| KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Planned |
+| KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Planned |
+| KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Planned |
 | KB-014 | Labels | Board | Low | KB-012, KB-018 | Proposed |
-| KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | Proposed |
-| KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Proposed |
-| KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Proposed |
-| KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Proposed |
-| KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Proposed |
+| KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | Planned |
+| KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Planned |
+| KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Planned |
+| KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Planned |
+| KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Planned |
 | KB-020 | Presence: who is on the board and who is editing a card | Real time | Medium | KB-019 | Proposed |
 | KB-021 | Reconnection, offline edits and connection status | Real time | Medium | KB-018, KB-019 | Proposed |
 | KB-022 | Backlog and sprint planning | Sprints | Medium | KB-013, KB-018 | Proposed |
@@ -92,6 +92,20 @@ Original question, kept for the record:
 - **Alternative:** an email provider (e.g. Resend or Postmark over SMTP) for password reset and emailed invites: about one extra M task, plus a provider account and a sending domain.
 - **If the alternative is chosen:** KB-005 (CLI replaced or complemented by a reset flow), KB-009 (optional email invite), KB-031 (new variables); a new task is added.
 
+### D7 · Project key is immutable after creation — **Decided** (João, 2026-11-04, `approvals.md`, Answer KB-008)
+
+**Decision:** confirmed as implemented in KB-008. A project's `key` is set at creation and never changes; `PATCH /api/projects/:pid` accepts only `name` (a body with `key` is rejected as an unknown field, `400 VALIDATION_ERROR`, per A2).
+Rationale: card references are built as `KEY-number` (KB-012) and appear in deep links, activity history and announcements; a mutable key would break links and history text. Key renaming (with redirects/aliases) is a candidate for v1.1. Affects KB-012 (card reference stays stable), KB-018, KB-024 (references in events and history).
+
+Original question (daily log, 2026-10-30): confirm that the project key is fixed after creation, or ask for key edits with `Change` on KB-008.
+
+### D8 · Role matrix — **Decided** (João, 2026-11-04, `approvals.md`, Answer KB-007)
+
+**Decision:** confirmed as implemented in ADR 0003 (`docs/adr/0003-authorization-model.md`, Status: Accepted). Members can edit cards and manage columns, labels, sprints and projects; viewers only read; deleting a project, managing members and invites, and renaming or deleting the workspace are owner-only. 404 for non-members and 403 for members without the permission (A4).
+Consequence for the plan: every later task authorizes through the KB-007 policy with this matrix; specs that say "owner and member manage; viewer reads" (KB-011, KB-012, KB-013, KB-014, KB-015, KB-022, KB-023) are consistent with it and need no change. ADR 0003 already has Status Accepted, so no ADR amendment is required.
+
+Original question (daily log, 2026-10-30): confirm the role matrix chosen in KB-007 (ADR 0003).
+
 ## Common criteria
 
 Tasks cite these codes in their acceptance criteria instead of repeating them. Each one must be verifiable with the code and a terminal.
@@ -151,6 +165,9 @@ Lines from `approvals.md` already handled by the planner (prevents applying the 
 | 2026-10-28 | Approve | KB-005 to KB-009 | 2026-10-29 |
 | 2026-10-28 | Answer | D6 | 2026-10-29 |
 | 2026-10-28 | Answer | D5 | 2026-10-29 |
+| 2026-11-04 | Approve | KB-011 to KB-013, KB-015 to KB-019 | 2026-11-05 |
+| 2026-11-04 | Answer | KB-008 | 2026-11-05 |
+| 2026-11-04 | Answer | KB-007 | 2026-11-05 |
 
 Note: the first row of the `approvals.md` table (`YYYY-MM-DD · Approve · KB-001 to KB-008`, in italics) is the usage example, not a decision; it is not applied. KB-001 to KB-004 and KB-010 were approved in the conversation on 2026-10-24.
 
@@ -443,6 +460,7 @@ Task template (copy for each new task):
 - 2026-10-30 · finisher · Passed → Done · CHANGELOG, docs/api.md and ADR 0003 in place, no new environment variables, no secrets or TODOs found
 - 2026-10-30 · tester · Ready for test → In test · testing started on commit 3175dc4
 - 2026-10-30 · tester · In test → Passed · report 1, all criteria verified, zero failures
+- 2026-11-05 · planner · Done (no status change) · answer from João (approvals.md, 2026-11-04): role matrix in ADR 0003 confirmed as implemented; recorded as D8 in "Technical decisions"; ADR 0003 already Accepted, spec unchanged
 
 ### KB-008 · Projects within a workspace
 
@@ -468,6 +486,8 @@ Task template (copy for each new task):
 
 **Out of scope:** board and columns (KB-011), archiving projects.
 
+**Decision note (D7, 2026-11-04):** the project key is immutable after creation; `PATCH` accepts only `name`.
+
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · Proposed → Planned · approved by João (approvals.md, 2026-10-28)
@@ -477,6 +497,7 @@ Task template (copy for each new task):
 - 2026-10-30 · tester · Ready for test → In test · starting report 1
 - 2026-10-30 · tester · In test → Passed · report 1, all checks and criteria verified, zero failures
 - 2026-10-30 · finisher · Passed → Done · definition of done met; CHANGELOG, docs/api.md and ADR 0003 already updated
+- 2026-11-05 · planner · Done (no status change) · answer from João (approvals.md, 2026-11-04): the project key is fixed after creation and `PATCH` accepts only `name`, as implemented; recorded as D7 in "Technical decisions"; no rework
 
 ### KB-009 · Invite links, members and roles
 
@@ -579,6 +600,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · spec revised after D5 answer (approvals.md, 2026-10-28): added the ADR 0001 section 7 amendment and the `COLLATE "C"` requirement from ADR 0001 (finisher's KB-010 lesson) · stays Proposed
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
 
 ### KB-012 · Cards: create, view, edit and delete
 
@@ -609,9 +631,12 @@ Task template (copy for each new task):
 
 **Out of scope:** card fields (KB-013), labels (KB-014), moving cards (KB-015), live updates (KB-018), activity UI (KB-024), restoring deleted cards.
 
+**Decision notes:** the `KEY-number` card reference is stable because the project key is immutable (D7); card permissions follow the ADR 0003 role matrix (D8): owner and member create, edit and delete cards, viewers read only.
+
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · spec revised after D5 answer (approvals.md, 2026-10-28): the hybrid split matches the existing spec; added an explicit authority criterion (interim REST description until KB-019) and the `COLLATE "C"` position column from ADR 0001 · stays Proposed
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04); decision notes for D7 and D8 added (no change to criteria)
 
 ### KB-013 · Card fields: assignee, priority and estimate
 
@@ -641,6 +666,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · João's decision (2026-10-24): card fields are not on the MVP critical path
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
 
 ### KB-014 · Labels
 
@@ -697,6 +723,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
 
 ### KB-016 · WebSocket server with the y-websocket protocol and room authorization
 
@@ -730,6 +757,7 @@ Task template (copy for each new task):
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · D5 answered by João (approvals.md, 2026-10-28): hybrid; the ADR records Yjs as authority for descriptions and presence and PostgreSQL for structured data, consistent with ADR 0001 section 7 · spec unchanged
 - 2026-10-29 · planner · dependency KB-009 added: the socket close/re-authorization criterion and its "removing a member closes their socket" test need KB-009's member removal and role change; KB-009 is Planned, so there is no cycle · stays Proposed
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04); room authorization uses the ADR 0003 role matrix confirmed as D8
 
 ### KB-017 · Yjs document persistence in PostgreSQL
 
@@ -759,6 +787,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · re-check under João's rule: not on the critical path and blocks only Medium tasks (KB-019, KB-031)
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
 
 ### KB-018 · Live board updates
 
@@ -788,6 +817,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
 
 ### KB-019 · Collaborative card description with Yjs
 
@@ -818,6 +848,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · re-check under João's rule: not on the critical path and blocks only Medium tasks (KB-020, KB-021)
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
 
 ### KB-020 · Presence: who is on the board and who is editing a card
 
