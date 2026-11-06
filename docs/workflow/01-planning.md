@@ -23,7 +23,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Planned |
 | KB-014 | Labels | Board | Low | KB-012, KB-018 | Proposed |
 | KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | Done |
-| KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Passed |
+| KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Done |
 | KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Planned |
 | KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Planned |
 | KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Planned |
@@ -777,6 +777,7 @@ Task template (copy for each new task):
 - 2026-11-06 · developer · In development → Ready for test · commit cc55adb
 - 2026-11-06 · tester · Ready for test → In test · testing started
 - 2026-11-06 · tester · In test → Passed · report 1 in 03-testing.md, zero failures
+- 2026-11-06 · finisher · Passed → Done · definition of done checked; CHANGELOG, docs/api.md and ADR 0004 in place
 
 ### KB-017 · Yjs document persistence in PostgreSQL
 
