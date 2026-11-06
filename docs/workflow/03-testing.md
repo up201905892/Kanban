@@ -509,3 +509,45 @@ Report template:
 - The pre-existing `members.spec.ts` locator flake noted by the developer did not occur in this run; worth scoping the locator in a future task.
 - Deleting a column cascades to its earlier soft-deleted cards and their events (history lost); flagged for KB-024.
 - Web bundle is about 620 kB; code splitting is a candidate for KB-028.
+
+### KB-015 · Drag and drop and keyboard moving of cards — Report 1 — 2026-11-06
+
+- **Commit tested:** 4cf8b44 (with 9c36e41 on top; both in the history of `develop`; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` (ESLint and Prettier clean) | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (web 155, api 278, shared all passing) | ✔ |
+| E2E | `pnpm test:e2e` (40 passed, including `e2e/move-cards.spec.ts`) | ✔ |
+| Authorization | `moveCard` authorizes the card and the destination column with `card:edit` (viewer 403, non-member 404 identical to unknown, other board or workspace 404, foreign neighbour 404, deleted card 404); read in `service.ts` and `move.test.ts` | ✔ |
+| Database | no migration in this task (activity `type` is plain text); existing 7 migrations apply on the test database | ✔ |
+| Real time | live propagation is out of scope (KB-018); concurrency is covered by the board row lock and the parallel-move API tests | n.a. |
+| Accessibility | keyboard pick-up, arrows, drop, Escape asserted in E2E with live-region text; axe on the board; focus returns to the handle | ✔ |
+
+**Acceptance criteria:**
+- [x] `POST /api/cards/:id/move`: validated by `moveCardRequestSchema`; key computed from current siblings under the board lock in one transaction; `version` incremented; the final card with position returned; `moved` {fromColumnId, toColumnId} recorded only when the column changes (tests: reorder without event, between columns with one event).
+- [x] Rebalance: `placeWithRebalance` respaces in the same transaction; the 320-repeated-inserts test keeps the order and key length at most 50.
+- [x] Pointer and keyboard sensors: Space or Enter picks up on the handle (Space on the card link), arrows move, Space drops, Escape cancels and returns the card; verified in E2E.
+- [x] Announcements for pick-up, move, drop and cancel with card, column and position, asserted in E2E (e.g. "Card MV-1 'Fix login' moved to In progress, position 1 of 1").
+- [x] Non-drag alternative: "Move to..." (column select and Top or Bottom), unit-tested and in E2E. It lives in the card dialog, not a per-card menu (see observations).
+- [x] Optimistic move with rollback and assertive announcement on error (unit test and E2E with a failed move); viewers get a disabled handle and the API returns 403.
+- [x] Common criteria G1 to G5, G8, A1 to A5, A7, U1 to U10: checks green, Zod schemas in shared, transaction and activity, error format and no-leak 404 verified.
+
+**Required tests:**
+- [x] Unit: `ordering.test.ts` (`placeCard`, `neighboursAt`, `layoutOf`), stale-neighbour and rebalance cases in `move.test.ts`.
+- [x] API: within and between columns 200; other board 404; viewer 403; non-member 404; deleted card 404; two parallel moves into one gap; two parallel moves of one card; rebalance keeps the order; 400 matrix and 401.
+- [x] E2E: mouse drag persists after reload; keyboard move persists; Escape cancels; Move to...; axe on the board.
+- [x] Accessibility: key sequence and live-region text for pick-up, move, drop and cancel.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- "Move to..." is in the card dialog because the board has no card menu; Enter on the card link still opens the card (KB-012), so keyboard pick-up uses Space on the link or the move handle. The planner may want to confirm both choices.
+- Rapid arrow presses overwrite each other in the live region (last wins).
+- Touch behaviour was not tested on real devices.
+- `prisma migrate reset --force` was not run (sandbox restrictions); no migration changed.
