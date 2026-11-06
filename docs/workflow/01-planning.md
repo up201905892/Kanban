@@ -23,7 +23,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Planned |
 | KB-014 | Labels | Board | Low | KB-012, KB-018 | Proposed |
 | KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | Done |
-| KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Planned |
+| KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Ready for test |
 | KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Planned |
 | KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Planned |
 | KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Planned |
@@ -773,6 +773,8 @@ Task template (copy for each new task):
 - 2026-10-29 · planner · D5 answered by João (approvals.md, 2026-10-28): hybrid; the ADR records Yjs as authority for descriptions and presence and PostgreSQL for structured data, consistent with ADR 0001 section 7 · spec unchanged
 - 2026-10-29 · planner · dependency KB-009 added: the socket close/re-authorization criterion and its "removing a member closes their socket" test need KB-009's member removal and role change; KB-009 is Planned, so there is no cycle · stays Proposed
 - 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04); room authorization uses the ADR 0003 role matrix confirmed as D8
+- 2026-11-06 · developer · Planned → In development · started
+- 2026-11-06 · developer · In development → Ready for test · commit cc55adb
 
 ### KB-017 · Yjs document persistence in PostgreSQL
 
