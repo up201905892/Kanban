@@ -9,7 +9,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, request } from '../../../lib/api';
 import { boardKey, useBoardMutation } from '../../board/api';
-import { cardsOf } from '../../board/ordering';
+import { cardsOf, placeCard } from '../../board/ordering';
 
 export const cardKey = (id: string) => ['cards', id] as const;
 
@@ -111,6 +111,29 @@ export function useUpdateCard(projectId: string) {
       void queryClient.invalidateQueries({ queryKey: cardKey(id) });
     },
   });
+}
+
+export interface MoveCardVars {
+  id: string;
+  columnId: string;
+  afterCardId: string | null;
+  beforeCardId: string | null;
+}
+
+/** Optimistic move: the board shows the card in its new place at once and rolls back on error. */
+export function useMoveCard(projectId: string) {
+  const queryClient = useQueryClient();
+  return useBoardMutation<MoveCardVars, CardResponse>(
+    projectId,
+    async ({ id, ...body }) => {
+      const result = await apiClient.post(`/api/cards/${id}/move`, body, cardResponseSchema);
+      // The card dialog may hold an older copy (version, column).
+      void queryClient.invalidateQueries({ queryKey: cardKey(id) });
+      return result;
+    },
+    (board, { id, columnId, afterCardId, beforeCardId }) =>
+      placeCard(board, id, columnId, afterCardId, beforeCardId),
+  );
 }
 
 export function useDeleteCard(projectId: string) {

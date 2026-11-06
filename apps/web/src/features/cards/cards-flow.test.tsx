@@ -187,6 +187,75 @@ describe('cards on the board', () => {
   });
 });
 
+describe('moving cards', () => {
+  it('gives editors a move handle per card and viewers a disabled one', async () => {
+    stubFetch(server('owner', [card(1)]));
+    board();
+    expect(await screen.findByRole('button', { name: 'Move card KB-1' })).toBeEnabled();
+  });
+
+  it('disables the handle for a viewer', async () => {
+    stubFetch(server('viewer', [card(1)]));
+    board();
+    const handle = await screen.findByRole('button', {
+      name: 'Move card KB-1 (not available to viewers)',
+    });
+    expect(handle).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Move card KB-1' })).toBeNull();
+  });
+
+  it('"Move to..." moves the card optimistically and announces it', async () => {
+    const cards = [card(1), card(2)];
+    let sent: unknown;
+    stubFetch({
+      ...server('owner', cards),
+      [`POST /api/cards/${kid(1)}/move`]: (body) => {
+        sent = body;
+        const found = cards[0] as Cd;
+        found.columnId = cid(3);
+        found.version = 2;
+        return jsonResponse(200, { card: full(found) });
+      },
+    });
+    const user = board(`/projects/${PID}/cards/1`);
+    const dialog = await screen.findByRole('dialog', { name: 'Card KB-1' });
+    await user.selectOptions(within(dialog).getByLabelText('Column'), 'Done');
+    await user.selectOptions(within(dialog).getByLabelText('Position'), 'Top');
+    await user.click(within(dialog).getByRole('button', { name: 'Move card' }));
+    const done = screen.getByRole('region', { name: 'Column Done' });
+    expect(await within(done).findByRole('link', { name: 'KB-1 Card 1' })).toBeVisible();
+    await waitFor(() =>
+      expect(polite()).toHaveTextContent("Card KB-1 'Card 1' moved to Done, position 1 of 1"),
+    );
+    expect(sent).toEqual({
+      columnId: cid(3),
+      afterCardId: null,
+      beforeCardId: null,
+    });
+  });
+
+  it('rolls the move back and announces the error when the server refuses', async () => {
+    stubFetch({
+      ...server('owner', [card(1), card(2)]),
+      [`POST /api/cards/${kid(2)}/move`]: () =>
+        jsonResponse(404, { error: { code: 'NOT_FOUND', message: 'Resource not found' } }),
+    });
+    const user = board(`/projects/${PID}/cards/2`);
+    const dialog = await screen.findByRole('dialog', { name: 'Card KB-2' });
+    await user.selectOptions(within(dialog).getByLabelText('Column'), 'In progress');
+    await user.click(within(dialog).getByRole('button', { name: 'Move card' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('live-assertive')).toHaveTextContent(
+        "Could not move Card KB-2 'Card 2': Resource not found",
+      ),
+    );
+    const todo = screen.getByRole('region', { name: 'Column To do' });
+    await waitFor(() =>
+      expect(within(todo).getByRole('link', { name: 'KB-2 Card 2' })).toBeVisible(),
+    );
+  });
+});
+
 describe('card dialog', () => {
   it('opens from a tile with Enter and closes with Escape, returning focus to the tile', async () => {
     stubFetch(server('owner', [card(1, cid(1), { description: 'Some **bold** words' })]));

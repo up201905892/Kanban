@@ -200,6 +200,44 @@ main,
   overflow-wrap: anywhere;
 }
 
+.card-list {
+  min-height: 2.25rem;
+}
+
+.card-item {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.card-item .card-tile {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-item.is-dragging {
+  opacity: 0.4;
+}
+
+.card-handle {
+  touch-action: none;
+  cursor: grab;
+  min-width: 2rem;
+}
+
+.card-handle:disabled {
+  cursor: not-allowed;
+}
+
+.card-overlay {
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+  cursor: grabbing;
+}
+
+.move-section {
+  margin-top: 1rem;
+}
+
 .card-ref {
   font-weight: 600;
 }

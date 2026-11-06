@@ -98,6 +98,10 @@ Any role. Response `200 { card }`. A soft-deleted card is `404` for everyone. Er
 
 Owner or member. Body with at least one of `title`, `description` (the description path is interim until KB-019). A change increments `version` and writes `title_changed` (`{ from, to }`) and/or `description_changed` (`{ from, to }` as lengths, never the text) in the same transaction; a request that changes nothing returns the card untouched. Response `200 { card }`. Errors: `400`, `401`, `403`, `404`.
 
+### POST /api/cards/:id/move
+
+Owner or member. Body `{ columnId, afterCardId?, beforeCardId? }` (`null` or missing means no neighbour on that side; with neither, the card goes to the end of the column). The destination column must belong to the same board and be visible to the caller (another board or workspace is `404`); a neighbour on another board is `404`. Inside one transaction under the board lock the server computes the key from the current neighbours (ADR 0001 section 3: a neighbour that vanished or moved elsewhere is stale and the remaining one is used), rebalances the column's keys when the key would outgrow 50 characters (siblings get a new `version`, the order is unchanged), increments the card's `version` and writes a `moved` event `{ fromColumnId, toColumnId }` only when the column changes. Response `200 { card }` with the final `position` and `version`. Errors: `400`, `401`, `403`, `404`.
+
 ### DELETE /api/cards/:id
 
 Owner or member. Soft delete (`deletedAt`); writes a `deleted` event. Response `204`; afterwards `GET`, `PATCH` and `DELETE` answer `404` and the card disappears from the board. Errors: `400`, `401`, `403`, `404`.

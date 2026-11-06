@@ -3,6 +3,7 @@ import {
   type Card,
   type CardSummary,
   type CreateCardRequest,
+  type MoveCardRequest,
   type UpdateCardRequest,
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
@@ -217,5 +218,72 @@ export async function deleteCard(
       data: { deletedAt: new Date(), version: { increment: 1 } },
     });
     await recordActivity(tx, id, user.id, { type: 'deleted', data: { title: card.title } });
+  });
+}
+
+/**
+ * Moves a card inside its column or to another column of the same board (KB-015). Under the board
+ * lock the server reads the current neighbours and computes the final key (ADR 0001 section 3), so
+ * parallel moves into one gap both land exactly once, in the deterministic `(position, id)` order.
+ * A neighbour that vanished or moved elsewhere is stale and handled by the documented fallback.
+ */
+export async function moveCard(
+  prisma: PrismaClient,
+  user: { id: string },
+  id: string,
+  input: MoveCardRequest,
+): Promise<Card> {
+  await authorize(prisma, user, { type: 'card', id }, 'card:edit');
+  // The destination is authorized too: a column of a workspace the caller cannot see is a plain 404.
+  await authorize(prisma, user, { type: 'column', id: input.columnId }, 'card:edit');
+  return prisma.$transaction(async (tx) => {
+    const first = await tx.card.findFirst({
+      where: { id, deletedAt: null },
+      select: { boardId: true },
+    });
+    if (!first || !(await lockBoard(tx, first.boardId))) throw notFound();
+    // Re-read under the lock: the card or the column may have been deleted while we waited.
+    const card = await tx.card.findFirst({ where: { id, deletedAt: null } });
+    if (!card) throw notFound();
+    const column = await tx.column.findUnique({ where: { id: input.columnId } });
+    if (!column || column.boardId !== card.boardId) throw notFound();
+
+    // A neighbour on another board is never linked; one that merely moved is stale.
+    const wanted = [input.afterCardId, input.beforeCardId].filter(
+      (n): n is string => typeof n === 'string',
+    );
+    if (wanted.length > 0) {
+      const foreign = await tx.card.count({
+        where: { id: { in: wanted }, deletedAt: null, boardId: { not: card.boardId } },
+      });
+      if (foreign > 0) throw notFound();
+    }
+
+    const siblings = (await liveCardsOf(tx, column.id)).filter((s) => s.id !== id);
+    const position = await placeWithRebalance(
+      siblings,
+      input.afterCardId,
+      input.beforeCardId,
+      async (updates) => {
+        for (const u of updates) {
+          await tx.card.update({
+            where: { id: u.id },
+            data: { position: u.position, version: { increment: 1 } },
+          });
+        }
+      },
+    );
+
+    const row = await tx.card.update({
+      where: { id },
+      data: { columnId: column.id, position, version: { increment: 1 } },
+    });
+    if (card.columnId !== column.id) {
+      await recordActivity(tx, id, user.id, {
+        type: 'moved',
+        data: { fromColumnId: card.columnId, toColumnId: column.id },
+      });
+    }
+    return toCard(row);
   });
 }

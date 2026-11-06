@@ -20,37 +20,44 @@ import {
   TextField,
   useAnnounce,
 } from '../../components';
-import { Link } from 'react-router';
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  closestCorners,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core';
+import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { AddCard, addCardButtonId } from '../cards/AddCard';
 import { CardDialog } from '../cards/CardDialog';
-import { useCreateCard, useDeleteCard } from '../cards/api';
+import { useCreateCard, useDeleteCard, useMoveCard } from '../cards/api';
+import { CardOverlay, ColumnCards, cardHandleId, cardTileId } from './CardList';
 import { ColumnMenu, type ColumnMenuItem } from './ColumnMenu';
 import { useBoard, useCreateColumn, useDeleteColumn, useUpdateColumn } from './api';
-import { cardsOf, sortColumns } from './ordering';
+import { cardsOf, layoutOf, neighboursAt, sortColumns } from './ordering';
 
-const cardTileId = (cardId: string) => `card-tile-${cardId}`;
-
-/** A card on the board: a link to its detail dialog, so Tab reaches it and Enter opens it. */
-function CardTile({ project, card }: { project: Project; card: CardSummary }) {
-  // Number 0 is an optimistic card the server has not numbered yet: shown, but not openable.
-  if (card.number === 0) {
-    return (
-      <div className="card-tile" aria-busy="true">
-        <span className="card-title">{card.title}</span>
-      </div>
-    );
-  }
-  const reference = cardReference(project.key, card.number);
-  return (
-    <Link
-      id={cardTileId(card.id)}
-      className="card-tile"
-      to={`/projects/${project.id}/cards/${card.number}`}
-    >
-      <span className="card-ref">{reference}</span> <span className="card-title">{card.title}</span>
-    </Link>
-  );
+/** Which column of a drag layout holds `id` (a card id) or is `id` (a column id). */
+function containerOf(layout: Record<string, string[]>, id: string): string | undefined {
+  if (id in layout) return id;
+  return Object.keys(layout).find((columnId) => layout[columnId]?.includes(id));
 }
+
+const DRAG_INSTRUCTIONS =
+  'To pick up a card, press Space or Enter on its move handle, or Space on the card. While moving, ' +
+  'use the arrow keys to change column or position, Space or Enter to drop, and Escape to cancel.';
+
+// Announcements go through the app announcer (one live region for everything), not dnd-kit's own.
+const SILENT_ANNOUNCEMENTS = {
+  onDragStart: () => undefined,
+  onDragOver: () => undefined,
+  onDragEnd: () => undefined,
+  onDragCancel: () => undefined,
+};
 
 const triggerIdOf = (columnId: string) => `column-menu-${columnId}`;
 const ADD_BUTTON_ID = 'add-column-button';
@@ -300,6 +307,16 @@ export function BoardView({
   const deleteColumn = useDeleteColumn(project.id);
   const createCard = useCreateCard(project.id);
   const deleteCard = useDeleteCard(project.id);
+  const moveCard = useMoveCard(project.id);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  // While a card is being dragged: the ids of every column in the order the drag currently shows,
+  // the card being held and where it started (for Escape and for "nothing changed").
+  const [layout, setLayout] = useState<Record<string, string[]> | null>(null);
+  const [heldId, setHeldId] = useState<string | null>(null);
+  const origin = useRef<{ columnId: string; index: number } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Column | null>(null);
   const focusAfterRender = useRef<string | null>(null);
@@ -432,6 +449,160 @@ export function BoardView({
     }
   }
 
+  const data = board.data;
+  const cardById = (id: string) => data.cards.find((c) => c.id === id);
+  const label = (card: CardSummary) =>
+    `Card ${cardReference(project.key, card.number)} '${card.title}'`;
+  const columnName = (columnId: string) => columns.find((c) => c.id === columnId)?.name ?? '';
+  /** "In progress, position 3 of 5" for the card at `index` of a column's id list. */
+  const where = (columnId: string, ids: readonly string[], index: number) =>
+    `${columnName(columnId)}, position ${index + 1} of ${ids.length}`;
+
+  /** What the board shows for one column: the drag layout while dragging, the cache otherwise. */
+  const cardsShown = (columnId: string): CardSummary[] => {
+    const ids = layout?.[columnId];
+    if (!ids) return cardsOf(data, columnId);
+    return ids.flatMap((id) => cardById(id) ?? []);
+  };
+
+  function onDragStart({ active }: DragStartEvent) {
+    const id = String(active.id);
+    const card = cardById(id);
+    const start = layoutOf(data);
+    const columnId = containerOf(start, id);
+    if (!card || !columnId) return;
+    const ids = start[columnId] ?? [];
+    origin.current = { columnId, index: ids.indexOf(id) };
+    setLayout(start);
+    setHeldId(id);
+    announce(
+      `Picked up ${label(card)}. ${where(columnId, ids, ids.indexOf(id))}. ` +
+        'Use the arrow keys to move it, Space to drop it, Escape to cancel.',
+    );
+  }
+
+  function onDragOver({ active, over }: DragOverEvent) {
+    if (!layout || !over) return;
+    const id = String(active.id);
+    const overId = String(over.id);
+    const from = containerOf(layout, id);
+    const to = containerOf(layout, overId);
+    const card = cardById(id);
+    if (!from || !to || !card) return;
+    const target = layout[to] ?? [];
+    if (from === to) {
+      const index = overId in layout ? target.length - 1 : target.indexOf(overId);
+      if (index >= 0) announce(`${label(card)} moved to ${where(to, target, index)}`);
+      return;
+    }
+    // Into another column: the card goes where it is hovering (below the hovered card when the
+    // dragged copy is past its middle), or last when the column itself is the target.
+    let index = target.length;
+    if (!(overId in layout)) {
+      const overIndex = target.indexOf(overId);
+      const translated = active.rect.current.translated;
+      const below = translated !== null && translated.top > over.rect.top + over.rect.height / 2;
+      index = overIndex >= 0 ? overIndex + (below ? 1 : 0) : target.length;
+    }
+    const next = {
+      ...layout,
+      [from]: (layout[from] ?? []).filter((x) => x !== id),
+      [to]: [...target.slice(0, index), id, ...target.slice(index)],
+    };
+    setLayout(next);
+    announce(`${label(card)} moved to ${where(to, next[to] ?? [], index)}`);
+  }
+
+  function endDrag(focusId?: string) {
+    // Let the optimistic cache update land before the drag layout is dropped, so nothing flickers.
+    // Cards that changed column are remounted, so focus goes back to the handle after that settles.
+    window.setTimeout(() => {
+      setLayout(null);
+      if (focusId) focusHandle(focusId);
+    }, 0);
+    setHeldId(null);
+  }
+
+  function focusHandle(id: string) {
+    requestAnimationFrame(() => document.getElementById(cardHandleId(id))?.focus());
+  }
+
+  function onDragEnd({ active, over }: DragEndEvent) {
+    const id = String(active.id);
+    const card = cardById(id);
+    const start = origin.current;
+    origin.current = null;
+    if (!layout || !card || !start) return endDrag();
+    const to = over ? containerOf(layout, String(over.id)) : undefined;
+    if (!over || !to) {
+      announce(cancelText(card, start));
+      return endDrag(id);
+    }
+    let ids = layout[to] ?? [];
+    const overId = String(over.id);
+    if (!(overId in layout) && ids.includes(overId) && overId !== id) {
+      ids = arrayMove(ids, ids.indexOf(id), ids.indexOf(overId));
+    }
+    const index = ids.indexOf(id);
+    endDrag(id);
+    if (to === start.columnId && index === start.index) {
+      announce(`${label(card)} dropped; it stays in ${where(to, ids, index)}`);
+      return;
+    }
+    announce(`${label(card)} dropped in ${where(to, ids, index)}`);
+    sendMove(card, to, ids, index, start);
+  }
+
+  function cancelText(card: CardSummary, start: { columnId: string; index: number }) {
+    const ids = layoutOf(data)[start.columnId] ?? [];
+    return `Move cancelled. ${label(card)} returned to ${where(start.columnId, ids, start.index)}`;
+  }
+
+  function onDragCancel() {
+    const start = origin.current;
+    const id = heldId;
+    origin.current = null;
+    const card = id ? cardById(id) : undefined;
+    if (card && start) announce(cancelText(card, start));
+    endDrag(id ?? undefined);
+  }
+
+  /** Sends the move; the optimistic cache update shows it at once and an error rolls it back. */
+  function sendMove(
+    card: CardSummary,
+    columnId: string,
+    ids: readonly string[],
+    index: number,
+    start: { columnId: string; index: number },
+  ) {
+    moveCard.mutate(
+      { id: card.id, columnId, ...neighboursAt(ids, index) },
+      {
+        onError: (error) => {
+          announce(
+            `Could not move ${label(card)}: ${error.message}. It is back in ${columnName(start.columnId)}.`,
+            'assertive',
+          );
+          focusAfterRender.current = cardHandleId(card.id);
+        },
+      },
+    );
+  }
+
+  /** The non-drag alternative: "Move to..." in the card dialog (column and top or bottom). */
+  function moveTo(card: CardSummary, columnId: string, placement: 'top' | 'bottom') {
+    const others = cardsOf(data, columnId)
+      .map((c) => c.id)
+      .filter((id) => id !== card.id);
+    const index = placement === 'top' ? 0 : others.length;
+    const ids = [...others.slice(0, index), card.id, ...others.slice(index)];
+    const start = { columnId: card.columnId, index: 0 };
+    announce(`${label(card)} moved to ${where(columnId, ids, index)}`);
+    sendMove(card, columnId, ids, index, start);
+  }
+
+  const heldCard = heldId ? cardById(heldId) : undefined;
+
   const menuItems = (column: Column, index: number): ColumnMenuItem[] => [
     { label: 'Rename', onSelect: () => setEditingId(column.id) },
     {
@@ -470,53 +641,68 @@ export function BoardView({
       )}
       {/* The scroll container is focusable so keyboard users can scroll it (axe: scrollable-region). */}
       <div className="board-scroll" tabIndex={0} role="group" aria-label="Board columns">
-        <ul className="board">
-          {columns.map((column, index) => (
-            <li key={column.id} className="board-column">
-              <section aria-label={`Column ${column.name}`}>
-                <header className="column-header">
-                  <ColumnTitle
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          accessibility={{
+            announcements: SILENT_ANNOUNCEMENTS,
+            screenReaderInstructions: { draggable: DRAG_INSTRUCTIONS },
+          }}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDragEnd={onDragEnd}
+          onDragCancel={onDragCancel}
+        >
+          <ul className="board">
+            {columns.map((column, index) => (
+              <li key={column.id} className="board-column">
+                <section aria-label={`Column ${column.name}`}>
+                  <header className="column-header">
+                    <ColumnTitle
+                      column={column}
+                      canManage={canManage}
+                      editing={editingId === column.id}
+                      onStartEdit={() => setEditingId(column.id)}
+                      onCancel={() => {
+                        setEditingId(null);
+                        focusAfterRender.current = triggerIdOf(column.id);
+                      }}
+                      onSave={(name) => rename(column, name)}
+                    />
+                    {canManage && (
+                      <ColumnMenu
+                        triggerId={triggerIdOf(column.id)}
+                        columnName={column.name}
+                        items={menuItems(column, index)}
+                      />
+                    )}
+                  </header>
+                  <ColumnCards
+                    project={project}
                     column={column}
-                    canManage={canManage}
-                    editing={editingId === column.id}
-                    onStartEdit={() => setEditingId(column.id)}
-                    onCancel={() => {
-                      setEditingId(null);
-                      focusAfterRender.current = triggerIdOf(column.id);
-                    }}
-                    onSave={(name) => rename(column, name)}
+                    cards={cardsShown(column.id)}
+                    canDrag={canEditCards}
                   />
-                  {canManage && (
-                    <ColumnMenu
-                      triggerId={triggerIdOf(column.id)}
+                  {canEditCards && (
+                    <AddCard
+                      columnId={column.id}
                       columnName={column.name}
-                      items={menuItems(column, index)}
+                      onAdd={(title) => addCard(column, title)}
                     />
                   )}
-                </header>
-                <ul className="card-list" aria-label={`Cards in ${column.name}`}>
-                  {cardsOf(board.data, column.id).map((card) => (
-                    <li key={card.id}>
-                      <CardTile project={project} card={card} />
-                    </li>
-                  ))}
-                </ul>
-                {canEditCards && (
-                  <AddCard
-                    columnId={column.id}
-                    columnName={column.name}
-                    onAdd={(title) => addCard(column, title)}
-                  />
-                )}
-              </section>
-            </li>
-          ))}
-          {canManage && (
-            <li className="board-column">
-              <AddColumn onAdd={addColumn} />
-            </li>
-          )}
-        </ul>
+                </section>
+              </li>
+            ))}
+            {canManage && (
+              <li className="board-column">
+                <AddColumn onAdd={addColumn} />
+              </li>
+            )}
+          </ul>
+          <DragOverlay dropAnimation={null}>
+            {heldCard && <CardOverlay project={project} card={heldCard} />}
+          </DragOverlay>
+        </DndContext>
       </div>
       <Dialog
         open={deleting !== null}
@@ -540,6 +726,8 @@ export function BoardView({
           number={openCardNumber}
           summary={board.data.cards.find((c) => c.number === openCardNumber)}
           canEdit={canEditCards}
+          columns={columns}
+          onMove={moveTo}
           onClose={() => closeCard(board.data.cards.find((c) => c.number === openCardNumber))}
           onDelete={removeCard}
         />

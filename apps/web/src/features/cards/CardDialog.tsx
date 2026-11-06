@@ -7,8 +7,17 @@ import {
   cardTitleSchema,
   type Card,
   type CardSummary,
+  type Column,
 } from '@kanban/shared';
-import { Button, Dialog, ErrorState, Spinner, TextArea, useAnnounce } from '../../components';
+import {
+  Button,
+  Dialog,
+  ErrorState,
+  Select,
+  Spinner,
+  TextArea,
+  useAnnounce,
+} from '../../components';
 import { useCard, useUpdateCard } from './api';
 import { Markdown } from './Markdown';
 
@@ -19,6 +28,10 @@ export interface CardDialogProps {
   summary: CardSummary | undefined;
   /** Owners and members (`card:edit`); viewers get a read-only dialog. */
   canEdit: boolean;
+  /** Columns of the board, for "Move to...". */
+  columns: Column[];
+  /** "Move to...": the non-drag way to move the card. */
+  onMove: (card: CardSummary, columnId: string, placement: 'top' | 'bottom') => void;
   /** The number from the address, for the "not found" message. */
   number: number;
   onClose: () => void;
@@ -31,6 +44,8 @@ export function CardDialog({
   projectKey,
   summary,
   canEdit,
+  columns,
+  onMove,
   number,
   onClose,
   onDelete,
@@ -52,6 +67,8 @@ export function CardDialog({
       reference={reference}
       summary={summary}
       canEdit={canEdit}
+      columns={columns}
+      onMove={onMove}
       onClose={onClose}
       onDelete={onDelete}
     />
@@ -63,6 +80,8 @@ interface CardDetailProps {
   reference: string;
   summary: CardSummary;
   canEdit: boolean;
+  columns: Column[];
+  onMove: (card: CardSummary, columnId: string, placement: 'top' | 'bottom') => void;
   onClose: () => void;
   onDelete: (card: CardSummary) => void;
 }
@@ -72,6 +91,8 @@ function CardDetail({
   reference,
   summary,
   canEdit,
+  columns,
+  onMove,
   onClose,
   onDelete,
 }: CardDetailProps) {
@@ -115,11 +136,52 @@ function CardDetail({
           <DescriptionSection projectId={projectId} card={card.data} canEdit={canEdit} />
         </>
       )}
+      {canEdit && <MoveSection summary={summary} columns={columns} onMove={onMove} />}
       <div className="dialog-actions">
         {canEdit && <Button onClick={() => setConfirming(true)}>Delete card</Button>}
         <Button onClick={onClose}>Close</Button>
       </div>
     </Dialog>
+  );
+}
+
+interface MoveSectionProps {
+  summary: CardSummary;
+  columns: Column[];
+  onMove: (card: CardSummary, columnId: string, placement: 'top' | 'bottom') => void;
+}
+
+/** "Move to...": the keyboard and screen-reader alternative to dragging (column + top or bottom). */
+function MoveSection({ summary, columns, onMove }: MoveSectionProps) {
+  const [columnId, setColumnId] = useState(summary.columnId);
+  const [placement, setPlacement] = useState<'top' | 'bottom'>('bottom');
+  return (
+    <form
+      aria-label="Move to"
+      className="move-section"
+      onSubmit={(event: FormEvent) => {
+        event.preventDefault();
+        onMove(summary, columnId, placement);
+      }}
+    >
+      <h3>Move to&hellip;</h3>
+      <Select
+        label="Column"
+        value={columnId}
+        options={columns.map((c) => ({ value: c.id, label: c.name }))}
+        onChange={(event) => setColumnId(event.target.value)}
+      />
+      <Select
+        label="Position"
+        value={placement}
+        options={[
+          { value: 'top', label: 'Top' },
+          { value: 'bottom', label: 'Bottom' },
+        ]}
+        onChange={(event) => setPlacement(event.target.value === 'top' ? 'top' : 'bottom')}
+      />
+      <Button type="submit">Move card</Button>
+    </form>
   );
 }
 

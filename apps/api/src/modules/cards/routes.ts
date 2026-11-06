@@ -7,11 +7,12 @@ import {
   cardResponseSchema,
   columnCardsParamsSchema,
   createCardRequestSchema,
+  moveCardRequestSchema,
   updateCardRequestSchema,
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
 import { AppError } from '../../lib/app-error.js';
-import { createCard, deleteCard, getCard, updateCard } from './service.js';
+import { createCard, deleteCard, getCard, moveCard, updateCard } from './service.js';
 
 export function cardRoutes({ prisma }: { prisma: PrismaClient }) {
   return async (app: FastifyInstance): Promise<void> => {
@@ -54,6 +55,20 @@ export function cardRoutes({ prisma }: { prisma: PrismaClient }) {
       },
       async (req) => ({
         card: await updateCard(prisma, userOf(req), req.params.id, req.body),
+      }),
+    );
+
+    r.post(
+      '/api/cards/:id/move',
+      {
+        schema: {
+          params: cardParamsSchema,
+          body: moveCardRequestSchema,
+          response: { 200: cardResponseSchema },
+        },
+      },
+      async (req) => ({
+        card: await moveCard(prisma, userOf(req), req.params.id, req.body),
       }),
     );
 

@@ -7,6 +7,7 @@ import {
   cardSchema,
   createCardRequestSchema,
   deleteColumnQuerySchema,
+  moveCardRequestSchema,
   updateCardRequestSchema,
 } from './cards.js';
 
@@ -82,6 +83,23 @@ describe('cardSchema', () => {
   });
 });
 
+describe('moveCardRequestSchema', () => {
+  it('needs a column; neighbours are optional and nullable', () => {
+    expect(moveCardRequestSchema.safeParse({ columnId: id }).success).toBe(true);
+    expect(
+      moveCardRequestSchema.safeParse({ columnId: id, afterCardId: null, beforeCardId: id })
+        .success,
+    ).toBe(true);
+  });
+
+  it('rejects a missing column, bad ids and unknown fields', () => {
+    expect(moveCardRequestSchema.safeParse({}).success).toBe(false);
+    expect(moveCardRequestSchema.safeParse({ columnId: 'x' }).success).toBe(false);
+    expect(moveCardRequestSchema.safeParse({ columnId: id, afterCardId: 'x' }).success).toBe(false);
+    expect(moveCardRequestSchema.safeParse({ columnId: id, position: 'a0' }).success).toBe(false);
+  });
+});
+
 describe('cardReference', () => {
   it('joins the project key and the number', () => {
     expect(cardReference('KB', 12)).toBe('KB-12');
@@ -97,6 +115,7 @@ describe('activityEventDataSchema', () => {
       { type: 'description_changed', data: { from: 0, to: 12 } },
       { type: 'deleted', data: { title: 'T' } },
       { type: 'column_deleted_moved', data: { from: column, to: column } },
+      { type: 'moved', data: { fromColumnId: id, toColumnId: id } },
     ]) {
       expect(activityEventDataSchema.safeParse(event).success).toBe(true);
     }

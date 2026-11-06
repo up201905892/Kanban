@@ -49,6 +49,52 @@ export function placeColumn(
 export const cardsOf = (board: BoardResponse, columnId: string): CardSummary[] =>
   board.cards.filter((c) => c.columnId === columnId).sort(compareByPosition);
 
+/** Neighbours of the card at `index` in a list of card ids, as the move request names them. */
+export function neighboursAt(
+  ids: readonly string[],
+  index: number,
+): { afterCardId: string | null; beforeCardId: string | null } {
+  return { afterCardId: ids[index - 1] ?? null, beforeCardId: ids[index + 1] ?? null };
+}
+
+/**
+ * Places card `id` in `columnId` after/before the named neighbours, mirroring the server (ADR 0001
+ * section 3: a stale neighbour falls back to the other one, and with none the card goes last), so an
+ * optimistic move shows at once. The local key is only a hint until the server answers.
+ */
+export function placeCard(
+  board: BoardResponse,
+  id: string,
+  columnId: string,
+  afterId: string | null | undefined,
+  beforeId: string | null | undefined,
+): BoardResponse {
+  const moving = board.cards.find((c) => c.id === id);
+  if (!moving) return board;
+  const others = cardsOf(board, columnId).filter((c) => c.id !== id);
+  const afterIndex = afterId ? others.findIndex((c) => c.id === afterId) : -1;
+  const beforeIndex = beforeId ? others.findIndex((c) => c.id === beforeId) : -1;
+  let index = others.length;
+  if (afterIndex !== -1) index = afterIndex + 1;
+  else if (beforeIndex !== -1) index = beforeIndex;
+  const position = hintKey(others[index - 1]?.position, others[index]?.position);
+  return {
+    ...board,
+    cards: board.cards.map((c) =>
+      c.id === id ? { ...c, columnId, position: position ?? c.position } : c,
+    ),
+  };
+}
+
+/** Ids of every column's cards in display order; the starting point of a drag. */
+export function layoutOf(board: BoardResponse): Record<string, string[]> {
+  const layout: Record<string, string[]> = {};
+  for (const column of board.columns) {
+    layout[column.id] = cardsOf(board, column.id).map((c) => c.id);
+  }
+  return layout;
+}
+
 /** Removes a column; its cards go to the end of `moveCardsTo`, as the server does. */
 export function applyColumnDelete(
   board: BoardResponse,

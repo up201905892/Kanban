@@ -68,6 +68,18 @@ export const updateCardRequestSchema = z
   });
 export type UpdateCardRequest = z.infer<typeof updateCardRequestSchema>;
 
+/**
+ * `POST /api/cards/:id/move`. The client names the neighbours it saw; the server computes the final
+ * key from the current ones (ADR 0001 section 3). `null` or missing means "no neighbour on that
+ * side"; with neither the card goes to the end of the column.
+ */
+export const moveCardRequestSchema = z.strictObject({
+  columnId: z.uuid(),
+  afterCardId: z.uuid().nullable().optional(),
+  beforeCardId: z.uuid().nullable().optional(),
+});
+export type MoveCardRequest = z.infer<typeof moveCardRequestSchema>;
+
 /** Query string of `DELETE /api/columns/:id`. */
 export const deleteColumnQuerySchema = z.strictObject({
   /** Column of the same board that receives the cards of the deleted column. */
@@ -88,6 +100,7 @@ export const ACTIVITY_TYPES = [
   'description_changed',
   'deleted',
   'column_deleted_moved',
+  'moved',
 ] as const;
 
 /**
@@ -111,6 +124,11 @@ export const activityEventDataSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('column_deleted_moved'),
     data: z.object({ from: columnRefSchema, to: columnRefSchema }),
+  }),
+  /** Only recorded when the column changes; reordering inside a column is not an event. */
+  z.object({
+    type: z.literal('moved'),
+    data: z.object({ fromColumnId: z.uuid(), toColumnId: z.uuid() }),
   }),
 ]);
 export type ActivityEventData = z.infer<typeof activityEventDataSchema>;

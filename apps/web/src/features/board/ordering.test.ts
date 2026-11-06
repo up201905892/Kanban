@@ -4,6 +4,9 @@ import {
   applyColumnDelete,
   applyColumnUpdate,
   cardsOf,
+  layoutOf,
+  neighboursAt,
+  placeCard,
   placeColumn,
   sortColumns,
 } from './ordering';
@@ -83,5 +86,59 @@ describe('applyColumnDelete', () => {
   it('moves into an empty destination', () => {
     const next = applyColumnDelete(board(), 'a', 'c');
     expect(cardsOf(next, 'c').map((c) => c.id)).toEqual(['x', 'y']);
+  });
+});
+
+describe('placeCard', () => {
+  it('moves a card between two neighbours of another column', () => {
+    const next = placeCard(board(), 'z', 'a', 'x', 'y');
+    expect(cardsOf(next, 'a').map((c) => c.id)).toEqual(['x', 'z', 'y']);
+    expect(cardsOf(next, 'b')).toEqual([]);
+  });
+
+  it('reorders inside a column and goes last without neighbours', () => {
+    expect(cardsOf(placeCard(board(), 'x', 'a', 'y', null), 'a').map((c) => c.id)).toEqual([
+      'y',
+      'x',
+    ]);
+    expect(cardsOf(placeCard(board(), 'x', 'b', null, null), 'b').map((c) => c.id)).toEqual([
+      'z',
+      'x',
+    ]);
+    expect(cardsOf(placeCard(board(), 'y', 'a', null, 'x'), 'a').map((c) => c.id)).toEqual([
+      'y',
+      'x',
+    ]);
+  });
+
+  it('treats a stale neighbour as missing and uses the other one', () => {
+    expect(cardsOf(placeCard(board(), 'z', 'a', 'gone', 'y'), 'a').map((c) => c.id)).toEqual([
+      'x',
+      'z',
+      'y',
+    ]);
+    expect(cardsOf(placeCard(board(), 'z', 'a', 'x', 'gone'), 'a').map((c) => c.id)).toEqual([
+      'x',
+      'z',
+      'y',
+    ]);
+  });
+
+  it('ignores an unknown card', () => {
+    const b = board();
+    expect(placeCard(b, 'nope', 'a', null, null)).toBe(b);
+  });
+});
+
+describe('neighboursAt and layoutOf', () => {
+  it('names the neighbours at an index, null at the edges', () => {
+    expect(neighboursAt(['p', 'q', 'r'], 1)).toEqual({ afterCardId: 'p', beforeCardId: 'r' });
+    expect(neighboursAt(['p', 'q', 'r'], 0)).toEqual({ afterCardId: null, beforeCardId: 'q' });
+    expect(neighboursAt(['p', 'q', 'r'], 2)).toEqual({ afterCardId: 'q', beforeCardId: null });
+    expect(neighboursAt(['p'], 0)).toEqual({ afterCardId: null, beforeCardId: null });
+  });
+
+  it('lists the card ids of every column in order', () => {
+    expect(layoutOf(board())).toEqual({ a: ['x', 'y'], b: ['z'], c: [] });
   });
 });
