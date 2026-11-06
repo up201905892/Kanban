@@ -1,0 +1,33 @@
+# 0004 · Real-time architecture
+
+- **Status:** Accepted (persistence section completed by KB-017; presence and board events by KB-019 and KB-018)
+- **Date:** 2026-11-06
+- **Task:** KB-016
+- **Technical decisions:** D1 (own Yjs server instead of a vendor, same authorization policy as REST), D5 (hybrid authority split, decided by João in approvals.md, 2026-10-28) in `docs/workflow/01-planning.md`. Consistent with ADR 0001 section 7 and ADR 0003 section 7.
+
+## Context
+
+Card descriptions are edited collaboratively and users see each other on a board. The CRDT library is Yjs, served by `apps/api`. We need one transport, one room model and one authorization policy.
+
+## Decision
+
+1. **Transport.** `@fastify/websocket` (on `ws`) serves `GET /ws/:room` on the API's port and origin, so the session cookie is sent with the upgrade and no CORS or second port exists. Messages are binary and follow the y-websocket protocol, implemented server side with `y-protocols` (sync and awareness) and `lib0`.
+2. **Rooms.** Two kinds, parsed by `parseRoomName` in `packages/shared`:
+   - `board:<boardId>`: awareness (presence) and server-pushed board events;
+   - `card:<cardId>:description`: the collaborative description text of one card.
+   Anything else closes with `4400`. One in-memory `Y.Doc` and one `Awareness` exist per room, created on the first connection (after the persistence hook loads it) and dropped after the last client leaves (after the hook stores it).
+3. **Message types.** First varint: `0` sync, `1` awareness, `3` query awareness (as y-websocket); `4` is our custom board event, sent only by the server as a varString with JSON validated by `boardEventMessageSchema` (`{ type, data }`; the catalogue comes with KB-018). Auth (`2`) and any type `4` from a client are ignored.
+4. **Authentication and authorization.** The upgrade first checks `Origin` equals the web origin and rejects otherwise with HTTP 403 (cross-site WebSocket hijacking; browsers always send it). After the upgrade the cookie goes through `getSessionFromCookieHeader()` (the same function as HTTP) and the room is authorized with the same `authorize()` resolvers (board and card resolve to their workspace) for `workspace:read`. Close codes: `4401` no session, `4403` not a member or the room does not exist (one answer for both, so existence never leaks, like ADR 0003), `4400` bad room name. No document bytes are sent before authorization completes; messages that arrive earlier are queued (at most 200) and processed afterwards. The route is listed in `PUBLIC_ROUTES` only because it authenticates itself after the handshake.
+5. **Roles in a room (R3).** Everyone with `workspace:read` receives the document and may send awareness. Document updates (sync step 2 and update messages) are applied only for roles with `card:edit`, in card rooms; for viewers they are silently discarded, and in board rooms they are discarded for everybody because the board document is written by the server only. The role is re-read at each message from the connection record, which the membership bus updates.
+6. **Authority split (D5, hybrid).** Yjs is the authority for card descriptions and presence. PostgreSQL, written through the REST API, is the authority for structured data (columns, cards, fields, positions, sprints); the API announces such changes to the clients as board events (type `4`) after the transaction commits (KB-018). Clients never write structured data through Yjs.
+7. **Membership changes.** `changeMemberRole` and `removeMember` publish on an in-process bus (`lib/membership-events.ts`) after their transaction commits. The WebSocket layer subscribes: a removed or departed user's sockets in that workspace close with `4403` immediately (well inside the 1 s target); a role change updates the connection's role, so the next message is judged with the new role. A refused change (for example last owner) publishes nothing. Not covered yet: deleting a whole workspace, project, board or card while clients are connected (their rooms simply stop being authorizable for new connections); and session expiry or logout of an open socket. These are candidates for a follow-up task.
+8. **Limits and liveness.** `maxPayload` is 1 MiB: `ws` closes larger messages with `1009`. Text frames close with `1003`, undecodable binary messages with `1007`. The server pings every 30 s and terminates a socket that did not answer the previous ping, which also removes its awareness states for the others.
+9. **Persistence.** The `RoomPersistence` hook (`load(room, doc)` before the first client is served, `store(room, doc)` when the last client leaves) is the seam for KB-017, which stores snapshots and updates in PostgreSQL so that one `pg_dump` also backs up the documents. Until then rooms are in memory only. If `load` fails the clients are closed with `1011` and the room is dropped.
+10. **Single-instance constraint.** Room state and the membership bus live in one Node process. Running several API instances would give each its own copy of a room and miss membership events. The scaling path is Redis pub/sub (or sticky routing by room) behind the two seams that exist: `RoomManager` for document and awareness fan-out and `lib/membership-events.ts` for membership events. Deployment (KB-031) must run one instance.
+11. **Reconnection.** Clients use the standard y-websocket provider: after a disconnect it reconnects with backoff and repeats the handshake (sync step 1 with its state vector), so the server sends only what is missing and the client sends the edits it made offline. Yjs merges them, so reconnecting needs no special server logic. A close with `4401` or `4403` must not be retried automatically (the UI sends the user to log in or shows no access); other codes are retried.
+
+## Consequences
+
+- One authorization policy covers REST and WebSocket, and a viewer cannot change a document even with a modified client.
+- The server holds documents of active rooms in memory; the number of simultaneously open cards bounds memory use. A malicious member can still send awareness states of any size up to 1 MiB; rate limiting is a possible later hardening.
+- Single-instance deployment is an explicit constraint until the Redis seam is built.

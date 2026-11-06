@@ -157,4 +157,15 @@ Reports whether the API can reach its database (used by the hosting healthcheck)
 
 ## Real-time messages
 
-None yet (see KB-016).
+Design and rationale: `docs/adr/0004-real-time-architecture.md`. Schemas: `packages/shared/src/realtime.ts`.
+
+### GET /ws/:room (WebSocket upgrade)
+
+Same port and origin as the REST API (Vite proxies `/ws` in development). Binary messages follow the y-websocket protocol.
+
+- Rooms: `board:<boardId>` (awareness and server-pushed board events) and `card:<cardId>:description` (collaborative text). IDs are UUIDs.
+- Upgrade: the `Origin` header must equal the web origin, otherwise `403 CSRF_REJECTED` before the upgrade. The session cookie authenticates after the upgrade.
+- Close codes: `4401` no or invalid session; `4403` not a member of the room's workspace, or the room does not exist (indistinguishable), or the membership was removed while connected; `4400` invalid room name; `1003` text frame; `1007` malformed message; `1009` message over 1 MiB; `1011` the room could not be loaded.
+- Message types (first varint): `0` sync, `1` awareness, `3` query awareness (all as in y-websocket), `4` board event (server to client only: a varString with JSON `{ "type": string, "data": object }`).
+- Viewers receive documents and may send awareness, but their document updates are discarded. In board rooms clients never write the document.
+- The server pings every 30 s and terminates connections that do not answer.

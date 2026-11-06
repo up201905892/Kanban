@@ -171,3 +171,19 @@ export {
   type User,
   type AuthResponse,
 } from './auth.js';
+export {
+  WS_MESSAGE,
+  WS_CLOSE,
+  WS_MAX_MESSAGE_BYTES,
+  WS_HEARTBEAT_MS,
+  ROOM_TYPES,
+  roomTypeSchema,
+  roomRefSchema,
+  roomParamsSchema,
+  roomName,
+  parseRoomName,
+  boardEventMessageSchema,
+  type RoomType,
+  type RoomRef,
+  type BoardEventMessage,
+} from './realtime.js';

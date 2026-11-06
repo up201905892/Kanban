@@ -1,6 +1,7 @@
 import { ErrorCode, type Member, type Role } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
 import { AppError, notFound } from '../../lib/app-error.js';
+import { publishMembershipChange } from '../../lib/membership-events.js';
 import { authorize } from '../authz/index.js';
 
 interface MemberRow {
@@ -56,6 +57,18 @@ export async function changeMemberRole(
   targetUserId: string,
   role: Role,
 ): Promise<Member> {
+  const member = await changeMemberRoleTx(prisma, user, workspaceId, targetUserId, role);
+  publishMembershipChange({ workspaceId, userId: targetUserId, role: member.role });
+  return member;
+}
+
+async function changeMemberRoleTx(
+  prisma: PrismaClient,
+  user: { id: string },
+  workspaceId: string,
+  targetUserId: string,
+  role: Role,
+): Promise<Member> {
   return prisma.$transaction(async (tx) => {
     await lockWorkspace(tx, workspaceId);
     await authorize(tx, user, { type: 'workspace', id: workspaceId }, 'members:manage');
@@ -103,4 +116,6 @@ export async function removeMember(
     // Only the membership goes: everything the person created stays.
     await tx.membership.delete({ where: { id: target.id } });
   });
+  // After commit, so a socket is never closed for a change that rolled back.
+  publishMembershipChange({ workspaceId, userId: targetUserId, role: null });
 }
