@@ -22,7 +22,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Done |
 | KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Planned |
 | KB-014 | Labels | Board | Low | KB-012, KB-018 | Proposed |
-| KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | In test |
+| KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | Passed |
 | KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Planned |
 | KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Planned |
 | KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Planned |
@@ -737,6 +737,7 @@ Task template (copy for each new task):
 - 2026-11-06 · developer · Planned → In development · started
 - 2026-11-06 · developer · In development → Ready for test · commit 4cf8b44
 - 2026-11-06 · tester · Ready for test → In test · testing started
+- 2026-11-06 · tester · In test → Passed · report 1, all checks and criteria verified
 
 ### KB-016 · WebSocket server with the y-websocket protocol and room authorization
 
