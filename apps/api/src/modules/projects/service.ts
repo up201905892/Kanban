@@ -1,4 +1,4 @@
-import { ErrorCode, type Project } from '@kanban/shared';
+import { DEFAULT_COLUMNS, ErrorCode, keysBetween, type Project } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
 import { AppError, notFound } from '../../lib/app-error.js';
 import { authorize } from '../authz/index.js';
@@ -35,7 +35,27 @@ export async function createProject(
 ): Promise<Project> {
   await authorize(prisma, user, { type: 'workspace', id: workspaceId }, 'project:manage');
   try {
-    return toProject(await prisma.project.create({ data: { workspaceId, ...input } }));
+    // The nested create runs in one transaction: the project, its board and the default columns.
+    const positions = keysBetween(null, null, DEFAULT_COLUMNS.length);
+    return toProject(
+      await prisma.project.create({
+        data: {
+          workspaceId,
+          ...input,
+          board: {
+            create: {
+              columns: {
+                create: DEFAULT_COLUMNS.map((column, i) => ({
+                  name: column.name,
+                  isDone: column.isDone,
+                  position: positions[i] as string,
+                })),
+              },
+            },
+          },
+        },
+      }),
+    );
   } catch (error) {
     // The unique (workspace, key) index decides, so two concurrent creates cannot both win.
     if (errorCodeOf(error) === 'P2002') throw keyTaken();

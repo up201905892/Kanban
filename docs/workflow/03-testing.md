@@ -426,3 +426,170 @@ Report template:
 - `prisma migrate reset --force` was not run (Prisma's AI-safety guard refuses it in unattended runs); the test database is built from the migrations. CI applies them to an empty database.
 - The loser of a concurrent mutual demotion gets 403 rather than 409 (documented by the developer); the invariant of one owner holds.
 - Members can read each other's email on the members list, as the criteria require.
+
+### KB-011 · Board and configurable columns — Report 1 — 2026-11-05
+
+- **Commit tested:** 60565ef (in the history of `develop`; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` (zero warnings, Prettier clean) | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 112, web 111, api 230 = 453 tests) | ✔ |
+| E2E | `pnpm test:e2e` (31 tests, including `e2e/board.spec.ts`) | ✔ |
+| Authorization | 401 without session, 404 for non-members (same body as a missing id), 403 for viewers on writes, 404 for another board's neighbour id; checked in code and `boards.test.ts` | ✔ |
+| Real time | live updates are out of scope (KB-018) | n.a. |
+| Accessibility | keyboard menu, Enter/Escape in inline forms, aria-live announcements, axe in E2E | ✔ |
+
+**Acceptance criteria:**
+- [x] Migration `20261105173341_add_boards_and_columns`: read the SQL; `Board` 1:1 with `Project` (unique project_id, cascade), `Column.position` is `TEXT COLLATE "C"`, index `(board_id, position, id)`, `CHECK` on name length 1 to 50, partial unique index for one Done column per board, and a data migration that creates boards and the three default columns for existing projects. Migrations apply on the test database (`prisma migrate status`: up to date, 6 migrations).
+- [x] ADR 0001 amended: diff read; Status and the section 7 heading no longer say provisional, the decision, date and D5 are stated, the original text is kept.
+- [x] New projects get "To do", "In progress", "Done" (Done flagged) in the same transaction (nested create in the project service; covered by `boards.test.ts` default-board test).
+- [x] Exactly one Done column: service swaps the flag in one transaction under a board row lock, clearing the old one first; clearing directly and deleting the Done column return `409 DONE_COLUMN_REQUIRED`; the partial unique index backs it. Covered by the API tests, including a race test.
+- [x] Endpoints: `GET /api/projects/:pid/board`, `POST /api/boards/:bid/columns` (201 / repeated id 200 with no duplicate / other board's id 409), `PATCH /api/columns/:id` (name, move via neighbours, isDone), `DELETE /api/columns/:id` 204. Owner and member manage, viewer reads. Routes and tests read; strict Zod schemas give `400 VALIDATION_ERROR`.
+- [x] UI: add column inline form, inline rename (Enter saves, Escape cancels), column menu (Move left/right, Mark as Done, Delete with confirmation), optimistic updates with rollback; verified through `board-flow.test.tsx` and the passing E2E (add, rename, keyboard reorder, mark Done, delete, reload persistence).
+- [x] Common criteria: G1 (all checks green, no `.only`/`.skip` found in the new tests), G2 (schemas in `packages/shared/src/board.ts`), G3, G4 (transactions, FK, CHECK, partial unique index), A1 to A7 (error format, validation, CSRF/401 tests, no-leak 404, idempotent create, test matrix), U1 to U10 (axe in E2E, scroll container, announcements, role-aware UI).
+
+**Required tests:**
+- [x] Unit: neighbour selection for move left/right at the edges (`board.test.ts`, `ordering.test.ts`); non-trivial, assert both edges.
+- [x] API: get board 200/401/404; create 201 and same id again 200 with no duplicate; invalid name 400; viewer 403; Done exclusivity; deleting Done 409; another board's column id 404/409; `a0` vs `Z0` returned in code-unit order (binary collation).
+- [x] E2E: add, rename, reorder by keyboard, delete, reload persistence, axe on the board.
+- [x] Accessibility: menu reachable by Tab and opened with Enter; move announcement "Column In progress moved to position 2 of 3".
+
+**Failures:** none.
+
+**Observations (not failures):**
+- `prisma migrate reset --force` and creating a fresh database were not run (the sandbox did not allow them); the test database is built from the migrations and CI applies them to an empty database.
+- No tests were added by the tester.
+- The delete dialog says there are no cards yet; KB-012 must revise the deletion rules and wording.
+
+### KB-012 · Cards: create, view, edit and delete — Report 1 — 2026-11-05
+
+- **Commit tested:** 512a5e9 (in the history of `develop`; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` (ESLint and Prettier clean) | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 127, web 145, api 266 = 538 tests) | ✔ |
+| E2E | `pnpm test:e2e` (34 tests, including `e2e/cards.spec.ts`; no retries needed this run) | ✔ |
+| Authorization | 401 without session, 404 for non-members (same body as unknown id), 403 for viewers on writes, soft-deleted card resolves to 404 for every role, column or neighbour from another board 404; read in `authorize.ts`, `cards/service.ts` and `cards.test.ts` | ✔ |
+| Real time | live updates are out of scope (KB-018); concurrency covered by the board row lock and the 20-parallel-create test | n.a. |
+| Accessibility | tiles are links (Tab and Enter), dialog Escape returns focus to the tile, creation and deletion announced in aria-live, axe on board, dialog and confirmation in E2E | ✔ |
+
+**Acceptance criteria:**
+- [x] Migration `20261105174849_add_cards_and_activity_events`: read the SQL. `cards.position` is `TEXT COLLATE "C"`, index `(column_id, position, id)`, unique `(board_id, number)` (board is 1:1 with project), CHECKs on title 1 to 200, description at most 20,000, number and version positive, `deleted_at`; `activity_events` with JSONB `data` and index `(card_id, created_at)`. Migrations apply on the test database (7 found, none pending).
+- [x] Card number from `Project.nextCardNumber` with an atomic `increment` inside the creation transaction under the board lock; the "20 parallel creates give 20 distinct numbers" API test passes.
+- [x] Routes: `POST /api/columns/:cid/cards` returns 201 (200 on repeated id without duplicate), appended at the end unless `afterCardId`/`beforeCardId` are given; `GET`, `PATCH` (increments `version`) and `DELETE` (204, soft delete); GET, PATCH and DELETE afterwards give 404. Read the service and routes, and the passing tests.
+- [x] Board includes non-deleted cards ordered by (position, id) with `COLLATE "C"` (`Z0` before `a0` test). The response carries a flat `cards` list with `columnId` rather than nesting per column; the criterion's content and ordering are met (see observations).
+- [x] `DELETE /api/columns/:id`: `409 COLUMN_NOT_EMPTY` without `moveCardsTo`; with it cards are appended to the destination in one transaction; foreign destination 404, self 400; covered by API tests and the E2E column-delete test.
+- [x] Activity (G5): `created`, `title_changed`, `description_changed` (lengths only), `deleted`, `column_deleted_moved`, written in the same transaction; the injected-failure test (database trigger) leaves neither change nor event.
+- [x] Markdown: `react-markdown` without `rehype-raw`; unit tests strip `<script>`, inline handlers and `javascript:` links; the E2E XSS test stays inert.
+- [x] UI: Add card at the bottom of each column (Enter creates and keeps the field open), tiles show `KEY-number` and title, deep link `/projects/:pid/cards/:number`, inline title edit, description Edit/Preview with explicit Save, delete with confirmation, read-only for viewers; verified in `cards-flow.test.tsx` and `e2e/cards.spec.ts`.
+- [x] Authority per D5: description written only through REST `PATCH`; the web has no description logic beyond the textarea (read in `CardDialog.tsx`).
+- [x] Common criteria: G1 (all checks green), G2 (Zod schemas in `packages/shared/src/cards.ts`), G3, G4 (transactions, FK, CHECKs, unique index), G5, G8, A1 to A7 (error format, strict validation, CSRF/401 tests, no-leak 404, idempotent create), U1 to U10.
+
+**Required tests:**
+- [x] Unit: Markdown renderer strips script, handlers and `javascript:` links (`Markdown.test.tsx`).
+- [x] API: create 201 / 400 (empty and 201-char title) / 401 / 404 non-member / 403 viewer; repeated id 200 without duplicate; 20 parallel creates; PATCH version and `title_changed` with injected failure; delete 204 then GET/PATCH 404; column delete 409 and 204 with `moveCardsTo`; column from another workspace 404.
+- [x] E2E: keyboard-only creation, deep link, edit title and description, delete, axe on board and dialog.
+- [x] Accessibility: tiles focusable, Enter opens, Escape closes with focus return, creation and deletion announced.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- The board response uses a flat `cards` list, not cards nested per column (documented by the developer; ordering and content satisfy the criterion).
+- `prisma migrate reset --force` was not run (sandbox restrictions); the test database is built from the migrations and CI applies them to an empty database.
+- The pre-existing `members.spec.ts` locator flake noted by the developer did not occur in this run; worth scoping the locator in a future task.
+- Deleting a column cascades to its earlier soft-deleted cards and their events (history lost); flagged for KB-024.
+- Web bundle is about 620 kB; code splitting is a candidate for KB-028.
+
+### KB-015 · Drag and drop and keyboard moving of cards — Report 1 — 2026-11-06
+
+- **Commit tested:** 4cf8b44 (with 9c36e41 on top; both in the history of `develop`; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` (ESLint and Prettier clean) | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (web 155, api 278, shared all passing) | ✔ |
+| E2E | `pnpm test:e2e` (40 passed, including `e2e/move-cards.spec.ts`) | ✔ |
+| Authorization | `moveCard` authorizes the card and the destination column with `card:edit` (viewer 403, non-member 404 identical to unknown, other board or workspace 404, foreign neighbour 404, deleted card 404); read in `service.ts` and `move.test.ts` | ✔ |
+| Database | no migration in this task (activity `type` is plain text); existing 7 migrations apply on the test database | ✔ |
+| Real time | live propagation is out of scope (KB-018); concurrency is covered by the board row lock and the parallel-move API tests | n.a. |
+| Accessibility | keyboard pick-up, arrows, drop, Escape asserted in E2E with live-region text; axe on the board; focus returns to the handle | ✔ |
+
+**Acceptance criteria:**
+- [x] `POST /api/cards/:id/move`: validated by `moveCardRequestSchema`; key computed from current siblings under the board lock in one transaction; `version` incremented; the final card with position returned; `moved` {fromColumnId, toColumnId} recorded only when the column changes (tests: reorder without event, between columns with one event).
+- [x] Rebalance: `placeWithRebalance` respaces in the same transaction; the 320-repeated-inserts test keeps the order and key length at most 50.
+- [x] Pointer and keyboard sensors: Space or Enter picks up on the handle (Space on the card link), arrows move, Space drops, Escape cancels and returns the card; verified in E2E.
+- [x] Announcements for pick-up, move, drop and cancel with card, column and position, asserted in E2E (e.g. "Card MV-1 'Fix login' moved to In progress, position 1 of 1").
+- [x] Non-drag alternative: "Move to..." (column select and Top or Bottom), unit-tested and in E2E. It lives in the card dialog, not a per-card menu (see observations).
+- [x] Optimistic move with rollback and assertive announcement on error (unit test and E2E with a failed move); viewers get a disabled handle and the API returns 403.
+- [x] Common criteria G1 to G5, G8, A1 to A5, A7, U1 to U10: checks green, Zod schemas in shared, transaction and activity, error format and no-leak 404 verified.
+
+**Required tests:**
+- [x] Unit: `ordering.test.ts` (`placeCard`, `neighboursAt`, `layoutOf`), stale-neighbour and rebalance cases in `move.test.ts`.
+- [x] API: within and between columns 200; other board 404; viewer 403; non-member 404; deleted card 404; two parallel moves into one gap; two parallel moves of one card; rebalance keeps the order; 400 matrix and 401.
+- [x] E2E: mouse drag persists after reload; keyboard move persists; Escape cancels; Move to...; axe on the board.
+- [x] Accessibility: key sequence and live-region text for pick-up, move, drop and cancel.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- "Move to..." is in the card dialog because the board has no card menu; Enter on the card link still opens the card (KB-012), so keyboard pick-up uses Space on the link or the move handle. The planner may want to confirm both choices.
+- Rapid arrow presses overwrite each other in the live region (last wins).
+- Touch behaviour was not tested on real devices.
+- `prisma migrate reset --force` was not run (sandbox restrictions); no migration changed.
+
+### KB-016 · WebSocket server with the y-websocket protocol and room authorization — Report 1 — 2026-11-06
+
+- **Commit tested:** cc55adb (with a964cdc on top; both in the history of `develop`; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` (ESLint and Prettier clean) | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` run after the last developer change (shared 144, web 155, api 303 passing); `realtime.test.ts` (25 tests) also run 3 more times alone, all green (flakiness check) | ✔ |
+| E2E | `pnpm test:e2e` (39 passed, 1 flaky passed on retry: `move-cards.spec.ts:105` KB-015, a web test; this task changes no web code) | ✔ |
+| Authorization | read `routes.ts`: cookie via `getSessionFromCookieHeader` (4401), room parsed (4400), `authorize(..., 'workspace:read')` on board or card resolver; 404 and 403 both close 4403 so existence does not leak; nothing is sent before authorization (messages queued); tests assert zero bytes to non-members | ✔ |
+| Database | no migration in this task; existing 7 migrations apply on the test database | ✔ |
+| Real time | two members converge (concurrent edits, state vectors), late joiner gets state, viewer updates discarded and not seen by others, removal closes socket in under 1 s, demotion and promotion take effect; verified in the API tests with real `ws` clients | ✔ |
+| Accessibility | n.a. (no UI) | n.a. |
+
+**Acceptance criteria:**
+- [x] ADR: `docs/adr/0004-real-time-architecture.md` exists with rooms, protocol, authority split, persistence seam, single instance and Redis path, reconnection (read).
+- [x] `/ws/:room` on the API port: Origin checked before upgrade (403), session cookie after (4401), room authorized via authz resolvers (tests: no cookie, bad token, wrong and missing Origin, non-member).
+- [x] y-protocols server with one `Y.Doc` per room, loaded on first connection and unloaded after the last leaves through the `RoomPersistence` hook (tests: late joiner, unload, load/store order, failing load gives 1011).
+- [x] Viewer: updates discarded, awareness allowed (tests).
+- [x] Heartbeat: silent client terminated, responsive client kept (tests with a shortened interval; default is `WS_HEARTBEAT_MS` 30 s); over 1 MiB closes with 1009, message at the limit accepted.
+- [x] Member removal closes sockets with 4403 in under 1 s, role change re-authorizes; events published after commit in `members/service.ts`; refused removal keeps the socket.
+- [x] Room-name and message schemas in `packages/shared/src/realtime.ts` with unit tests.
+- [x] Common criteria G1, G2, G7, G8, R1 to R4: checks green, shared Zod schemas, ADR written, convergence verified.
+
+**Required tests:**
+- [x] Unit: room-name parser valid and invalid matrix.
+- [x] API with a real WebSocket client: all listed cases exist and assert the requested behaviour (4401, wrong Origin, 4403 with no bytes, convergence, viewer, removal, 1009).
+- [x] E2E and accessibility: n/a per the specification.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- The E2E test `move-cards.spec.ts:105` (KB-015) was flaky once and passed on retry; unrelated to this task, worth a look by the planner.
+- Known gaps already listed by the developer and the ADR: sockets are not closed on session expiry, logout or deletion of a workspace, project, board or card; a removal between authorization and room join is missed. Both are outside this task's criteria; a follow-up task is suggested.
+- `GET /ws/:room` is in `PUBLIC_ROUTES` by design; it authenticates itself after the handshake.
+- `prisma migrate reset --force` not run (no migration changed).

@@ -15,6 +15,8 @@ export const ErrorCode = {
   PROJECT_KEY_TAKEN: 'PROJECT_KEY_TAKEN',
   INVITE_INVALID: 'INVITE_INVALID',
   LAST_OWNER: 'LAST_OWNER',
+  DONE_COLUMN_REQUIRED: 'DONE_COLUMN_REQUIRED',
+  COLUMN_NOT_EMPTY: 'COLUMN_NOT_EMPTY',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

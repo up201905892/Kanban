@@ -16,7 +16,13 @@ All notable changes to this project are recorded here, in the format of [Keep a 
 - People can now create workspaces, switch between them, rename them and delete them (with a typed-name confirmation); every workspace has owners, members and viewers, and what each can do is enforced on the server without revealing other people's workspaces (KB-007).
 - Workspaces now hold projects: owners and members can create projects (with a short key suggested from the name), rename them and open them; only owners can delete a project, after typing its name to confirm (KB-008).
 - Owners can now invite people with a shareable link (as member or viewer, with an expiry date and an optional use limit), see and revoke active links, change people's roles and remove them; anyone can leave a workspace, but the last owner cannot (KB-009).
+- Every project now has a board with the columns "To do", "In progress" and "Done"; owners and members can add, rename, reorder (also from the keyboard), delete columns and choose which one counts as "Done", while viewers can only look (KB-011).
+- Boards now hold cards: owners and members can add cards at the bottom of a column (several in a row with just the keyboard), open a card at its own link, edit its title and its Markdown description (with a preview) and delete it after confirming; viewers can read cards. Every change to a card is recorded for the history to come (KB-012).
+- Cards can now be moved between columns and reordered by dragging with the mouse or entirely from the keyboard (Space to pick up, arrow keys to move, Space to drop, Escape to cancel), with spoken announcements for screen readers; the card dialog also has a "Move to..." option for choosing a column and the top or bottom. Viewers cannot move cards, and a move the server refuses is undone (KB-015).
+- The server now has a live-connection channel that only signed-in members of a workspace can join; it keeps people's edits in sync, lets read-only viewers watch without changing anything, and disconnects people at once when they are removed from the workspace (KB-016).
 
 ### Changed
+
+- Deleting a column that still has cards now asks where the cards should go and moves them to the end of that column instead of losing them (KB-012).
 
 ### Fixed

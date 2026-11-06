@@ -24,6 +24,8 @@ export function useWorkspaces() {
 export function useWorkspace(id: string) {
   return useQuery({
     queryKey: workspaceKey(id),
+    // An empty id means "not known yet" (e.g. the project is still loading).
+    enabled: id !== '',
     queryFn: async ({ signal }) =>
       (await apiClient.get(`/api/workspaces/${id}`, workspaceResponseSchema, signal)).workspace,
   });

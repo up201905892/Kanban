@@ -70,6 +70,42 @@ Owner or member. Body `{ name }` (the key cannot be changed; unknown fields are 
 
 Owner only. No body. Response `204`; everything below the project is removed by cascade and the key becomes free again. Errors: `400`, `401`, `403` (member, viewer), `404`.
 
+### GET /api/projects/:pid/board
+
+Any role. Response `200 { board: { id, projectId }, columns, cards }`, columns ordered by `(position, id)` (code-unit order; the `position` column uses the `"C"` collation); `cards` is a flat list of the non-deleted cards as summaries `{ id, columnId, number, title, position, version }`, ordered by column and then `(position, id)` (no description: fetch `GET /api/cards/:id`). Every project has exactly one board, created with the project together with the columns "To do", "In progress" and "Done" (flagged). Errors: `400`, `401`, `404`.
+
+### POST /api/boards/:bid/columns
+
+Owner or member. Body `{ id?, name, afterColumnId?, beforeColumnId? }`: `id` is a client-generated UUID (repeating the same create answers `200` with the existing column and never duplicates it; an id used on another board is `409 CONFLICT`), `name` 1 to 50 characters (trimmed), the neighbours choose the place (the server computes the key; without neighbours the column goes last). A neighbour on another board is `404`. Response `201 { column: { id, boardId, name, position, isDone } }`. Errors: `400`, `401`, `403` (viewer), `404`, `409`.
+
+### PATCH /api/columns/:id
+
+Owner or member. Body with at least one of `name`, `isDone`, `afterColumnId` / `beforeColumnId` (moving: give the neighbours the column should end up between; `null` means the edge). `isDone: true` moves the Done flag here and clears it on the other column in one transaction; `isDone: false` on the Done column answers `409 DONE_COLUMN_REQUIRED` (mark another column instead). Response `200 { column }`. Errors: `400`, `401`, `403`, `404`, `409`.
+
+### DELETE /api/columns/:id
+
+Owner or member. Optional query `moveCardsTo=<column id>`: a column of the same board that receives the live cards of the deleted column, appended at its end in their current order in one transaction (each moved card gets a `column_deleted_moved` event and a new `version`). Without it, a column that still has cards answers `409 COLUMN_NOT_EMPTY`; soft-deleted cards do not count and go away with the column. `moveCardsTo` on another board is `404`, equal to the column itself is `400`. The Done column cannot be deleted: `409 DONE_COLUMN_REQUIRED` (checked first). Response `204`. Errors: `400`, `401`, `403`, `404`, `409`.
+
+### POST /api/columns/:cid/cards
+
+Owner or member. Body `{ id?, title, description?, afterCardId?, beforeCardId? }`: `id` is a client-generated UUID (repeating the same create answers `200` with the existing card and never duplicates it; an id used on another board or by a deleted card is `409 CONFLICT`), `title` 1 to 200 characters (trimmed), `description` Markdown up to 20,000 characters, the neighbours (live cards of this column; another column is `404`) choose the place, without them the card goes last. The card number comes from `Project.nextCardNumber` with an atomic increment in the same transaction and is never reused. Writes a `created` activity event. Response `201 { card: { id, columnId, boardId, number, title, description, position, version, createdById, createdAt, updatedAt } }`. Errors: `400`, `401`, `403` (viewer), `404`, `409`.
+
+### GET /api/cards/:id
+
+Any role. Response `200 { card }`. A soft-deleted card is `404` for everyone. Errors: `400`, `401`, `404`.
+
+### PATCH /api/cards/:id
+
+Owner or member. Body with at least one of `title`, `description` (the description path is interim until KB-019). A change increments `version` and writes `title_changed` (`{ from, to }`) and/or `description_changed` (`{ from, to }` as lengths, never the text) in the same transaction; a request that changes nothing returns the card untouched. Response `200 { card }`. Errors: `400`, `401`, `403`, `404`.
+
+### POST /api/cards/:id/move
+
+Owner or member. Body `{ columnId, afterCardId?, beforeCardId? }` (`null` or missing means no neighbour on that side; with neither, the card goes to the end of the column). The destination column must belong to the same board and be visible to the caller (another board or workspace is `404`); a neighbour on another board is `404`. Inside one transaction under the board lock the server computes the key from the current neighbours (ADR 0001 section 3: a neighbour that vanished or moved elsewhere is stale and the remaining one is used), rebalances the column's keys when the key would outgrow 50 characters (siblings get a new `version`, the order is unchanged), increments the card's `version` and writes a `moved` event `{ fromColumnId, toColumnId }` only when the column changes. Response `200 { card }` with the final `position` and `version`. Errors: `400`, `401`, `403`, `404`.
+
+### DELETE /api/cards/:id
+
+Owner or member. Soft delete (`deletedAt`); writes a `deleted` event. Response `204`; afterwards `GET`, `PATCH` and `DELETE` answer `404` and the card disappears from the board. Errors: `400`, `401`, `403`, `404`.
+
 ### POST /api/workspaces/:wid/invites
 
 Owner only. Body `{ role: "member" | "viewer", expiresInDays: 1-30, maxUses?: 1-1000 }` (an owner invite does not exist; promote a member instead). Response `201 { invite: { id, role, createdAt, expiresAt, maxUses, uses }, link }` with `Cache-Control: no-store`. The link (`<WEB_ORIGIN>/invite/<token>`) is shown only in this response; only the SHA-256 of the token is stored. Errors: `400`, `401`, `403` (member, viewer), `404`.
@@ -121,4 +157,15 @@ Reports whether the API can reach its database (used by the hosting healthcheck)
 
 ## Real-time messages
 
-None yet (see KB-016).
+Design and rationale: `docs/adr/0004-real-time-architecture.md`. Schemas: `packages/shared/src/realtime.ts`.
+
+### GET /ws/:room (WebSocket upgrade)
+
+Same port and origin as the REST API (Vite proxies `/ws` in development). Binary messages follow the y-websocket protocol.
+
+- Rooms: `board:<boardId>` (awareness and server-pushed board events) and `card:<cardId>:description` (collaborative text). IDs are UUIDs.
+- Upgrade: the `Origin` header must equal the web origin, otherwise `403 CSRF_REJECTED` before the upgrade. The session cookie authenticates after the upgrade.
+- Close codes: `4401` no or invalid session; `4403` not a member of the room's workspace, or the room does not exist (indistinguishable), or the membership was removed while connected; `4400` invalid room name; `1003` text frame; `1007` malformed message; `1009` message over 1 MiB; `1011` the room could not be loaded.
+- Message types (first varint): `0` sync, `1` awareness, `3` query awareness (all as in y-websocket), `4` board event (server to client only: a varString with JSON `{ "type": string, "data": object }`).
+- Viewers receive documents and may send awareness, but their document updates are discarded. In board rooms clients never write the document.
+- The server pings every 30 s and terminates connections that do not answer.

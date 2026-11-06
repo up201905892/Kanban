@@ -22,6 +22,9 @@ export const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/auth/login',
   // The unguessable invite token is the credential; the preview exposes only name, role, expiry.
   'GET /api/invites/:token',
+  // The WebSocket upgrade authenticates itself after the handshake so a missing session closes
+  // with the application code 4401 (KB-016); the route checks Origin and the room's workspace.
+  'GET /ws/:room',
 ]);
 
 export const routeKey = (method: string, url: string): string =>

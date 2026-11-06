@@ -9,9 +9,12 @@ import { AppError, notFound } from '../../lib/app-error.js';
 export type ResourceRef =
   | { type: 'workspace'; id: string }
   | { type: 'project'; id: string }
-  | { type: 'invite'; id: string };
+  | { type: 'invite'; id: string }
+  | { type: 'board'; id: string }
+  | { type: 'column'; id: string }
+  | { type: 'card'; id: string };
 
-type Db = Pick<PrismaClient, 'membership' | 'project' | 'invite'>;
+type Db = Pick<PrismaClient, 'membership' | 'project' | 'invite' | 'board' | 'column' | 'card'>;
 type Resolver<T extends ResourceRef['type']> = (
   db: Db,
   id: Extract<ResourceRef, { type: T }>['id'],
@@ -28,6 +31,31 @@ const RESOLVERS: { [T in ResourceRef['type']]: Resolver<T> } = {
   invite: async (db, id) =>
     (await db.invite.findUnique({ where: { id }, select: { workspaceId: true } }))?.workspaceId ??
     null,
+  // A board resolves through its project.
+  board: async (db, id) =>
+    (
+      await db.board.findUnique({
+        where: { id },
+        select: { project: { select: { workspaceId: true } } },
+      })
+    )?.project.workspaceId ?? null,
+  // A column resolves through its board and project.
+  column: async (db, id) =>
+    (
+      await db.column.findUnique({
+        where: { id },
+        select: { board: { select: { project: { select: { workspaceId: true } } } } },
+      })
+    )?.board.project.workspaceId ?? null,
+  // A card resolves through its board and project. A soft-deleted card does not resolve at all, so
+  // every later request about it is a plain 404 for every role.
+  card: async (db, id) =>
+    (
+      await db.card.findFirst({
+        where: { id, deletedAt: null },
+        select: { board: { select: { project: { select: { workspaceId: true } } } } },
+      })
+    )?.board.project.workspaceId ?? null,
 };
 
 export interface AuthzContext {

@@ -1,11 +1,23 @@
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
+import { can } from '@kanban/shared';
 import { ErrorState, Spinner } from '../components';
+import { BoardView } from '../features/board/BoardView';
 import { useProject } from '../features/projects/api';
+import { useWorkspace } from '../features/workspaces/api';
 
-/** Placeholder landing page of a project; KB-011 puts the board here. */
+/** Landing page of a project: its name and the board. */
 export function ProjectPage() {
-  const { pid = '' } = useParams();
+  const { pid = '', number } = useParams();
+  const navigate = useNavigate();
+  // `/projects/:pid/cards/:number` opens the card dialog over the board (deep link).
+  const parsedNumber = number === undefined ? undefined : Number(number);
+  const openCardNumber =
+    parsedNumber !== undefined && Number.isInteger(parsedNumber) && parsedNumber > 0
+      ? parsedNumber
+      : undefined;
   const { data: project, isPending, isError, error, refetch } = useProject(pid);
+  // The role decides whether the board is editable (the server enforces it either way).
+  const { data: workspace } = useWorkspace(project?.workspaceId ?? '');
 
   if (isPending) return <Spinner label="Loading project" />;
   if (isError) {
@@ -24,10 +36,20 @@ export function ProjectPage() {
       </p>
       <h1>{project.name}</h1>
       <p>Key: {project.key}</p>
-      <p>The board is coming soon.</p>
       <p>
         <Link to={`/projects/${project.id}/settings`}>Project settings</Link>
       </p>
+      {workspace ? (
+        <BoardView
+          project={project}
+          canManage={can(workspace.role, 'board:manage')}
+          canEditCards={can(workspace.role, 'card:edit')}
+          openCardNumber={openCardNumber}
+          onCloseCard={() => void navigate(`/projects/${project.id}`)}
+        />
+      ) : (
+        <Spinner label="Loading board" />
+      )}
     </>
   );
 }

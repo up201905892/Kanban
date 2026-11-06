@@ -10,6 +10,9 @@ import { authRoutes } from './modules/auth/routes.js';
 import { healthRoutes } from './modules/health/routes.js';
 import { inviteRoutes } from './modules/invites/routes.js';
 import { memberRoutes } from './modules/members/routes.js';
+import { boardRoutes } from './modules/boards/routes.js';
+import { cardRoutes } from './modules/cards/routes.js';
+import { createRealtime, realtimeRoutes, type RealtimeOptions } from './modules/realtime/routes.js';
 import { projectRoutes } from './modules/projects/routes.js';
 import { workspaceRoutes } from './modules/workspaces/routes.js';
 
@@ -20,6 +23,8 @@ export interface AppOptions {
   webOrigin?: string;
   /** Log destination; defaults to stdout. Used by tests to capture log lines. */
   logStream?: { write(line: string): void };
+  /** WebSocket layer options (persistence hook, heartbeat interval). */
+  realtime?: RealtimeOptions;
   /** Registers extra routes (used by tests for test-only routes). */
   registerRoutes?: (app: FastifyInstance) => void | Promise<void>;
 }
@@ -77,6 +82,18 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     void app.register(authRoutes({ prisma: options.prisma, nodeEnv }));
     void app.register(workspaceRoutes({ prisma: options.prisma }));
     void app.register(projectRoutes({ prisma: options.prisma }));
+    void app.register(boardRoutes({ prisma: options.prisma }));
+    void app.register(cardRoutes({ prisma: options.prisma }));
+    const realtime = createRealtime(options.realtime);
+    app.decorate('realtime', realtime);
+    void app.register(
+      realtimeRoutes({
+        prisma: options.prisma,
+        webOrigin,
+        realtime,
+        ...(options.realtime ? { options: options.realtime } : {}),
+      }),
+    );
   }
 
   void app.register(healthRoutes(options.prisma));

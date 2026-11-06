@@ -107,6 +107,42 @@ Entry template:
 - **Documentation:** `docs/api.md` (invite and member endpoints); ADR 0003 item 9; no new environment variables (`WEB_ORIGIN` already in `.env.example`)
 - **Lessons:** the loser of a concurrent mutual demotion gets 403 instead of 409 (invariant holds). Closing live sockets on removal stays with KB-016. `prisma migrate reset` was not run (Prisma guard); CI applies migrations to an empty database. No TODO left; no secret found in the task's changes.
 
+### KB-011 · Board and configurable columns — done on 2026-11-05
+
+- **Approving test report:** Report 1 (2026-11-05), commit 60565ef (later commits are the development record and the test report only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** every project has a board with the columns "To do", "In progress" and "Done"; owners and members can add, rename, reorder (also by keyboard), delete columns and choose the Done column; viewers can only read.
+- **CHANGELOG:** "Added: Every project now has a board with the columns "To do", "In progress" and "Done"; owners and members can add, rename, reorder (also from the keyboard), delete columns and choose which one counts as "Done", while viewers can only look (KB-011)."
+- **Documentation:** `docs/api.md` (board and column endpoints); ADR 0001 amended for D5 (hybrid), section 7 now Accepted; no new environment variables
+- **Lessons:** the PATCH move format (`afterColumnId`/`beforeColumnId`) is the one KB-015 will reuse. The delete dialog says there are no cards yet; KB-012 must revise deletion rules and wording. `prisma migrate reset` and a fresh database were not run (sandbox/Prisma guard); CI applies migrations to an empty database. No TODO found in source. The finisher's secret-pattern search was denied by the sandbox; the check rests on the developer and tester records (no new dependencies, no new environment variables).
+
+### KB-012 · Cards: create, view, edit and delete — done on 2026-11-05
+
+- **Approving test report:** Report 1 (2026-11-05), commit 512a5e9 (later commits are the development record and the test report only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** boards now hold cards: owners and members add, open (by deep link), edit (title and Markdown description) and delete cards, viewers read them; deleting a column with cards asks where to move them; every card change is recorded as an activity event.
+- **CHANGELOG:** "Added: Boards now hold cards: owners and members can add cards at the bottom of a column (several in a row with just the keyboard), open a card at its own link, edit its title and its Markdown description (with a preview) and delete it after confirming; viewers can read cards. Every change to a card is recorded for the history to come (KB-012)." and "Changed: Deleting a column that still has cards now asks where the cards should go and moves them to the end of that column instead of losing them (KB-012)."
+- **Documentation:** `docs/api.md` (card endpoints and `moveCardsTo` on column delete); no new environment variables; no ADR requested by the task
+- **Lessons:** the board response has a flat `cards` list instead of nesting per column. Deleting a column cascades to its earlier soft-deleted cards and their events, so that history is lost (flag for KB-024). The `members.spec.ts` "at least one owner" locator is flaky and should be scoped. Web bundle is about 620 kB (candidate for KB-028). `prisma migrate reset` was not run (sandbox); CI applies migrations to an empty database. No TODO found in the task's code. The finisher's secret-pattern search was denied by the sandbox (`This command requires approval`); the check rests on the developer and tester records (one new dependency, `react-markdown`; no new environment variables). Milestone "Board" not yet reached (KB-013, KB-015 are Planned, KB-014 is Proposed).
+
+### KB-015 · Drag and drop and keyboard moving of cards — done on 2026-11-06
+
+- **Approving test report:** Report 1 (2026-11-06), commit 4cf8b44 (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** cards can be moved between columns and reordered by mouse or entirely by keyboard (Space to pick up, arrows, Space to drop, Escape to cancel) with screen-reader announcements; the card dialog has a "Move to..." option; viewers cannot move cards; a refused move is rolled back.
+- **CHANGELOG:** "Added: Cards can now be moved between columns and reordered by dragging with the mouse or entirely from the keyboard (Space to pick up, arrow keys to move, Space to drop, Escape to cancel), with spoken announcements for screen readers; the card dialog also has a "Move to..." option for choosing a column and the top or bottom. Viewers cannot move cards, and a move the server refuses is undone (KB-015)."
+- **Documentation:** `docs/api.md` (`POST /api/cards/:id/move`); no new environment variables; no migration; no ADR requested (ADR 0001 section 3 implemented)
+- **Lessons:** "Move to..." lives in the card dialog (no per-card menu) and Enter on the card link still opens the card, so keyboard pick-up uses Space or the move handle; the planner may confirm both choices. Rapid arrow presses overwrite each other in the live region. Touch not tested on real devices. The create-card rebalance does not bump sibling `version` (out of scope). Three dnd-kit dependencies added. No TODO found in the task's code; no secret found (no new environment variables). Milestone "Board" not yet reached (KB-013 is Planned, KB-014 is Proposed).
+
+### KB-016 · WebSocket server with the y-websocket protocol and room authorization — done on 2026-11-06
+
+- **Approving test report:** Report 1 (2026-11-06), commit cc55adb (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** an authenticated WebSocket endpoint `/ws/:room` speaking the y-websocket protocol, with Origin and session-cookie checks, room authorization through the authz resolvers, one Yjs document per room, read-only viewers, heartbeat, a 1 MiB message limit and immediate socket closing when a member is removed or their role changes.
+- **CHANGELOG:** "Added: The server now has a live-connection channel that only signed-in members of a workspace can join; it keeps people's edits in sync, lets read-only viewers watch without changing anything, and disconnects people at once when they are removed from the workspace (KB-016)."
+- **Documentation:** `docs/api.md` (`GET /ws/:room`); ADR 0004 real-time architecture (Accepted); no new environment variables (the heartbeat interval is a code constant); no migration
+- **Lessons:** sockets are not closed on session expiry, logout, or deletion of a workspace, project, board or card, and a removal between authorization and room join is missed; the planner should consider a follow-up task. `move-cards.spec.ts:105` (KB-015) was flaky once in E2E. New dependencies in apps/api: `@fastify/websocket`, `ws`, `yjs`, `y-protocols`, `lib0`. No TODO found in the task's code; no secret found (no new environment variables). Milestone "Real time" not yet reached (KB-017 and others not Done).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
