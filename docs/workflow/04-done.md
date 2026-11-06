@@ -125,6 +125,15 @@ Entry template:
 - **Documentation:** `docs/api.md` (card endpoints and `moveCardsTo` on column delete); no new environment variables; no ADR requested by the task
 - **Lessons:** the board response has a flat `cards` list instead of nesting per column. Deleting a column cascades to its earlier soft-deleted cards and their events, so that history is lost (flag for KB-024). The `members.spec.ts` "at least one owner" locator is flaky and should be scoped. Web bundle is about 620 kB (candidate for KB-028). `prisma migrate reset` was not run (sandbox); CI applies migrations to an empty database. No TODO found in the task's code. The finisher's secret-pattern search was denied by the sandbox (`This command requires approval`); the check rests on the developer and tester records (one new dependency, `react-markdown`; no new environment variables). Milestone "Board" not yet reached (KB-013, KB-015 are Planned, KB-014 is Proposed).
 
+### KB-015 · Drag and drop and keyboard moving of cards — done on 2026-11-06
+
+- **Approving test report:** Report 1 (2026-11-06), commit 4cf8b44 (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** cards can be moved between columns and reordered by mouse or entirely by keyboard (Space to pick up, arrows, Space to drop, Escape to cancel) with screen-reader announcements; the card dialog has a "Move to..." option; viewers cannot move cards; a refused move is rolled back.
+- **CHANGELOG:** "Added: Cards can now be moved between columns and reordered by dragging with the mouse or entirely from the keyboard (Space to pick up, arrow keys to move, Space to drop, Escape to cancel), with spoken announcements for screen readers; the card dialog also has a "Move to..." option for choosing a column and the top or bottom. Viewers cannot move cards, and a move the server refuses is undone (KB-015)."
+- **Documentation:** `docs/api.md` (`POST /api/cards/:id/move`); no new environment variables; no migration; no ADR requested (ADR 0001 section 3 implemented)
+- **Lessons:** "Move to..." lives in the card dialog (no per-card menu) and Enter on the card link still opens the card, so keyboard pick-up uses Space or the move handle; the planner may confirm both choices. Rapid arrow presses overwrite each other in the live region. Touch not tested on real devices. The create-card rebalance does not bump sibling `version` (out of scope). Three dnd-kit dependencies added. No TODO found in the task's code; no secret found (no new environment variables). Milestone "Board" not yet reached (KB-013 is Planned, KB-014 is Proposed).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
