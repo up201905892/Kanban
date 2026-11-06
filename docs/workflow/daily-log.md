@@ -16,6 +16,22 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-06
+
+- **Decisions for João:**
+  - **D9:** which key picks up a card, and where "Move to…" lives. Recommended A (keep KB-015 as built): `Answer | D9 | A` and `Reject | KB-036`. For B: `Answer | D9 | B` and `Approve | KB-036`.
+  - **KB-018:** the planner recommends adding KB-034 as a dependency: `Change | KB-018 | add dependency KB-034`.
+  - Suggested approval: `Approve | KB-033 to KB-035` (dependencies are Done).
+  - Open question: deleting a column also deletes its older soft-deleted cards and their history. Must that history be kept (matters for KB-024)?
+  - FYI, sandbox: the finisher's secret-pattern scan was denied again (KB-015, KB-016), as were compound shell commands, `sed -i`, Python heredocs and `prisma migrate reset`. The planner had no shell, so I committed its changes.
+  - FYI, flaky E2E: `move-cards.spec.ts:105` (KB-015) and the `members.spec.ts` owner locator; KB-035 covers both.
+- **Done:** KB-015 (drag and drop and keyboard moving), KB-016 (WebSocket server with room authorization)
+- **Tested:** KB-015 (Passed), KB-016 (Passed)
+- **Developed:** KB-015, KB-016 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-014, KB-020 to KB-036 (new: KB-033 close sockets on logout/expiry/deletion, KB-034 bump card versions on respacing, KB-035 stabilise flaky E2E, KB-036 card actions menu, which waits for D9)
+- **Rule violations found:** none
+- **Next step:** KB-013 and KB-017 are `Planned` with dependencies Done and will be developed next.
+
 ## 2026-11-05
 
 - **Decisions for João:**
