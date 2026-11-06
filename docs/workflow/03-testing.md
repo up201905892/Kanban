@@ -551,3 +551,45 @@ Report template:
 - Rapid arrow presses overwrite each other in the live region (last wins).
 - Touch behaviour was not tested on real devices.
 - `prisma migrate reset --force` was not run (sandbox restrictions); no migration changed.
+
+### KB-016 · WebSocket server with the y-websocket protocol and room authorization — Report 1 — 2026-11-06
+
+- **Commit tested:** cc55adb (with a964cdc on top; both in the history of `develop`; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` (ESLint and Prettier clean) | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` run after the last developer change (shared 144, web 155, api 303 passing); `realtime.test.ts` (25 tests) also run 3 more times alone, all green (flakiness check) | ✔ |
+| E2E | `pnpm test:e2e` (39 passed, 1 flaky passed on retry: `move-cards.spec.ts:105` KB-015, a web test; this task changes no web code) | ✔ |
+| Authorization | read `routes.ts`: cookie via `getSessionFromCookieHeader` (4401), room parsed (4400), `authorize(..., 'workspace:read')` on board or card resolver; 404 and 403 both close 4403 so existence does not leak; nothing is sent before authorization (messages queued); tests assert zero bytes to non-members | ✔ |
+| Database | no migration in this task; existing 7 migrations apply on the test database | ✔ |
+| Real time | two members converge (concurrent edits, state vectors), late joiner gets state, viewer updates discarded and not seen by others, removal closes socket in under 1 s, demotion and promotion take effect; verified in the API tests with real `ws` clients | ✔ |
+| Accessibility | n.a. (no UI) | n.a. |
+
+**Acceptance criteria:**
+- [x] ADR: `docs/adr/0004-real-time-architecture.md` exists with rooms, protocol, authority split, persistence seam, single instance and Redis path, reconnection (read).
+- [x] `/ws/:room` on the API port: Origin checked before upgrade (403), session cookie after (4401), room authorized via authz resolvers (tests: no cookie, bad token, wrong and missing Origin, non-member).
+- [x] y-protocols server with one `Y.Doc` per room, loaded on first connection and unloaded after the last leaves through the `RoomPersistence` hook (tests: late joiner, unload, load/store order, failing load gives 1011).
+- [x] Viewer: updates discarded, awareness allowed (tests).
+- [x] Heartbeat: silent client terminated, responsive client kept (tests with a shortened interval; default is `WS_HEARTBEAT_MS` 30 s); over 1 MiB closes with 1009, message at the limit accepted.
+- [x] Member removal closes sockets with 4403 in under 1 s, role change re-authorizes; events published after commit in `members/service.ts`; refused removal keeps the socket.
+- [x] Room-name and message schemas in `packages/shared/src/realtime.ts` with unit tests.
+- [x] Common criteria G1, G2, G7, G8, R1 to R4: checks green, shared Zod schemas, ADR written, convergence verified.
+
+**Required tests:**
+- [x] Unit: room-name parser valid and invalid matrix.
+- [x] API with a real WebSocket client: all listed cases exist and assert the requested behaviour (4401, wrong Origin, 4403 with no bytes, convergence, viewer, removal, 1009).
+- [x] E2E and accessibility: n/a per the specification.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- The E2E test `move-cards.spec.ts:105` (KB-015) was flaky once and passed on retry; unrelated to this task, worth a look by the planner.
+- Known gaps already listed by the developer and the ADR: sockets are not closed on session expiry, logout or deletion of a workspace, project, board or card; a removal between authorization and room join is missed. Both are outside this task's criteria; a follow-up task is suggested.
+- `GET /ws/:room` is in `PUBLIC_ROUTES` by design; it authenticates itself after the handshake.
+- `prisma migrate reset --force` not run (no migration changed).
