@@ -623,3 +623,39 @@ Report template:
 **Observations (not failures):**
 - `prisma migrate reset --force` was blocked by the environment safety guard (explicit user consent needed, unavailable in autonomous mode). Instead `pnpm db:migrate` confirmed the migration is applied with no drift, and CI applies migrations to an empty database.
 - The developer's suggestion stands: decide whether demoting a member to viewer should unassign their cards.
+
+### KB-017 · Yjs document persistence in PostgreSQL — Report 1 — 2026-11-09
+
+- **Commit tested:** ff62944 (in `develop` history; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 146, web 166, api 336, 9 migrations applied) | ✔ |
+| E2E | `pnpm test:e2e` (41 tests) | ✔ |
+| Authorization | n.a. (no new route; room authorization from KB-016 unchanged) | n.a. |
+| Real time | integration tests: edits survive app close and rebuild on the same database; 120 concurrent appends with interleaved compactions lose nothing | ✔ |
+| Accessibility | n.a. (back end only) | n.a. |
+
+**Acceptance criteria:**
+- [x] Migration: read `20261109201533_add_yjs_document_persistence/migration.sql`: `y_documents` (name PK, snapshot bytea, updated_at) and `y_document_updates` (bigserial id, doc_name FK with cascade, update bytea, created_at, index); applied by `pnpm test` without pending drift.
+- [x] Batching and compaction: reviewed `persistence.ts`. Updates are merged into one row at most 500 ms after the first of a window; load merges snapshot and updates in a repeatable-read transaction; compaction on unload and when a row count reaches 100, in a transaction with `FOR NO KEY UPDATE` that deletes only the ids it read. Unit (fake timers) and integration tests cover it, including state vector equality and idempotence.
+- [x] Graceful shutdown: `gracefulShutdown` flushes, closes sockets with 1012, closes the app and returns 0; SIGTERM and SIGINT handlers run once and exit 0 (integration tests with captured handlers; a 60 s batch is flushed on shutdown).
+- [x] Warning above 5 MB logged (unit test).
+- [x] ADR 0004 section 9 documents the design and the backup implication.
+- [x] Common criteria G1, G3, G4, G7, R7: automated checks green.
+
+**Required tests:** unit batching and compaction trigger, API integration (restart, compaction identity, concurrent updates, shutdown flush) exist and assert the specified behaviour; not trivial.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was not run (blocked by the environment safety guard in autonomous mode); the test run applies all 9 migrations to the test database without drift, and CI starts from an empty database.
+- Real SIGTERM delivery to a spawned `node dist/server.js` could not be run in this environment; it is covered only by handler-level tests.
+- Edge case worth a follow-up: in `persistence.ts` `store()`, if the final flush fails the awaited chain throws and the document is destroyed with the retry timer cleared, so edits of that last window would be lost. Requires a database failure at unload; not covered by the criteria.
+- "Stop accepting connections" is implemented as refusing WebSocket joins and document writes first, then closing the HTTP listener after the flush (documented by the developer).

@@ -24,7 +24,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-014 | Labels | Board | Low | KB-012, KB-018 | Proposed |
 | KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | Done |
 | KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Done |
-| KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Ready for test |
+| KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Done |
 | KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Planned |
 | KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Planned |
 | KB-020 | Presence: who is on the board and who is editing a card | Real time | Medium | KB-019 | Proposed |
@@ -833,6 +833,9 @@ Task template (copy for each new task):
 - 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
 - 2026-11-09 · developer · Planned → In development · dependency KB-016 is Done
 - 2026-11-09 · developer · In development → Ready for test · commit ff62944
+- 2026-11-09 · tester · Ready for test → In test · testing started
+- 2026-11-09 · tester · In test → Passed · report 1, all checks and criteria verified
+- 2026-11-09 · finisher · Passed → Done · CHANGELOG, ADR 0004 and docs/api.md verified; no TODO or secret found
 
 ### KB-018 · Live board updates
 

@@ -152,6 +152,15 @@ Entry template:
 - **Documentation:** `docs/api.md` (`PATCH /api/cards/:id` fields, `INVALID_ASSIGNEE`, new activity events); migration `20261109195755_add_card_assignee_priority_estimate`; no new environment variables; no ADR requested
 - **Lessons:** the planner should decide whether demoting a member to viewer should unassign their cards (currently it does not). `prisma migrate reset` was blocked in the sandbox; CI applies migrations to an empty database. No new dependencies. No TODO found in the task's code; no secret found. Milestone "Board" not yet reached (KB-014 is Proposed).
 
+### KB-017 · Yjs document persistence in PostgreSQL — done on 2026-11-09
+
+- **Approving test report:** Report 1 (2026-11-09), commit ff62944 (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** collaborative documents are stored in PostgreSQL (snapshot plus batched updates, compacted after 100 updates or on unload) and survive restarts; on SIGTERM/SIGINT the server flushes pending batches, closes sockets with 1012 and exits with code 0; documents above 5 MB log a warning.
+- **CHANGELOG:** "Added: Collaborative documents are now saved in the database, so they are still there after the server restarts or is redeployed; when the server is told to stop it saves what is pending and asks connected clients to reconnect (KB-017)."
+- **Documentation:** `docs/api.md` (`GET /ws/:room` persistence and 1012 close); ADR 0004 section 9 (persistence design and backup implication); migration `20261109201533_add_yjs_document_persistence`; no new environment variables
+- **Lessons:** note for the planner (tester's follow-up): in `store()` in `apps/api/src/modules/realtime/persistence.ts`, if the final flush fails (database failure at unload), the awaited chain throws and the document is destroyed with the retry timer cleared, so edits of that last window could be lost; consider a follow-up task. Real SIGTERM delivery to a spawned `node dist/server.js` was not run (handler-level tests only). `prisma migrate reset` was not run (sandbox); CI applies migrations to an empty database. No TODO found in the task's code; no secret found. Milestone "Real time" not yet reached (KB-018, KB-019 are Planned; KB-020, KB-021 are Proposed).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
