@@ -3,7 +3,14 @@ import { Link } from 'react-router';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { cardReference, type CardSummary, type Column, type Project } from '@kanban/shared';
+import {
+  cardReference,
+  type CardSummary,
+  type Column,
+  type Member,
+  type Project,
+} from '@kanban/shared';
+import { initialsOf, priorityDisplay } from '../cards/fields';
 
 export const cardTileId = (cardId: string) => `card-tile-${cardId}`;
 export const cardHandleId = (cardId: string) => `card-handle-${cardId}`;
@@ -13,6 +20,37 @@ interface CardItemProps {
   card: CardSummary;
   /** False for viewers: the handle is disabled and the card cannot be picked up. */
   canDrag: boolean;
+  members: Member[];
+}
+
+/** Assignee initials, priority (icon + text) and estimate; nothing for a card without any. */
+function CardMeta({ card, members }: { card: CardSummary; members: Member[] }) {
+  if (card.assigneeId === null && card.priority === 'none' && card.estimate === null) return null;
+  const assignee = card.assigneeId ? members.find((m) => m.userId === card.assigneeId) : undefined;
+  const priority = priorityDisplay(card.priority);
+  return (
+    <span className="card-meta">
+      {card.assigneeId !== null && (
+        <span
+          className="card-assignee"
+          role="img"
+          aria-label={`Assignee: ${assignee?.name ?? 'Unknown member'}`}
+        >
+          {assignee ? initialsOf(assignee.name) : '?'}
+        </span>
+      )}
+      {card.priority !== 'none' && (
+        <span className="card-priority">
+          <span aria-hidden="true">{priority.icon}</span> <span>{priority.label}</span>
+        </span>
+      )}
+      {card.estimate !== null && (
+        <span className="card-estimate" role="img" aria-label={`Estimate: ${card.estimate} points`}>
+          {card.estimate} pts
+        </span>
+      )}
+    </span>
+  );
 }
 
 /**
@@ -20,7 +58,7 @@ interface CardItemProps {
  * handle starts a move with Space or Enter; Space on the link does too, while Enter keeps opening
  * the dialog. Pointer drags start from anywhere on the tile.
  */
-function CardItem({ project, card, canDrag }: CardItemProps) {
+function CardItem({ project, card, canDrag, members }: CardItemProps) {
   // Number 0 is an optimistic card the server has not numbered yet: shown, but neither openable
   // nor movable.
   const pending = card.number === 0;
@@ -62,6 +100,7 @@ function CardItem({ project, card, canDrag }: CardItemProps) {
       >
         <span className="card-ref">{reference}</span>{' '}
         <span className="card-title">{card.title}</span>
+        <CardMeta card={card} members={members} />
       </Link>
       {canDrag ? (
         <button
@@ -93,16 +132,23 @@ export interface ColumnCardsProps {
   column: Column;
   cards: CardSummary[];
   canDrag: boolean;
+  members: Member[];
 }
 
 /** The cards of one column: a sortable list that is also a drop target when it is empty. */
-export function ColumnCards({ project, column, cards, canDrag }: ColumnCardsProps) {
+export function ColumnCards({ project, column, cards, canDrag, members }: ColumnCardsProps) {
   const { setNodeRef } = useDroppable({ id: column.id });
   return (
     <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
       <ul ref={setNodeRef} className="card-list" aria-label={`Cards in ${column.name}`}>
         {cards.map((card) => (
-          <CardItem key={card.id} project={project} card={card} canDrag={canDrag} />
+          <CardItem
+            key={card.id}
+            project={project}
+            card={card}
+            canDrag={canDrag}
+            members={members}
+          />
         ))}
       </ul>
     </SortableContext>

@@ -1,6 +1,7 @@
 import {
   ErrorCode,
   type Card,
+  type CardPriority,
   type CardSummary,
   type CreateCardRequest,
   type MoveCardRequest,
@@ -22,6 +23,9 @@ interface CardRow {
   description: string;
   position: string;
   version: number;
+  assigneeId: string | null;
+  priority: CardPriority;
+  estimate: number | null;
   createdById: string;
   createdAt: Date;
   updatedAt: Date;
@@ -34,6 +38,9 @@ export const toCardSummary = (row: {
   title: string;
   position: string;
   version: number;
+  assigneeId: string | null;
+  priority: CardPriority;
+  estimate: number | null;
 }): CardSummary => ({
   id: row.id,
   columnId: row.columnId,
@@ -41,6 +48,9 @@ export const toCardSummary = (row: {
   title: row.title,
   position: row.position,
   version: row.version,
+  assigneeId: row.assigneeId,
+  priority: row.priority,
+  estimate: row.estimate,
 });
 
 export const toCard = (row: CardRow): Card => ({
@@ -172,17 +182,73 @@ export async function updateCard(
     const titleChanged = input.title !== undefined && input.title !== card.title;
     const descriptionChanged =
       input.description !== undefined && input.description !== card.description;
+    const assigneeChanged = input.assigneeId !== undefined && input.assigneeId !== card.assigneeId;
+    const priorityChanged = input.priority !== undefined && input.priority !== card.priority;
+    const estimateChanged = input.estimate !== undefined && input.estimate !== card.estimate;
     // Nothing changed: no new version and no event.
-    if (!titleChanged && !descriptionChanged) return toCard(card);
+    if (
+      !titleChanged &&
+      !descriptionChanged &&
+      !assigneeChanged &&
+      !priorityChanged &&
+      !estimateChanged
+    ) {
+      return toCard(card);
+    }
+
+    if (assigneeChanged && input.assigneeId) {
+      // A4: only an owner or member of this card's workspace can be assigned (viewers cannot).
+      const board = await tx.board.findUniqueOrThrow({
+        where: { id: card.boardId },
+        select: { project: { select: { workspaceId: true } } },
+      });
+      const membership = await tx.membership.findUnique({
+        where: {
+          workspaceId_userId: {
+            workspaceId: board.project.workspaceId,
+            userId: input.assigneeId,
+          },
+        },
+        select: { role: true },
+      });
+      if (!membership || membership.role === 'viewer') {
+        throw new AppError(
+          400,
+          ErrorCode.INVALID_ASSIGNEE,
+          'The assignee must be an owner or member of this workspace',
+        );
+      }
+    }
 
     const row = await tx.card.update({
       where: { id },
       data: {
         ...(titleChanged && { title: input.title as string }),
         ...(descriptionChanged && { description: input.description as string }),
+        ...(assigneeChanged && { assigneeId: input.assigneeId as string | null }),
+        ...(priorityChanged && { priority: input.priority as CardPriority }),
+        ...(estimateChanged && { estimate: input.estimate as number | null }),
         version: { increment: 1 },
       },
     });
+    if (assigneeChanged) {
+      await recordActivity(tx, id, user.id, {
+        type: 'assignee_changed',
+        data: { from: card.assigneeId, to: row.assigneeId },
+      });
+    }
+    if (priorityChanged) {
+      await recordActivity(tx, id, user.id, {
+        type: 'priority_changed',
+        data: { from: card.priority, to: row.priority },
+      });
+    }
+    if (estimateChanged) {
+      await recordActivity(tx, id, user.id, {
+        type: 'estimate_changed',
+        data: { from: card.estimate, to: row.estimate },
+      });
+    }
     if (titleChanged) {
       await recordActivity(tx, id, user.id, {
         type: 'title_changed',

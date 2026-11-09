@@ -17,6 +17,7 @@ export const ErrorCode = {
   LAST_OWNER: 'LAST_OWNER',
   DONE_COLUMN_REQUIRED: 'DONE_COLUMN_REQUIRED',
   COLUMN_NOT_EMPTY: 'COLUMN_NOT_EMPTY',
+  INVALID_ASSIGNEE: 'INVALID_ASSIGNEE',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

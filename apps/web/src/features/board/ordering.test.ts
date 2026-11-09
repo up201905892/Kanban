@@ -25,6 +25,9 @@ const card = (id: string, columnId: string, position: string, number: number): C
   title: id,
   position,
   version: 1,
+  assigneeId: null,
+  priority: 'none',
+  estimate: null,
 });
 const board = (): BoardResponse => ({
   board: { id: 'b', projectId: 'p' },

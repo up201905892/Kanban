@@ -19,6 +19,9 @@ interface Cd {
   title: string;
   position: string;
   version: number;
+  assigneeId: string | null;
+  priority: string;
+  estimate: number | null;
   description: string;
 }
 
@@ -35,6 +38,9 @@ const card = (n: number, columnId = cid(1), extra: Partial<Cd> = {}): Cd => ({
   title: `Card ${n}`,
   position: `a${n}`,
   version: 1,
+  assigneeId: null,
+  priority: 'none',
+  estimate: null,
   description: '',
   ...extra,
 });
@@ -46,6 +52,9 @@ const summary = (c: Cd) => ({
   title: c.title,
   position: c.position,
   version: c.version,
+  assigneeId: c.assigneeId,
+  priority: c.priority,
+  estimate: c.estimate,
 });
 const full = (c: Cd) => ({
   ...summary(c),
@@ -56,8 +65,23 @@ const full = (c: Cd) => ({
   updatedAt: NOW,
 });
 
+const GRACE = '0192f000-0000-7000-8000-0000000000e2';
+const VERA = '0192f000-0000-7000-8000-0000000000e3';
+const members = [
+  { userId: USER.id, name: 'Ada Lovelace', email: 'ada@example.com', role: 'owner', joinedAt: NOW },
+  {
+    userId: GRACE,
+    name: 'Grace Hopper',
+    email: 'grace@example.com',
+    role: 'member',
+    joinedAt: NOW,
+  },
+  { userId: VERA, name: 'Vera Viewer', email: 'vera@example.com', role: 'viewer', joinedAt: NOW },
+];
+
 function server(role: string, cards: Cd[]) {
   const handlers = {
+    [`GET /api/workspaces/${WID}/members`]: () => jsonResponse(200, { members }),
     'GET /api/auth/me': () => jsonResponse(200, { user: USER }),
     'GET /api/workspaces': () => jsonResponse(200, { workspaces: [] }),
     [`GET /api/workspaces/${WID}`]: () =>
@@ -446,6 +470,103 @@ describe('card dialog', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Add card to To do' })).toHaveFocus(),
     );
+  });
+
+  it('shows assignee initials, priority with text and the estimate on the tile', async () => {
+    stubFetch(
+      server('owner', [
+        card(1, cid(1), { assigneeId: GRACE, priority: 'urgent', estimate: 5 }),
+        card(2, cid(1)),
+      ]),
+    );
+    board();
+    const first = await screen.findByRole('link', { name: /KB-1 Card 1/ });
+    expect(await within(first).findByText('GH')).toBeVisible();
+    expect(within(first).getByRole('img', { name: 'Assignee: Grace Hopper' })).toBeVisible();
+    expect(within(first).getByText('Urgent')).toBeVisible();
+    expect(within(first).getByRole('img', { name: 'Estimate: 5 points' })).toHaveTextContent(
+      '5 pts',
+    );
+    // A card without any of the three fields shows no extras.
+    expect(screen.getByRole('link', { name: 'KB-2 Card 2' })).toBeVisible();
+  });
+
+  it('sets assignee, priority and estimate from the dialog, offering no viewers', async () => {
+    const cards = [card(1)];
+    const mock = stubFetch({
+      ...server('owner', cards),
+      [`PATCH /api/cards/${kid(1)}`]: (body) => {
+        const target = cards[0] as Cd;
+        Object.assign(target, body);
+        target.version += 1;
+        return jsonResponse(200, { card: full(target) });
+      },
+    });
+    const user = board(`/projects/${PID}/cards/1`);
+    const assignee = await screen.findByRole('combobox', { name: 'Assignee' });
+    await waitFor(() =>
+      expect(within(assignee).getByRole('option', { name: 'Grace Hopper' })).toBeVisible(),
+    );
+    expect(within(assignee).queryByRole('option', { name: 'Vera Viewer' })).toBeNull();
+    await user.selectOptions(assignee, 'Grace Hopper');
+    await waitFor(() => expect(polite()).toHaveTextContent('Card assigned to Grace Hopper'));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Priority' }), 'High');
+    await waitFor(() => expect(polite()).toHaveTextContent('Priority set to High'));
+    const estimate = screen.getByRole('spinbutton', { name: /Estimate/ });
+    await user.type(estimate, '8{Enter}');
+    await waitFor(() => expect(polite()).toHaveTextContent('Estimate set to 8 points'));
+
+    const bodies = mock.mock.calls
+      .filter(([, init]) => init?.method === 'PATCH')
+      .map(([, init]) => JSON.parse(String(init?.body)));
+    expect(bodies).toEqual([{ assigneeId: GRACE }, { priority: 'high' }, { estimate: 8 }]);
+    // The tile behind the dialog follows.
+    expect(screen.getByRole('img', { name: 'Assignee: Grace Hopper' })).toBeVisible();
+    const tile = screen.getByRole('link', { name: /KB-1 Card 1/ });
+    expect(within(tile).getByText('High')).toBeVisible();
+  });
+
+  it('validates the estimate and links the error to the field', async () => {
+    const mock = stubFetch(server('owner', [card(1)]));
+    const user = board(`/projects/${PID}/cards/1`);
+    const estimate = await screen.findByRole('spinbutton', { name: /Estimate/ });
+    await user.type(estimate, '101{Enter}');
+    expect(await screen.findByText('Estimate must be at most 100')).toBeVisible();
+    expect(estimate).toHaveAttribute('aria-invalid', 'true');
+    expect(estimate.getAttribute('aria-describedby')).toContain('-error');
+    await user.clear(estimate);
+    await user.type(estimate, '1.5{Enter}');
+    expect(await screen.findByText('Estimate must be a whole number')).toBeVisible();
+    expect(mock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
+  });
+
+  it('rolls the priority back and announces when the save fails', async () => {
+    stubFetch({
+      ...server('owner', [card(1)]),
+      [`PATCH /api/cards/${kid(1)}`]: () =>
+        jsonResponse(400, { error: { code: 'INVALID_ASSIGNEE', message: 'Not assignable' } }),
+    });
+    const user = board(`/projects/${PID}/cards/1`);
+    const priority = await screen.findByRole('combobox', { name: 'Priority' });
+    await user.selectOptions(priority, 'Urgent');
+    await waitFor(() =>
+      expect(screen.getByTestId('live-assertive')).toHaveTextContent(
+        'Could not change the priority: Not assignable',
+      ),
+    );
+    await waitFor(() => expect(priority).toHaveValue('none'));
+  });
+
+  it('shows the three fields as text for a viewer', async () => {
+    stubFetch(
+      server('viewer', [card(1, cid(1), { assigneeId: GRACE, priority: 'low', estimate: 3 })]),
+    );
+    board(`/projects/${PID}/cards/1`);
+    const dialog = await screen.findByRole('dialog', { name: 'Card KB-1' });
+    expect(await within(dialog).findByText('Grace Hopper')).toBeVisible();
+    expect(within(dialog).getByText('3 points')).toBeVisible();
+    expect(within(dialog).queryByRole('combobox', { name: 'Assignee' })).toBeNull();
+    expect(within(dialog).queryByRole('spinbutton')).toBeNull();
   });
 
   it('is read-only for a viewer', async () => {

@@ -96,7 +96,7 @@ Any role. Response `200 { card }`. A soft-deleted card is `404` for everyone. Er
 
 ### PATCH /api/cards/:id
 
-Owner or member. Body with at least one of `title`, `description` (the description path is interim until KB-019). A change increments `version` and writes `title_changed` (`{ from, to }`) and/or `description_changed` (`{ from, to }` as lengths, never the text) in the same transaction; a request that changes nothing returns the card untouched. Response `200 { card }`. Errors: `400`, `401`, `403`, `404`.
+Owner or member. Body with at least one of `title`, `description` (the description path is interim until KB-019), `assigneeId` (uuid or `null`), `priority` (`none`, `low`, `medium`, `high`, `urgent`) and `estimate` (integer 0-100 or `null`). The assignee must be an owner or member of the card's workspace, otherwise `400 INVALID_ASSIGNEE` (viewers, non-members and unknown users alike). A change increments `version` and writes, in the same transaction, `title_changed` (`{ from, to }`), `description_changed` (`{ from, to }` as lengths, never the text), `assignee_changed` (`{ from, to }` user ids or `null`), `priority_changed` and `estimate_changed` (`{ from, to }`); a request that changes nothing returns the card untouched. Cards (and board summaries) carry `assigneeId`, `priority` (default `none`) and `estimate` (default `null`). Removing a member (or a member leaving) sets `assigneeId` to `null` on their live cards in that workspace in the same transaction, bumping `version` and writing `assignee_changed` with the remover as actor. Response `200 { card }`. Errors: `400`, `401`, `403`, `404`.
 
 ### POST /api/cards/:id/move
 

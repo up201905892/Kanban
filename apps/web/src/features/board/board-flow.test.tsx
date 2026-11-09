@@ -31,6 +31,9 @@ interface Cd {
   title: string;
   position: string;
   version: number;
+  assigneeId: string | null;
+  priority: string;
+  estimate: number | null;
 }
 
 function server(role: string, columns: Col[] = initialColumns(), cards: Cd[] = []) {
@@ -342,6 +345,9 @@ describe('board page', () => {
       title: `Card ${n}`,
       position,
       version: 1,
+      assigneeId: null,
+      priority: 'none',
+      estimate: null,
     });
     const cards = [card(1, cid(2), 'a0'), card(2, cid(2), 'a1'), card(3, cid(3), 'a0')];
     const { handlers, columns } = server('owner', initialColumns(), cards);
@@ -397,6 +403,9 @@ describe('board page', () => {
         title: 'Stuck',
         position: 'a0',
         version: 1,
+        assigneeId: null,
+        priority: 'none',
+        estimate: null,
       },
     ];
     const { handlers } = server('owner', initialColumns(), cards);

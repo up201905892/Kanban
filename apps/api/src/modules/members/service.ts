@@ -3,6 +3,8 @@ import type { PrismaClient } from '../../db.js';
 import { AppError, notFound } from '../../lib/app-error.js';
 import { publishMembershipChange } from '../../lib/membership-events.js';
 import { authorize } from '../authz/index.js';
+import { lockBoard } from '../boards/lock.js';
+import { recordActivity } from '../cards/activity.js';
 
 interface MemberRow {
   userId: string;
@@ -89,6 +91,44 @@ async function changeMemberRoleTx(
   });
 }
 
+/**
+ * Clears the person's assignments on live cards of the workspace, with one `assignee_changed`
+ * event per card, in the caller's transaction (G4, G5). Boards are locked in id order first, like
+ * every other card writer, so a concurrent move or edit cannot interleave.
+ */
+async function unassignCards(
+  tx: Tx,
+  workspaceId: string,
+  userId: string,
+  actorId: string,
+): Promise<void> {
+  const cards = await tx.card.findMany({
+    where: { assigneeId: userId, deletedAt: null, board: { project: { workspaceId } } },
+    select: { id: true, boardId: true },
+    orderBy: { id: 'asc' },
+  });
+  if (cards.length === 0) return;
+  for (const boardId of [...new Set(cards.map((c) => c.boardId))].sort()) {
+    await lockBoard(tx, boardId);
+  }
+  // Re-read under the locks: an edit may have changed the assignee while we waited.
+  const current = await tx.card.findMany({
+    where: { id: { in: cards.map((c) => c.id) }, assigneeId: userId, deletedAt: null },
+    select: { id: true },
+    orderBy: { id: 'asc' },
+  });
+  for (const { id } of current) {
+    await tx.card.update({
+      where: { id },
+      data: { assigneeId: null, version: { increment: 1 } },
+    });
+    await recordActivity(tx, id, actorId, {
+      type: 'assignee_changed',
+      data: { from: userId, to: null },
+    });
+  }
+}
+
 /** Owners remove anyone; any member may remove themselves (leave). */
 export async function removeMember(
   prisma: PrismaClient,
@@ -113,8 +153,9 @@ export async function removeMember(
       const owners = await tx.membership.count({ where: { workspaceId, role: 'owner' } });
       if (owners <= 1) throw lastOwner();
     }
-    // Only the membership goes: everything the person created stays.
+    // Only the membership goes: everything the person created stays, but their assignments end.
     await tx.membership.delete({ where: { id: target.id } });
+    await unassignCards(tx, workspaceId, targetUserId, user.id);
   });
   // After commit, so a socket is never closed for a change that rolled back.
   publishMembershipChange({ workspaceId, userId: targetUserId, role: null });

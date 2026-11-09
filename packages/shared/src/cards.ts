@@ -18,6 +18,19 @@ export const cardDescriptionSchema = z
     `Description must be at most ${CARD_DESCRIPTION_MAX_LENGTH} characters`,
   );
 
+export const CARD_PRIORITIES = ['none', 'low', 'medium', 'high', 'urgent'] as const;
+export const cardPrioritySchema = z.enum(CARD_PRIORITIES);
+export type CardPriority = z.infer<typeof cardPrioritySchema>;
+
+export const CARD_ESTIMATE_MIN = 0;
+export const CARD_ESTIMATE_MAX = 100;
+/** Story points: a whole number from 0 to 100. */
+export const cardEstimateSchema = z
+  .number()
+  .int('Estimate must be a whole number')
+  .min(CARD_ESTIMATE_MIN, `Estimate must be at least ${CARD_ESTIMATE_MIN}`)
+  .max(CARD_ESTIMATE_MAX, `Estimate must be at most ${CARD_ESTIMATE_MAX}`);
+
 export const cardParamsSchema = z.strictObject({ id: z.uuid() });
 export const columnCardsParamsSchema = z.strictObject({ cid: z.uuid() });
 
@@ -31,6 +44,11 @@ export const cardSummarySchema = z.object({
   /** Fractional-index key (ADR 0001) inside the column. */
   position: z.string(),
   version: z.number().int().positive(),
+  /** Owner or member of the workspace, or null when nobody does the card. */
+  assigneeId: z.uuid().nullable(),
+  priority: cardPrioritySchema,
+  /** Story points, or null when not estimated. */
+  estimate: z.number().int().nullable(),
 });
 export type CardSummary = z.infer<typeof cardSummarySchema>;
 
@@ -62,6 +80,10 @@ export const updateCardRequestSchema = z
     title: cardTitleSchema.optional(),
     /** Interim: KB-019 moves the description to the Yjs document and removes it from here. */
     description: cardDescriptionSchema.optional(),
+    /** Must be an owner or member of the card's workspace (`400 INVALID_ASSIGNEE`); null unassigns. */
+    assigneeId: z.uuid().nullable().optional(),
+    priority: cardPrioritySchema.optional(),
+    estimate: cardEstimateSchema.nullable().optional(),
   })
   .refine((body) => Object.values(body).some((v) => v !== undefined), {
     message: 'Send at least one field to change',
@@ -101,6 +123,9 @@ export const ACTIVITY_TYPES = [
   'deleted',
   'column_deleted_moved',
   'moved',
+  'assignee_changed',
+  'priority_changed',
+  'estimate_changed',
 ] as const;
 
 /**
@@ -129,6 +154,18 @@ export const activityEventDataSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('moved'),
     data: z.object({ fromColumnId: z.uuid(), toColumnId: z.uuid() }),
+  }),
+  z.object({
+    type: z.literal('assignee_changed'),
+    data: z.object({ from: z.uuid().nullable(), to: z.uuid().nullable() }),
+  }),
+  z.object({
+    type: z.literal('priority_changed'),
+    data: z.object({ from: cardPrioritySchema, to: cardPrioritySchema }),
+  }),
+  z.object({
+    type: z.literal('estimate_changed'),
+    data: z.object({ from: z.number().int().nullable(), to: z.number().int().nullable() }),
   }),
 ]);
 export type ActivityEventData = z.infer<typeof activityEventDataSchema>;

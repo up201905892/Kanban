@@ -56,6 +56,9 @@ export function useCreateCard(projectId: string) {
             title: vars.title,
             position,
             version: 1,
+            assigneeId: null,
+            priority: 'none' as const,
+            estimate: null,
           },
         ],
       };
@@ -88,14 +91,22 @@ export function useUpdateCard(projectId: string) {
         board: queryClient.getQueryData<BoardResponse>(boardKey(projectId)),
         card: queryClient.getQueryData<Card>(cardKey(id)),
       };
-      if (patch.title !== undefined) {
-        const title = patch.title;
+      // Title and the three card fields show at once; undefined keys are left alone.
+      const shown: Partial<Pick<Card, 'title' | 'assigneeId' | 'priority' | 'estimate'>> = {};
+      if (patch.title !== undefined) shown.title = patch.title;
+      if (patch.assigneeId !== undefined) shown.assigneeId = patch.assigneeId;
+      if (patch.priority !== undefined) shown.priority = patch.priority;
+      if (patch.estimate !== undefined) shown.estimate = patch.estimate;
+      if (Object.keys(shown).length > 0) {
         queryClient.setQueryData<BoardResponse>(
           boardKey(projectId),
           (old) =>
-            old && { ...old, cards: old.cards.map((c) => (c.id === id ? { ...c, title } : c)) },
+            old && {
+              ...old,
+              cards: old.cards.map((c) => (c.id === id ? { ...c, ...shown } : c)),
+            },
         );
-        queryClient.setQueryData<Card>(cardKey(id), (old) => old && { ...old, title });
+        queryClient.setQueryData<Card>(cardKey(id), (old) => old && { ...old, ...shown });
       }
       return context;
     },

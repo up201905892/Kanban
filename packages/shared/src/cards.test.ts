@@ -74,12 +74,44 @@ describe('cardSchema', () => {
       title: 'T',
       position: 'a0',
       version: 1,
+      assigneeId: null,
+      priority: 'none',
+      estimate: null,
       description: '',
       createdById: id,
       createdAt: '2026-11-05T10:00:00.000Z',
       updatedAt: '2026-11-05T10:00:00.000Z',
     };
     expect(cardSchema.parse(card)).toEqual(card);
+  });
+});
+
+describe('card field updates', () => {
+  it('accepts valid assignee, priority and estimate values, including null to clear', () => {
+    for (const body of [
+      { assigneeId: id },
+      { assigneeId: null },
+      { priority: 'high' },
+      { estimate: 0 },
+      { estimate: 100 },
+      { estimate: null },
+      { assigneeId: id, priority: 'low', estimate: 8 },
+    ]) {
+      expect(updateCardRequestSchema.safeParse(body).success).toBe(true);
+    }
+  });
+
+  it('rejects out-of-range, fractional and unknown values', () => {
+    for (const body of [
+      { estimate: -1 },
+      { estimate: 101 },
+      { estimate: 1.5 },
+      { estimate: '3' },
+      { priority: 'critical' },
+      { assigneeId: 'x' },
+    ]) {
+      expect(updateCardRequestSchema.safeParse(body).success).toBe(false);
+    }
   });
 });
 
@@ -116,6 +148,9 @@ describe('activityEventDataSchema', () => {
       { type: 'deleted', data: { title: 'T' } },
       { type: 'column_deleted_moved', data: { from: column, to: column } },
       { type: 'moved', data: { fromColumnId: id, toColumnId: id } },
+      { type: 'assignee_changed', data: { from: null, to: id } },
+      { type: 'priority_changed', data: { from: 'none', to: 'urgent' } },
+      { type: 'estimate_changed', data: { from: null, to: 5 } },
     ]) {
       expect(activityEventDataSchema.safeParse(event).success).toBe(true);
     }

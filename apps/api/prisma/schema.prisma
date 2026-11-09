@@ -18,8 +18,9 @@ model User {
   sessions     Session[]
   memberships  Membership[]
   invites      Invite[]
-  cards        Card[]
-  activity     ActivityEvent[]
+  cards        Card[]    @relation("CardCreator")
+  assignedCards Card[]   @relation("CardAssignee")
+  activity    ActivityEvent[]
 
   @@map("users")
 }
@@ -120,6 +121,16 @@ model Column {
   @@map("columns")
 }
 
+enum CardPriority {
+  none
+  low
+  medium
+  high
+  urgent
+
+  @@map("card_priority")
+}
+
 model Card {
   id          String          @id @default(uuid(7)) @db.Uuid
   boardId     String          @map("board_id") @db.Uuid
@@ -134,16 +145,23 @@ model Card {
   position    String
   version     Int             @default(1)
   createdById String          @map("created_by_id") @db.Uuid
+  /// Owner or member of the workspace (checked by the API); cleared when they leave it.
+  assigneeId  String?         @map("assignee_id") @db.Uuid
+  priority    CardPriority    @default(none)
+  /// Story points, 0 to 100 (CHECK in the migration).
+  estimate    Int?
   createdAt   DateTime        @default(now()) @map("created_at")
   updatedAt   DateTime        @updatedAt @map("updated_at")
   /// Soft delete: set instead of removing the row, so history keeps its card.
   deletedAt   DateTime?       @map("deleted_at")
   board       Board           @relation(fields: [boardId], references: [id], onDelete: Cascade)
   column      Column          @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  createdBy   User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy   User            @relation("CardCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  assignee    User?           @relation("CardAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   activity    ActivityEvent[]
 
   @@unique([boardId, number])
+  @@index([assigneeId])
   @@index([columnId, position, id])
   @@map("cards")
 }

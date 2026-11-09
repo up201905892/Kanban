@@ -8,6 +8,7 @@ import {
   type Card,
   type CardSummary,
   type Column,
+  type Member,
 } from '@kanban/shared';
 import {
   Button,
@@ -19,6 +20,7 @@ import {
   useAnnounce,
 } from '../../components';
 import { useCard, useUpdateCard } from './api';
+import { CardFields } from './CardFields';
 import { Markdown } from './Markdown';
 
 export interface CardDialogProps {
@@ -30,6 +32,8 @@ export interface CardDialogProps {
   canEdit: boolean;
   /** Columns of the board, for "Move to...". */
   columns: Column[];
+  /** Members of the workspace: the assignee choices and names. */
+  members: Member[];
   /** "Move to...": the non-drag way to move the card. */
   onMove: (card: CardSummary, columnId: string, placement: 'top' | 'bottom') => void;
   /** The number from the address, for the "not found" message. */
@@ -45,6 +49,7 @@ export function CardDialog({
   summary,
   canEdit,
   columns,
+  members,
   onMove,
   number,
   onClose,
@@ -68,6 +73,7 @@ export function CardDialog({
       summary={summary}
       canEdit={canEdit}
       columns={columns}
+      members={members}
       onMove={onMove}
       onClose={onClose}
       onDelete={onDelete}
@@ -81,6 +87,7 @@ interface CardDetailProps {
   summary: CardSummary;
   canEdit: boolean;
   columns: Column[];
+  members: Member[];
   onMove: (card: CardSummary, columnId: string, placement: 'top' | 'bottom') => void;
   onClose: () => void;
   onDelete: (card: CardSummary) => void;
@@ -92,6 +99,7 @@ function CardDetail({
   summary,
   canEdit,
   columns,
+  members,
   onMove,
   onClose,
   onDelete,
@@ -133,6 +141,7 @@ function CardDetail({
       {card.data && (
         <>
           <TitleSection projectId={projectId} card={card.data} canEdit={canEdit} />
+          <CardFields projectId={projectId} card={card.data} members={members} canEdit={canEdit} />
           <DescriptionSection projectId={projectId} card={card.data} canEdit={canEdit} />
         </>
       )}

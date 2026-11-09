@@ -7,6 +7,7 @@ import {
   type BoardResponse,
   type CardSummary,
   type Column,
+  type Member,
   type MoveDirection,
   type Project,
 } from '@kanban/shared';
@@ -36,6 +37,7 @@ import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { AddCard, addCardButtonId } from '../cards/AddCard';
 import { CardDialog } from '../cards/CardDialog';
 import { useCreateCard, useDeleteCard, useMoveCard } from '../cards/api';
+import { useMembers } from '../members/api';
 import { CardOverlay, ColumnCards, cardHandleId, cardTileId } from './CardList';
 import { ColumnMenu, type ColumnMenuItem } from './ColumnMenu';
 import { useBoard, useCreateColumn, useDeleteColumn, useUpdateColumn } from './api';
@@ -280,6 +282,8 @@ function DeleteColumnBody({
   );
 }
 
+const NO_MEMBERS: Member[] = [];
+
 export interface BoardViewProps {
   project: Project;
   /** True for owners and members (`board:manage`); viewers get a read-only board. */
@@ -301,6 +305,8 @@ export function BoardView({
 }: BoardViewProps) {
   const announce = useAnnounce();
   const board = useBoard(project.id);
+  // Names for the assignee initials and the card dialog; the board still works without them.
+  const members = useMembers(project.workspaceId).data ?? NO_MEMBERS;
   const boardId = board.data?.board.id ?? '';
   const createColumn = useCreateColumn(project.id, boardId);
   const updateColumn = useUpdateColumn(project.id);
@@ -317,6 +323,9 @@ export function BoardView({
   const [layout, setLayout] = useState<Record<string, string[]> | null>(null);
   const [heldId, setHeldId] = useState<string | null>(null);
   const origin = useRef<{ columnId: string; index: number } | null>(null);
+  // False until the held card has been over anything but itself: hovering its own spot right
+  // after pick-up is not a move and must not overwrite the "Picked up" announcement.
+  const leftOwnSpot = useRef(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Column | null>(null);
   const focusAfterRender = useRef<string | null>(null);
@@ -473,6 +482,7 @@ export function BoardView({
     if (!card || !columnId) return;
     const ids = start[columnId] ?? [];
     origin.current = { columnId, index: ids.indexOf(id) };
+    leftOwnSpot.current = false;
     setLayout(start);
     setHeldId(id);
     announce(
@@ -485,6 +495,8 @@ export function BoardView({
     if (!layout || !over) return;
     const id = String(active.id);
     const overId = String(over.id);
+    if (overId === id && !leftOwnSpot.current) return;
+    leftOwnSpot.current = true;
     const from = containerOf(layout, id);
     const to = containerOf(layout, overId);
     const card = cardById(id);
@@ -682,6 +694,7 @@ export function BoardView({
                     column={column}
                     cards={cardsShown(column.id)}
                     canDrag={canEditCards}
+                    members={members}
                   />
                   {canEditCards && (
                     <AddCard
@@ -727,6 +740,7 @@ export function BoardView({
           summary={board.data.cards.find((c) => c.number === openCardNumber)}
           canEdit={canEditCards}
           columns={columns}
+          members={members}
           onMove={moveTo}
           onClose={() => closeCard(board.data.cards.find((c) => c.number === openCardNumber))}
           onDelete={removeCard}

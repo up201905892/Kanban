@@ -242,6 +242,33 @@ main,
   font-weight: 600;
 }
 
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.card-assignee {
+  display: inline-block;
+  min-width: 1.5rem;
+  padding: 0 0.25rem;
+  border: 1px solid #333;
+  border-radius: 999px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.card-fields dt {
+  font-weight: 600;
+}
+
+.card-fields dd {
+  margin: 0 0 0.5rem;
+}
+
 .markdown {
   overflow-wrap: anywhere;
 }
