@@ -165,7 +165,7 @@ Same port and origin as the REST API (Vite proxies `/ws` in development). Binary
 
 - Rooms: `board:<boardId>` (awareness and server-pushed board events) and `card:<cardId>:description` (collaborative text). IDs are UUIDs.
 - Upgrade: the `Origin` header must equal the web origin, otherwise `403 CSRF_REJECTED` before the upgrade. The session cookie authenticates after the upgrade.
-- Close codes: `4401` no or invalid session; `4403` not a member of the room's workspace, or the room does not exist (indistinguishable), or the membership was removed while connected; `4400` invalid room name; `1003` text frame; `1007` malformed message; `1009` message over 1 MiB; `1011` the room could not be loaded.
+- Close codes: `4401` no or invalid session; `4403` not a member of the room's workspace, or the room does not exist (indistinguishable), or the membership was removed while connected; `4400` invalid room name; `1003` text frame; `1007` malformed message; `1009` message over 1 MiB; `1011` the room could not be loaded; `1012` the server is restarting (graceful shutdown; reconnect with backoff). Card description documents are persisted in PostgreSQL (updates batched at most 500 ms apart, compacted after 100 updates and when the last client leaves).
 - Message types (first varint): `0` sync, `1` awareness, `3` query awareness (all as in y-websocket), `4` board event (server to client only: a varString with JSON `{ "type": string, "data": object }`).
 - Viewers receive documents and may send awareness, but their document updates are discarded. In board rooms clients never write the document.
 - The server pings every 30 s and terminates connections that do not answer.

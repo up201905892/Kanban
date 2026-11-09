@@ -29,6 +29,8 @@ export interface RealtimeService {
   /** Pushes a board event to every client of the board room (KB-018). */
   broadcastBoardEvent(boardId: string, event: BoardEventMessage): void;
   readonly rooms: RoomManager;
+  /** Flushes pending document batches and closes every socket with 1012 (SIGTERM/SIGINT). */
+  shutdown(): Promise<void>;
 }
 
 declare module 'fastify' {
@@ -51,6 +53,7 @@ export function createRealtime(options: RealtimeOptions = {}): RealtimeService {
   const rooms = new RoomManager(options.persistence ?? noPersistence);
   return {
     rooms,
+    shutdown: () => rooms.shutdown(),
     broadcastBoardEvent: (boardId, event) => rooms.broadcastBoardEvent(boardId, event),
   };
 }
@@ -101,7 +104,7 @@ export function realtimeRoutes({
     app.addHook('onClose', async () => {
       clearInterval(timer);
       unsubscribe();
-      await rooms.closeAll();
+      await rooms.shutdown();
     });
 
     app.get(

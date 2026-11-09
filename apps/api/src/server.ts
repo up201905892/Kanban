@@ -1,6 +1,7 @@
 import { buildApp } from './app.js';
 import { loadConfigOrExit, loadDotEnv } from './config.js';
 import { createPrismaClient } from './db.js';
+import { installShutdownHandlers } from './lib/graceful-shutdown.js';
 
 loadDotEnv();
 const config = loadConfigOrExit();
@@ -17,3 +18,5 @@ try {
   app.log.error(err);
   process.exit(1);
 }
+
+installShutdownHandlers(app);

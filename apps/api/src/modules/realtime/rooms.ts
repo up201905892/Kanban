@@ -4,6 +4,7 @@ import * as awarenessProtocol from 'y-protocols/awareness';
 import * as syncProtocol from 'y-protocols/sync';
 import * as Y from 'yjs';
 import {
+  WS_CLOSE,
   WS_MESSAGE,
   can,
   roomName,
@@ -28,6 +29,8 @@ const WS_OPEN = 1;
 export interface RoomPersistence {
   load(room: RoomRef, doc: Y.Doc): Promise<void>;
   store(room: RoomRef, doc: Y.Doc): Promise<void>;
+  /** Writes every batch still waiting in memory (graceful shutdown). */
+  flush?(): Promise<void>;
 }
 
 export const noPersistence: RoomPersistence = {
@@ -76,6 +79,8 @@ function broadcast(room: Room, message: Uint8Array, except?: Connection): void {
 /** One in-memory document and awareness per room, created on first use and dropped after the last client. */
 export class RoomManager {
   private readonly rooms = new Map<string, Room>();
+  private readonly storing = new Set<Promise<void>>();
+  private shuttingDown = false;
 
   constructor(private readonly persistence: RoomPersistence = noPersistence) {}
 
@@ -170,6 +175,10 @@ export class RoomManager {
    * awareness states). Returns false when the room could not be loaded (the socket is closed).
    */
   async join(ref: RoomRef, conn: Connection): Promise<boolean> {
+    if (this.shuttingDown) {
+      conn.socket.close(WS_CLOSE.serviceRestart, 'Server shutting down');
+      return false;
+    }
     const room = this.getOrCreate(ref);
     room.conns.add(conn);
     conn.room = room;
@@ -206,7 +215,7 @@ export class RoomManager {
   /** Handles one binary message from an authorized connection. Throws on a malformed message. */
   handleMessage(conn: Connection, data: Uint8Array): void {
     const room = conn.room;
-    if (!room || room.closing) return;
+    if (!room || room.closing || this.shuttingDown) return;
     const decoder = decoding.createDecoder(data);
     const type = decoding.readVarUint(decoder);
     switch (type) {
@@ -267,11 +276,19 @@ export class RoomManager {
     }
     conn.awarenessIds.clear();
     if (room.conns.size > 0 || room.closing) return;
+    const stored = (async () => {
+      try {
+        await room.ready;
+        await this.persistence.store(room.ref, room.doc);
+      } catch {
+        // Persistence errors are logged by the hook's owner; the room is dropped either way.
+      }
+    })();
+    this.storing.add(stored);
     try {
-      await room.ready;
-      await this.persistence.store(room.ref, room.doc);
-    } catch {
-      // Persistence errors are logged by the hook's owner; the room is dropped either way.
+      await stored;
+    } finally {
+      this.storing.delete(stored);
     }
     // Someone who joined while storing keeps the room alive.
     if (room.conns.size === 0 && !room.closing) this.drop(room);
@@ -287,12 +304,23 @@ export class RoomManager {
     broadcast(room, encoding.toUint8Array(encoder));
   }
 
-  /** Closes every connection and drops every room (server shutdown). */
-  async closeAll(): Promise<void> {
+  /**
+   * Graceful shutdown: stop accepting joins and document writes, write the pending batches, then
+   * close every socket with 1012 (service restart, clients reconnect) and wait for the rooms to
+   * be stored. Safe to call more than once.
+   */
+  async shutdown(): Promise<void> {
+    this.shuttingDown = true;
+    try {
+      await this.persistence.flush?.();
+    } catch {
+      // Logged by the persistence layer; the rooms are stored (and retried) below.
+    }
     const conns = [...this.rooms.values()].flatMap((r) => [...r.conns]);
     for (const conn of conns) {
-      conn.socket.close(1001, 'Server shutting down');
+      conn.socket.close(WS_CLOSE.serviceRestart, 'Server shutting down');
       await this.leave(conn);
     }
+    await Promise.all([...this.storing]);
   }
 }

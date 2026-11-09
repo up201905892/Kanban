@@ -197,6 +197,30 @@ model Session {
   @@map("sessions")
 }
 
+/// Compacted state of a collaborative Yjs document (room name such as `card:<id>:description`).
+/// The full state is this snapshot merged with every row of `y_document_updates`.
+model YDocument {
+  name      String            @id
+  /// A Yjs update that encodes the whole document at the last compaction.
+  snapshot  Bytes
+  updatedAt DateTime          @updatedAt @map("updated_at")
+  updates   YDocumentUpdate[]
+
+  @@map("y_documents")
+}
+
+/// Incremental Yjs updates appended since the last compaction (merged into the snapshot, then deleted).
+model YDocumentUpdate {
+  id        BigInt    @id @default(autoincrement())
+  docName   String    @map("doc_name")
+  update    Bytes
+  createdAt DateTime  @default(now()) @map("created_at")
+  document  YDocument @relation(fields: [docName], references: [name], onDelete: Cascade)
+
+  @@index([docName, id])
+  @@map("y_document_updates")
+}
+
 /// Technical (non-domain) key/value table. It gives the `init` migration real content
 /// (Prisma creates no migration for an empty schema) and is a place for app-level flags.
 model AppMeta {

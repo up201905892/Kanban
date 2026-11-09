@@ -20,6 +20,8 @@ export const WS_CLOSE = {
   invalidRoom: 4400,
   /** Standard: message too big. */
   messageTooBig: 1009,
+  /** Standard: service restart (graceful shutdown); clients reconnect with backoff. */
+  serviceRestart: 1012,
 } as const;
 
 /** Largest accepted WebSocket message, in bytes. */
