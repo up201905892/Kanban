@@ -16,6 +16,21 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-09
+
+- **Decisions for João:**
+  - **D10 (new):** should demoting a member to viewer unassign their cards? Recommended A (yes): `Answer | D10 | A` and `Approve | KB-038`. For B: `Answer | D10 | B` and `Change | KB-038 | option B`.
+  - **D9 (still open):** `Answer | D9 | A` and `Reject | KB-036` (recommended), or `Answer | D9 | B` and `Approve | KB-036`.
+  - **KB-018:** it can start without KB-034, but then cards whose position is respaced keep the same `version` and clients can disagree on order. Recommended: `Change | KB-018 | add dependency KB-034`.
+  - Suggested approval (dependencies Done): `Approve | KB-034, KB-037, KB-033, KB-035, KB-024`.
+  - FYI, sandbox: `prisma migrate reset` was blocked in autonomous mode (testers used `pnpm db:migrate` instead); a real SIGTERM against the server was not tested for KB-017.
+- **Done:** KB-013 (card fields), KB-017 (Yjs persistence in PostgreSQL)
+- **Tested:** KB-013 (Passed), KB-017 (Passed)
+- **Developed:** KB-013, KB-017 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-014, KB-020 to KB-038 (new: KB-037 keep unsaved collaborative edits when the final flush fails, KB-038 unassign cards on demotion to viewer; KB-031 now also depends on KB-037)
+- **Rule violations found:** none
+- **Next step:** KB-018 and KB-019 are `Planned` with dependencies Done and will be developed next.
+
 ## 2026-11-06
 
 - **Decisions for João:**

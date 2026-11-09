@@ -38,12 +38,14 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-028 | Performance with 500+ cards | Quality and delivery | Medium | KB-018 | Proposed |
 | KB-029 | End-to-end collaboration suite (two browsers) | Quality and delivery | Medium | KB-009, KB-021, KB-023 | Proposed |
 | KB-030 | Accessibility audit and fixes | Quality and delivery | Medium | KB-020, KB-021, KB-024, KB-025 | Proposed |
-| KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017 | Proposed |
+| KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017, KB-037 | Proposed |
 | KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Proposed |
 | KB-033 | Close real-time sockets on logout, session expiry and resource deletion | Real time | Medium | KB-016 | Proposed |
 | KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Proposed |
 | KB-035 | Stabilise the flaky members and move-cards E2E tests | Quality and delivery | Medium | KB-009, KB-015 | Proposed |
 | KB-036 | Card actions menu on the board tile (D9) | Board | Low | KB-015, D9 answered | Proposed |
+| KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Proposed |
+| KB-038 | Unassign a member's cards when they are demoted to viewer (D10) | Authentication and workspaces | Medium | KB-009, KB-013 | Proposed |
 
 **Priority rule used:** High = blocks at least one other High/Medium task on the path to the v1.0 release; Medium = MVP scope that blocks nothing (or only Medium tasks at the end of the plan); Low = MVP scope that is the first candidate to move to v1.1 if the schedule slips.
 
@@ -51,7 +53,9 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 
 **Estimate update (2026-11-06):** KB-033 to KB-036 add 2 S + 2 M = 2.5 ideal days; new total 3 S + 23 M + 10 L = **48.75 ideal days** (53.75 if every L takes 3 days). Without KB-036 (only needed if D9 option B is chosen): 47.75.
 
-**ADRs required** (files in `docs/adr/NNNN-<slug>.md`, next free number): auth and sessions (KB-005), authorization model (KB-007), ordering and conflict handling (KB-010), real-time architecture and Yjs↔DB authority (KB-016, extended by KB-017, KB-019 and KB-033), deployment topology (KB-031).
+**Estimate update (2026-11-09):** KB-037 (M) and KB-038 (S) add 1.25 ideal days; new total 4 S + 24 M + 10 L = **50 ideal days** (55 if every L takes 3 days). Without KB-036: 49.75.
+
+**ADRs required** (files in `docs/adr/NNNN-<slug>.md`, next free number): auth and sessions (KB-005), authorization model (KB-007), ordering and conflict handling (KB-010), real-time architecture and Yjs↔DB authority (KB-016, extended by KB-017, KB-019, KB-033 and KB-037), deployment topology (KB-031).
 
 ## Technical decisions
 
@@ -121,6 +125,15 @@ KB-015 was implemented with two deviations from its wording, both flagged by the
 - **Option C:** Enter on the tile picks up and opening the card moves to another key or control. Not recommended: it breaks the link semantics and the KB-012 E2E flow; if chosen, answer with `Change | KB-036` and the planner rewrites KB-036 for it.
 - **How to answer:** `Answer | D9 | A` (and `Reject | KB-036`), or `Answer | D9 | B` (and `Approve | KB-036`), or `Change | KB-036 | option C`.
 - **Affects:** KB-015 (record only, no rework under A or B), KB-036, KB-028 (Tab stops per tile), KB-030 (audit of the chosen pattern).
+
+### D10 · What happens to a member's cards when they are demoted to viewer — **Open** (asked 2026-11-09)
+
+KB-013 unassigns a person's cards when they are removed or leave, but not when an owner demotes them to viewer (the spec did not say). Since viewers cannot be assigned (`400 INVALID_ASSIGNEE`), such cards end up assigned to someone who could not be assigned to them today and who cannot work on them. The KB-013 developer, tester and finisher all flagged this.
+
+- **Recommendation (option A): unassign on demotion**, the same way as on removal: one transaction, `version` bump and an `assignee_changed` event per card, with the owner as actor. Why: it keeps one invariant ("an assignee is always an owner or member of the card's workspace") that the API, burndown and the assignee select can rely on; it matches what removal already does; the activity history shows who caused the change. This is KB-038 (Medium, S).
+- **Option B:** keep the assignment and show the person as "(viewer)" on the tile and in the dialog, so the work stays visibly theirs (useful if demotion is temporary). The invariant becomes "an assignee was assignable when set", and the assignee select has to show a person that cannot be picked. Not recommended.
+- **How to answer:** `Answer | D10 | A` with `Approve | KB-038`, or `Answer | D10 | B` with `Change | KB-038 | option B` (the planner rewrites KB-038 for B).
+- **Affects:** KB-038, KB-029 (the journey step "A demotes B to viewer"), KB-025 (burndown is not affected under either option; it uses estimates, not assignees).
 
 ## Common criteria
 
@@ -698,6 +711,7 @@ Task template (copy for each new task):
 - 2026-11-09 · tester · Ready for test → In test · testing started
 - 2026-11-09 · tester · In test → Passed · report 1, all checks and criteria verified
 - 2026-11-09 · finisher · Passed → Done · CHANGELOG, api docs and migration verified; no TODO or secret
+- 2026-11-09 · planner · Done (no status change) · the developer, tester and finisher note (demotion to viewer does not unassign the person's cards) is put to João as D10, recommending unassignment; proposed as KB-038; no rework of this task
 
 ### KB-014 · Labels
 
@@ -836,6 +850,7 @@ Task template (copy for each new task):
 - 2026-11-09 · tester · Ready for test → In test · testing started
 - 2026-11-09 · tester · In test → Passed · report 1, all checks and criteria verified
 - 2026-11-09 · finisher · Passed → Done · CHANGELOG, ADR 0004 and docs/api.md verified; no TODO or secret found
+- 2026-11-09 · planner · Done (no status change) · tester observation in report 1 confirmed by a code read: when the final append in `store()` fails, `RoomManager.leave()` swallows the error and drops the room, and the doc `destroy` handler clears the retry timer, so the last batch is lost if no client still holds it; proposed as KB-037 and added as a KB-031 dependency
 
 ### KB-018 · Live board updates
 
@@ -1202,7 +1217,7 @@ Task template (copy for each new task):
 
 - **MVP phase:** Quality and delivery
 - **Priority:** Medium
-- **Depends on:** KB-017
+- **Depends on:** KB-017, KB-037
 - **Estimate:** M
 - **ADR required:** deployment topology (D4)
 
@@ -1232,6 +1247,7 @@ Task template (copy for each new task):
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · João's decision (2026-10-24): release preparation at the end of the plan, blocks only the Medium KB-032
 - 2026-10-29 · planner · spec revised from the KB-005 developer, tester and finisher notes: `trustProxy` made configurable (`TRUST_PROXY`) and testable (rate-limit key behind the proxy); argon2 dummy hash warmed at start-up · stays Proposed
+- 2026-11-09 · planner · dependency KB-037 added: every redeploy goes through the graceful shutdown, and a database hiccup during its final flush must not lose the last edits of open descriptions before the app is deployed · stays Proposed
 
 ### KB-032 · README with demo
 
@@ -1371,3 +1387,63 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-11-06 · planner · created as Proposed · from the KB-015 developer and tester notes; depends on João's answer to D9 (recommendation: option A, which rejects this task)
+
+### KB-037 · Keep unsaved collaborative edits when the final flush fails
+
+- **MVP phase:** Real time
+- **Priority:** Medium
+- **Depends on:** KB-017
+- **Estimate:** M
+- **ADR required:** amend `docs/adr/0004-real-time-architecture.md` section 9
+
+**Goal:** A database failure while a room is unloaded or the server shuts down must not lose collaborative edits silently. Today, in `apps/api/src/modules/realtime/persistence.ts`, `store()` re-throws when the final `appendUpdate` fails. `RoomManager.leave()` (`rooms.ts`) swallows the error and drops the room, and the doc's `destroy` handler clears the retry timer. The batch of the last window (up to 500 ms of edits, or more if earlier retries were failing) is lost once no client holds it. This breaks R7.
+
+**Acceptance criteria:**
+- [ ] When the last client leaves and appending the pending updates fails, the room is **not** dropped. The `Y.Doc` and its pending batch stay in memory, and the write is retried with backoff (start at 1 s, double each time, cap at 30 s). After a successful write, compaction runs and the room is dropped as before.
+- [ ] A client that joins a room whose store is being retried gets the in-memory document (with the unsaved edits), not a fresh load from PostgreSQL. The room then behaves as a live room: the pending batch is written by the normal batching path, and the room is unloaded again when the last client leaves.
+- [ ] A failure in compaction alone, after the append succeeded, does not keep the room: the updates are already in `y_document_updates`. It is logged, and the next load merges the rows as usual.
+- [ ] Each failed attempt logs an error with the document name and attempt number (never the content). A room retained for more than 5 minutes logs one warning, `collaborative document retained after failed stores`, with the document name.
+- [ ] Graceful shutdown (KB-017): flushing and storing are retried within a shutdown deadline (default 10 s; set through a `PersistenceOptions`/shutdown option in tests, not an environment variable). If every document is stored in time, the process exits with code 0 as before. If not, the process logs an error naming each document whose edits could not be saved and exits with code 1. The documented SIGTERM behaviour changes only in this failure case.
+- [ ] No retry loop keeps the process alive: timers stay `unref()`ed, and the retained rooms are listed by a test-visible accessor (e.g. `RoomManager.retainedRooms()`), so tests can assert on them without reaching into private state.
+- [ ] ADR 0004 section 9 is amended (not rewritten): failure semantics of unload and shutdown, the backoff, the memory implication of retained rooms, and the exit code 1 on an unsaved shutdown.
+- [ ] Common criteria: G1, G4, G7, G8, R7.
+
+**Required tests:**
+- Unit (fake `DocumentStore` and fake timers): the final append fails twice and then succeeds → the room and doc are not destroyed in between, the third attempt writes the merged batch, compaction runs, then the room is dropped; the backoff follows 1 s, 2 s, 4 s … capped at 30 s; a compaction failure after a successful append drops the room; the 5-minute retention warning is logged once.
+- API (integration with real `ws` clients and a store wrapper that fails on demand over the real PostgreSQL store): a client edits a description and disconnects while appends fail → a second client joins during the retries and sees the edit; then the store recovers → after the room is unloaded and the app is rebuilt on the same database, a new client gets the edit. Shutdown with a store that never recovers → the shutdown function resolves to exit code 1 within the deadline and logs the document name; with a store that recovers inside the deadline → exit code 0 and the edit is in the database.
+- E2E: n/a.
+- Accessibility: n/a.
+
+**Out of scope:** persisting pending edits anywhere other than PostgreSQL (local disk spool), client-side handling (KB-021), a health signal for retained rooms (`/health/ready` already reports the database), purging documents of deleted cards.
+
+**History:**
+- 2026-11-09 · planner · created as Proposed · follow-up from the KB-017 test report 1 observation, confirmed by reading `persistence.ts` (`store()`, the doc `destroy` handler) and `rooms.ts` (`leave()`, `drop()`); added as a KB-031 dependency so it is fixed before the first deploy
+
+### KB-038 · Unassign a member's cards when they are demoted to viewer (D10)
+
+- **MVP phase:** Authentication and workspaces
+- **Priority:** Medium
+- **Depends on:** KB-009, KB-013; D10 answered with option A (under option B this task is rewritten)
+- **Estimate:** S
+
+**Goal:** Keep the invariant "a card's assignee is always an owner or member of the card's workspace". A role change to viewer unassigns that person's cards, as removal and leaving already do (KB-013).
+
+**Acceptance criteria:**
+- [ ] `PATCH /api/workspaces/:wid/members/:userId` with `{ role: "viewer" }` for a current owner or member unassigns every non-deleted card of that workspace assigned to them. This happens in the same transaction as the role change, with the boards locked in the same order as the removal path. Each card gets `version` + 1 and an `assignee_changed { from: userId, to: null }` event, with the owner who made the change as actor (G5).
+- [ ] The removal/leave path and this path use one shared unassign helper in the members service (no second implementation), so KB-018 board events, once present, cover both paths in the same way.
+- [ ] Other role changes (member → owner, owner → member, viewer → member or owner) and a no-op change (viewer → viewer) unassign nothing and write no card events.
+- [ ] A refused change (`409 LAST_OWNER`, `403 FORBIDDEN`, `404 NOT_FOUND`) leaves every assignment and `version` untouched. Cards in other workspaces are never touched.
+- [ ] UI (Members page): choosing "Viewer" for an owner or member asks for confirmation: "<name> will become a viewer and their cards in this workspace will be unassigned." Cancel restores the previous value in the select and returns focus to it. After the change, the board and card queries of that workspace are invalidated, and the result is announced politely.
+- [ ] `docs/api.md` documents the side effect on the members endpoint, and `CHANGELOG.md` has an entry.
+- [ ] Common criteria: G1, G4, G5, G8, A1, A4, A5, A7, U1, U3–U7, U9.
+
+**Required tests:**
+- Unit: n/a, unless the developer extracts pure logic.
+- API: demoting a member with two assigned cards (one deleted) → `200`, only the live card is unassigned with `version` + 1 and one event with the owner as actor; demoting an owner (with another owner left) unassigns the same way; promoting a viewer and member → owner unassign nothing; viewer → viewer writes nothing; last-owner demotion `409` keeps the assignment; a member (not owner) trying the change → `403` and nothing changes; cards assigned to the same person in another workspace keep their assignee; an injected failure after the role update leaves both the role and the assignments unchanged.
+- E2E: an owner demotes a member who has an assigned card → confirmation → the board tile no longer shows the assignee after navigating to the board; cancelling the confirmation keeps the role; axe on the Members page with the confirmation open.
+- Accessibility: the confirmation is reachable and operable with the keyboard alone; Escape cancels and returns focus to the role select; the result is announced.
+
+**Out of scope:** repairing assignments already held by viewers in existing local databases (nothing is deployed yet; local databases can be reset), option B of D10 (keep the assignment and show "(viewer)"), notifications to the demoted person.
+
+**History:**
+- 2026-11-09 · planner · created as Proposed · follow-up from the KB-013 developer, tester and finisher notes; approve only together with `Answer | D10 | A` (recommended)
