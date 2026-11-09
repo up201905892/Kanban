@@ -593,3 +593,33 @@ Report template:
 - Known gaps already listed by the developer and the ADR: sockets are not closed on session expiry, logout or deletion of a workspace, project, board or card; a removal between authorization and room join is missed. Both are outside this task's criteria; a follow-up task is suggested.
 - `GET /ws/:room` is in `PUBLIC_ROUTES` by design; it authenticates itself after the handshake.
 - `prisma migrate reset --force` not run (no migration changed).
+
+### KB-013 · Card fields: assignee, priority and estimate — Report 1 — 2026-11-09
+
+- **Commit tested:** 13fd332 (in `develop` history; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 146, web 166, api 316) | ✔ |
+| E2E | `pnpm test:e2e` (41 tests) | ✔ |
+| Authorization | viewer PATCH 403, non-member 404 identical to unknown card, unauthenticated 401 (api `cards/fields.test.ts`) | ✔ |
+| Real time | n.a. (no collaboration change; live updates are KB-018) | n.a. |
+| Accessibility | selects labelled, priority icon + text, `aria-describedby` on estimate errors, announcements via `useAnnounce`, axe in E2E | ✔ |
+
+**Acceptance criteria:**
+- [x] Migration: read `20261109195755_add_card_assignee_priority_estimate/migration.sql` (nullable FK to users, enum `card_priority` default `none`, `estimate` with `CHECK` 0-100 or NULL); `pnpm db:migrate` reports no pending migrations; the DB CHECK is exercised by an API test.
+- [x] PATCH accepts the three fields; non-member, viewer or unknown assignee gives 400 `INVALID_ASSIGNEE`; one activity event per changed field with `from`/`to`. Reviewed `service.ts`; `fields.test.ts` passes (boundaries 0 and 100; -1, 101, 1.5 give 400; no-op writes nothing).
+- [x] Member removal and leaving unassign that workspace's cards in the same transaction with events; other workspaces untouched; refused last-owner removal keeps the assignment (API tests).
+- [x] Tiles: initials with full name as accessible name, priority icon + text, estimate (web `cards-flow.test.tsx` and E2E).
+- [x] Card dialog: assignee select (assignable members), priority select, validated estimate input (web tests and E2E: set, reload, persist).
+- [x] Common criteria G1-G5, A1-A7, U1-U10: automated checks green; rollback and error announcements covered by tests.
+
+**Required tests:** unit priority mapping, API cases, E2E with axe and the accessibility cases exist and assert the specified behaviour (not trivial).
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was blocked by the environment safety guard (explicit user consent needed, unavailable in autonomous mode). Instead `pnpm db:migrate` confirmed the migration is applied with no drift, and CI applies migrations to an empty database.
+- The developer's suggestion stands: decide whether demoting a member to viewer should unassign their cards.

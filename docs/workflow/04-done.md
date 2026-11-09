@@ -143,6 +143,15 @@ Entry template:
 - **Documentation:** `docs/api.md` (`GET /ws/:room`); ADR 0004 real-time architecture (Accepted); no new environment variables (the heartbeat interval is a code constant); no migration
 - **Lessons:** sockets are not closed on session expiry, logout, or deletion of a workspace, project, board or card, and a removal between authorization and room join is missed; the planner should consider a follow-up task. `move-cards.spec.ts:105` (KB-015) was flaky once in E2E. New dependencies in apps/api: `@fastify/websocket`, `ws`, `yjs`, `y-protocols`, `lib0`. No TODO found in the task's code; no secret found (no new environment variables). Milestone "Real time" not yet reached (KB-017 and others not Done).
 
+### KB-013 · Card fields: assignee, priority and estimate — done on 2026-11-09
+
+- **Approving test report:** Report 1 (2026-11-09), commit 13fd332 (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** cards carry an assignee (workspace owner or member), a priority (none to urgent) and an estimate (0 to 100 story points); tiles show initials, priority as icon plus text and the estimate; the card dialog edits them with validation; removing a member or leaving unassigns their cards in the same transaction, with activity events.
+- **CHANGELOG:** "Added: Cards can now be assigned to a workspace owner or member, given a priority (none, low, medium, high or urgent) and an estimate in story points (0 to 100); these show on the card tile and are edited in the card dialog, and when someone is removed from a workspace or leaves it, their cards become unassigned (KB-013)."
+- **Documentation:** `docs/api.md` (`PATCH /api/cards/:id` fields, `INVALID_ASSIGNEE`, new activity events); migration `20261109195755_add_card_assignee_priority_estimate`; no new environment variables; no ADR requested
+- **Lessons:** the planner should decide whether demoting a member to viewer should unassign their cards (currently it does not). `prisma migrate reset` was blocked in the sandbox; CI applies migrations to an empty database. No new dependencies. No TODO found in the task's code; no secret found. Milestone "Board" not yet reached (KB-014 is Proposed).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
