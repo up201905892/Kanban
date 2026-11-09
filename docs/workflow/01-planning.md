@@ -20,7 +20,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-010 | Fractional indexing utility and ordering/conflict ADR | Board | High | KB-001 | Done |
 | KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Done |
 | KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Done |
-| KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Planned |
+| KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Ready for test |
 | KB-014 | Labels | Board | Low | KB-012, KB-018 | Proposed |
 | KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | Done |
 | KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Done |
@@ -693,6 +693,8 @@ Task template (copy for each new task):
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · João's decision (2026-10-24): card fields are not on the MVP critical path
 - 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
+- 2026-11-09 · developer · Planned → In development · started
+- 2026-11-09 · developer · In development → Ready for test · commit 13fd332
 
 ### KB-014 · Labels
 
