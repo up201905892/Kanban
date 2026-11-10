@@ -14,6 +14,7 @@ import {
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
 import { AppError } from '../../lib/app-error.js';
+import { mutationMetaOf } from '../../lib/board-events.js';
 import { createColumn, deleteColumn, getBoard, updateColumn } from './service.js';
 
 export function boardRoutes({ prisma }: { prisma: PrismaClient }) {
@@ -46,6 +47,7 @@ export function boardRoutes({ prisma }: { prisma: PrismaClient }) {
           userOf(req),
           req.params.bid,
           req.body,
+          mutationMetaOf(req),
         );
         return reply.code(created ? 201 : 200).send({ column });
       },
@@ -60,7 +62,15 @@ export function boardRoutes({ prisma }: { prisma: PrismaClient }) {
           response: { 200: columnResponseSchema },
         },
       },
-      async (req) => ({ column: await updateColumn(prisma, userOf(req), req.params.id, req.body) }),
+      async (req) => ({
+        column: await updateColumn(
+          prisma,
+          userOf(req),
+          req.params.id,
+          req.body,
+          mutationMetaOf(req),
+        ),
+      }),
     );
 
     r.delete(
@@ -73,7 +83,13 @@ export function boardRoutes({ prisma }: { prisma: PrismaClient }) {
         },
       },
       async (req, reply) => {
-        await deleteColumn(prisma, userOf(req), req.params.id, req.query.moveCardsTo);
+        await deleteColumn(
+          prisma,
+          userOf(req),
+          req.params.id,
+          req.query.moveCardsTo,
+          mutationMetaOf(req),
+        );
         return reply.code(204).send(null);
       },
     );

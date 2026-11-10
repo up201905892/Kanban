@@ -31,11 +31,15 @@ export function CardFields({ projectId, card, members, canEdit }: CardFieldsProp
   const [syncedEstimate, setSyncedEstimate] = useState(card.estimate);
   const headingId = useId();
 
-  // Follow the server value (another save, a rollback) unless an invalid draft is being fixed.
+  // Follow the server value (another save, a remote change, a rollback) unless the person has
+  // typed something else in the field: a field being edited is never overwritten (KB-018).
   if (syncedEstimate !== card.estimate) {
+    const untouched = estimate === (syncedEstimate === null ? '' : String(syncedEstimate));
     setSyncedEstimate(card.estimate);
-    setEstimate(card.estimate === null ? '' : String(card.estimate));
-    setEstimateError(undefined);
+    if (untouched) {
+      setEstimate(card.estimate === null ? '' : String(card.estimate));
+      setEstimateError(undefined);
+    }
   }
 
   const assignee = members.find((m) => m.userId === card.assigneeId);

@@ -1,10 +1,12 @@
-import { ErrorCode, type Member, type Role } from '@kanban/shared';
+import { ErrorCode, type BoardEvent, type Member, type Role } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
 import { AppError, notFound } from '../../lib/app-error.js';
+import { cardEvent, publishBoardEvents } from '../../lib/board-events.js';
 import { publishMembershipChange } from '../../lib/membership-events.js';
 import { authorize } from '../authz/index.js';
 import { lockBoard } from '../boards/lock.js';
 import { recordActivity } from '../cards/activity.js';
+import { toCardSummary } from '../cards/service.js';
 
 interface MemberRow {
   userId: string;
@@ -101,13 +103,14 @@ async function unassignCards(
   workspaceId: string,
   userId: string,
   actorId: string,
-): Promise<void> {
+): Promise<BoardEvent[]> {
+  const events: BoardEvent[] = [];
   const cards = await tx.card.findMany({
     where: { assigneeId: userId, deletedAt: null, board: { project: { workspaceId } } },
     select: { id: true, boardId: true },
     orderBy: { id: 'asc' },
   });
-  if (cards.length === 0) return;
+  if (cards.length === 0) return events;
   for (const boardId of [...new Set(cards.map((c) => c.boardId))].sort()) {
     await lockBoard(tx, boardId);
   }
@@ -118,7 +121,7 @@ async function unassignCards(
     orderBy: { id: 'asc' },
   });
   for (const { id } of current) {
-    await tx.card.update({
+    const row = await tx.card.update({
       where: { id },
       data: { assigneeId: null, version: { increment: 1 } },
     });
@@ -126,7 +129,9 @@ async function unassignCards(
       type: 'assignee_changed',
       data: { from: userId, to: null },
     });
+    events.push(cardEvent('card_updated', row.boardId, toCardSummary(row), actorId, {}));
   }
+  return events;
 }
 
 /** Owners remove anyone; any member may remove themselves (leave). */
@@ -137,6 +142,7 @@ export async function removeMember(
   targetUserId: string,
 ): Promise<void> {
   const leaving = targetUserId === user.id;
+  const events: BoardEvent[] = [];
   await prisma.$transaction(async (tx) => {
     await lockWorkspace(tx, workspaceId);
     await authorize(
@@ -155,8 +161,9 @@ export async function removeMember(
     }
     // Only the membership goes: everything the person created stays, but their assignments end.
     await tx.membership.delete({ where: { id: target.id } });
-    await unassignCards(tx, workspaceId, targetUserId, user.id);
+    events.push(...(await unassignCards(tx, workspaceId, targetUserId, user.id)));
   });
   // After commit, so a socket is never closed for a change that rolled back.
   publishMembershipChange({ workspaceId, userId: targetUserId, role: null });
+  publishBoardEvents(events);
 }

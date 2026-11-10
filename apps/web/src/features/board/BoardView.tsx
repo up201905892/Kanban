@@ -42,6 +42,7 @@ import { CardOverlay, ColumnCards, cardHandleId, cardTileId } from './CardList';
 import { ColumnMenu, type ColumnMenuItem } from './ColumnMenu';
 import { useBoard, useCreateColumn, useDeleteColumn, useUpdateColumn } from './api';
 import { cardsOf, layoutOf, neighboursAt, sortColumns } from './ordering';
+import { useBoardEvents } from './useBoardEvents';
 
 /** Which column of a drag layout holds `id` (a card id) or is `id` (a column id). */
 function containerOf(layout: Record<string, string[]>, id: string): string | undefined {
@@ -339,6 +340,32 @@ export function BoardView({
     }
   });
 
+  const [deletedBy, setDeletedBy] = useState<{ number: number; name: string } | null>(null);
+
+  // Other people's moves and deletions (KB-018): announced only where they matter to this user.
+  useBoardEvents(project.id, boardId, ({ change, before, after }) => {
+    const who = members.find((m) => m.userId === change.actorId)?.name ?? 'someone';
+    if (change.kind === 'deleted') {
+      if (change.number === openCardNumber) {
+        setDeletedBy({ number: change.number, name: who });
+        announce(`Card ${cardReference(project.key, change.number)} was deleted by ${who}`);
+      }
+      return;
+    }
+    const { card } = change;
+    const indexIn = (b: BoardResponse) =>
+      cardsOf(b, card.columnId).findIndex((c) => c.id === card.id);
+    const previous = before.cards.find((c) => c.id === card.id);
+    // A sibling that was only respaced keeps its place in the list: nothing to announce.
+    if (previous?.columnId === card.columnId && indexIn(before) === indexIn(after)) return;
+    const active = document.activeElement;
+    const focusedId = active?.id;
+    if (focusedId !== cardTileId(card.id) && focusedId !== cardHandleId(card.id)) return;
+    focusAfterRender.current = focusedId;
+    const column = after.columns.find((c) => c.id === change.toColumnId)?.name ?? '';
+    announce(`Card ${cardReference(project.key, card.number)} was moved to ${column} by ${who}`);
+  });
+
   if (board.isPending) return <Spinner label="Loading board" />;
   if (board.isError) {
     return (
@@ -451,6 +478,7 @@ export function BoardView({
   }
 
   function closeCard(card: CardSummary | undefined) {
+    setDeletedBy(null);
     onCloseCard();
     // A deep link has no earlier focus to return to; the tile is the natural place.
     if (card) {
@@ -738,6 +766,7 @@ export function BoardView({
           projectKey={project.key}
           number={openCardNumber}
           summary={board.data.cards.find((c) => c.number === openCardNumber)}
+          deletedBy={deletedBy?.number === openCardNumber ? deletedBy.name : undefined}
           canEdit={canEditCards}
           columns={columns}
           members={members}

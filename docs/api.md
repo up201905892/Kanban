@@ -169,3 +169,22 @@ Same port and origin as the REST API (Vite proxies `/ws` in development). Binary
 - Message types (first varint): `0` sync, `1` awareness, `3` query awareness (all as in y-websocket), `4` board event (server to client only: a varString with JSON `{ "type": string, "data": object }`).
 - Viewers receive documents and may send awareness, but their document updates are discarded. In board rooms clients never write the document.
 - The server pings every 30 s and terminates connections that do not answer.
+
+### Board events (KB-018)
+
+Schema: `boardEventSchema` in `packages/shared/src/board-events.ts`. After the transaction of a mutation commits (never on rollback or on a no-op), the server pushes one message per event to every connection of `board:<boardId>`, viewers included. The wire message is type `4` with JSON `{ "type": <event type>, "data": <BoardEvent> }`.
+
+`BoardEvent` is `{ type, boardId, entity, version, actorId, clientMutationId?, at }`:
+
+| `type` | `entity` | `version` | Published after |
+| --- | --- | --- | --- |
+| `card_created` | card summary | card version | `POST /api/columns/:cid/cards` (not for a repeated create) |
+| `card_updated` | card summary | card version | `PATCH /api/cards/:id` (title, description, assignee, priority, estimate); removing or leaving a workspace unassigns cards (actor = the remover) |
+| `card_moved` | card summary | card version | `POST /api/cards/:id/move`; siblings whose key was respaced; cards moved by deleting a column |
+| `card_deleted` | `{ id, columnId, number, title }` | version after the delete | `DELETE /api/cards/:id` |
+| `column_created`, `column_updated` | column | `null` (columns are not versioned) | column create and update (also the siblings respaced and the old Done column) |
+| `column_deleted` | `{ id, name }` | `null` | `DELETE /api/columns/:id` (after the `card_moved` events of its cards) |
+
+- Clients apply a card event only when `version` is greater than the version they hold, so duplicates and out-of-order events are harmless. Column events are always applied and carry the full column.
+- `clientMutationId` is the value of the optional request header `X-Client-Mutation-Id` (a UUID; anything else is ignored) of the request that caused the event, so a client can skip the echo of its own change.
+- Events are not replayed: a client refetches `GET /api/projects/:pid/board` whenever it (re)connects.

@@ -12,6 +12,7 @@ import {
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
 import { AppError } from '../../lib/app-error.js';
+import { onBoardEvent } from '../../lib/board-events.js';
 import { onMembershipChange } from '../../lib/membership-events.js';
 import { getSessionFromCookieHeader } from '../auth/session.js';
 import { authorize, type ResourceRef } from '../authz/index.js';
@@ -86,6 +87,12 @@ export function realtimeRoutes({
       }
     });
 
+    // Committed board changes (KB-018) go to every connection of the board room, viewers included.
+    // Only members of the workspace can be in the room (authorized at connect, closed on removal).
+    const unsubscribeBoard = onBoardEvent((event) => {
+      realtime.broadcastBoardEvent(event.boardId, { type: event.type, data: event });
+    });
+
     // Heartbeat: ping every interval; a socket that did not answer the previous ping is terminated.
     const alive = new WeakMap<WebSocket, boolean>();
     const sockets = new Set<WebSocket>();
@@ -104,6 +111,7 @@ export function realtimeRoutes({
     app.addHook('onClose', async () => {
       clearInterval(timer);
       unsubscribe();
+      unsubscribeBoard();
       await rooms.shutdown();
     });
 

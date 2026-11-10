@@ -12,6 +12,7 @@ import {
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
 import { AppError } from '../../lib/app-error.js';
+import { mutationMetaOf } from '../../lib/board-events.js';
 import { createCard, deleteCard, getCard, moveCard, updateCard } from './service.js';
 
 export function cardRoutes({ prisma }: { prisma: PrismaClient }) {
@@ -33,7 +34,13 @@ export function cardRoutes({ prisma }: { prisma: PrismaClient }) {
         },
       },
       async (req, reply) => {
-        const { card, created } = await createCard(prisma, userOf(req), req.params.cid, req.body);
+        const { card, created } = await createCard(
+          prisma,
+          userOf(req),
+          req.params.cid,
+          req.body,
+          mutationMetaOf(req),
+        );
         return reply.code(created ? 201 : 200).send({ card });
       },
     );
@@ -54,7 +61,7 @@ export function cardRoutes({ prisma }: { prisma: PrismaClient }) {
         },
       },
       async (req) => ({
-        card: await updateCard(prisma, userOf(req), req.params.id, req.body),
+        card: await updateCard(prisma, userOf(req), req.params.id, req.body, mutationMetaOf(req)),
       }),
     );
 
@@ -68,7 +75,7 @@ export function cardRoutes({ prisma }: { prisma: PrismaClient }) {
         },
       },
       async (req) => ({
-        card: await moveCard(prisma, userOf(req), req.params.id, req.body),
+        card: await moveCard(prisma, userOf(req), req.params.id, req.body, mutationMetaOf(req)),
       }),
     );
 
@@ -76,7 +83,7 @@ export function cardRoutes({ prisma }: { prisma: PrismaClient }) {
       '/api/cards/:id',
       { schema: { params: cardParamsSchema, response: { 204: z.null() } } },
       async (req, reply) => {
-        await deleteCard(prisma, userOf(req), req.params.id);
+        await deleteCard(prisma, userOf(req), req.params.id, mutationMetaOf(req));
         return reply.code(204).send(null);
       },
     );

@@ -178,6 +178,13 @@ export {
   type AuthResponse,
 } from './auth.js';
 export {
+  CLIENT_MUTATION_HEADER,
+  clientMutationIdSchema,
+  boardEventSchema,
+  type BoardEvent,
+  type BoardEventType,
+} from './board-events.js';
+export {
   WS_MESSAGE,
   WS_CLOSE,
   WS_MAX_MESSAGE_BYTES,

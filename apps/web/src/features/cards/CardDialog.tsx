@@ -28,6 +28,8 @@ export interface CardDialogProps {
   projectKey: string;
   /** The card named by the address, or undefined when the board has no such card. */
   summary: CardSummary | undefined;
+  /** Name of the person who deleted this card while the dialog was open (live updates). */
+  deletedBy?: string | undefined;
   /** Owners and members (`card:edit`); viewers get a read-only dialog. */
   canEdit: boolean;
   /** Columns of the board, for "Move to...". */
@@ -47,6 +49,7 @@ export function CardDialog({
   projectId,
   projectKey,
   summary,
+  deletedBy,
   canEdit,
   columns,
   members,
@@ -59,9 +62,13 @@ export function CardDialog({
   if (!summary) {
     return (
       <Dialog open onClose={onClose} title={`Card ${reference}`}>
-        <p>This card does not exist or was deleted.</p>
+        <p>
+          {deletedBy
+            ? `This card was deleted by ${deletedBy}`
+            : 'This card does not exist or was deleted.'}
+        </p>
         <div className="dialog-actions">
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={onClose}>{deletedBy ? 'OK' : 'Close'}</Button>
         </div>
       </Dialog>
     );

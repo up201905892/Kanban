@@ -1,5 +1,6 @@
 import {
   ErrorCode,
+  type BoardEvent,
   type Card,
   type CardPriority,
   type CardSummary,
@@ -9,6 +10,12 @@ import {
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
 import { AppError, notFound } from '../../lib/app-error.js';
+import {
+  cardDeletedEvent,
+  cardEvent,
+  publishBoardEvents,
+  type MutationMeta,
+} from '../../lib/board-events.js';
 import { authorize } from '../authz/index.js';
 import { lockBoard, type Tx } from '../boards/lock.js';
 import { placeWithRebalance } from '../boards/position.js';
@@ -69,6 +76,22 @@ export const liveCardsOf = (tx: Pick<Tx, 'card'>, columnId: string) =>
     orderBy: [{ position: 'asc' }, { id: 'asc' }],
   });
 
+/** Events for cards whose position was rewritten in this transaction (respaced siblings). */
+export async function respacedEvents(
+  tx: Pick<Tx, 'card'>,
+  boardId: string,
+  ids: readonly string[],
+  actorId: string,
+  meta: MutationMeta,
+): Promise<BoardEvent[]> {
+  if (ids.length === 0) return [];
+  const rows = await tx.card.findMany({
+    where: { id: { in: [...ids] } },
+    orderBy: [{ position: 'asc' }, { id: 'asc' }],
+  });
+  return rows.map((row) => cardEvent('card_moved', boardId, toCardSummary(row), actorId, meta));
+}
+
 export async function getCard(
   prisma: PrismaClient,
   user: { id: string },
@@ -85,9 +108,11 @@ export async function createCard(
   user: { id: string },
   columnId: string,
   input: CreateCardRequest,
+  meta: MutationMeta = {},
 ): Promise<{ card: Card; created: boolean }> {
   await authorize(prisma, user, { type: 'column', id: columnId }, 'card:edit');
-  return prisma.$transaction(async (tx) => {
+  const events: BoardEvent[] = [];
+  const result = await prisma.$transaction(async (tx) => {
     const first = await tx.column.findUnique({
       where: { id: columnId },
       select: { boardId: true },
@@ -121,6 +146,7 @@ export async function createCard(
     }
 
     const siblings = await liveCardsOf(tx, columnId);
+    const respaced: string[] = [];
     const position = await placeWithRebalance(
       siblings,
       input.afterCardId,
@@ -128,6 +154,7 @@ export async function createCard(
       async (updates) => {
         for (const u of updates) {
           await tx.card.update({ where: { id: u.id }, data: { position: u.position } });
+          respaced.push(u.id);
         }
       },
     );
@@ -159,8 +186,13 @@ export async function createCard(
       type: 'created',
       data: { title: row.title, column: { columnId, columnName: column.name } },
     });
+    // KB-034: respacing here does not bump the siblings' version yet, so clients keep their old keys.
+    events.push(...(await respacedEvents(tx, boardId, respaced, user.id, meta)));
+    events.push(cardEvent('card_created', boardId, toCardSummary(row), user.id, meta));
     return { card: toCard(row), created: true };
   });
+  publishBoardEvents(events);
+  return result;
 }
 
 export async function updateCard(
@@ -168,9 +200,11 @@ export async function updateCard(
   user: { id: string },
   id: string,
   input: UpdateCardRequest,
+  meta: MutationMeta = {},
 ): Promise<Card> {
   await authorize(prisma, user, { type: 'card', id }, 'card:edit');
-  return prisma.$transaction(async (tx) => {
+  const events: BoardEvent[] = [];
+  const result = await prisma.$transaction(async (tx) => {
     const first = await tx.card.findFirst({
       where: { id, deletedAt: null },
       select: { boardId: true },
@@ -261,16 +295,21 @@ export async function updateCard(
         data: { from: card.description.length, to: row.description.length },
       });
     }
+    events.push(cardEvent('card_updated', row.boardId, toCardSummary(row), user.id, meta));
     return toCard(row);
   });
+  publishBoardEvents(events);
+  return result;
 }
 
 export async function deleteCard(
   prisma: PrismaClient,
   user: { id: string },
   id: string,
+  meta: MutationMeta = {},
 ): Promise<void> {
   await authorize(prisma, user, { type: 'card', id }, 'card:edit');
+  const events: BoardEvent[] = [];
   await prisma.$transaction(async (tx) => {
     const first = await tx.card.findFirst({
       where: { id, deletedAt: null },
@@ -279,12 +318,14 @@ export async function deleteCard(
     if (!first || !(await lockBoard(tx, first.boardId))) throw notFound();
     const card = await tx.card.findFirst({ where: { id, deletedAt: null } });
     if (!card) throw notFound();
-    await tx.card.update({
+    const row = await tx.card.update({
       where: { id },
       data: { deletedAt: new Date(), version: { increment: 1 } },
     });
     await recordActivity(tx, id, user.id, { type: 'deleted', data: { title: card.title } });
+    events.push(cardDeletedEvent(card.boardId, row, user.id, meta));
   });
+  publishBoardEvents(events);
 }
 
 /**
@@ -298,11 +339,13 @@ export async function moveCard(
   user: { id: string },
   id: string,
   input: MoveCardRequest,
+  meta: MutationMeta = {},
 ): Promise<Card> {
   await authorize(prisma, user, { type: 'card', id }, 'card:edit');
   // The destination is authorized too: a column of a workspace the caller cannot see is a plain 404.
   await authorize(prisma, user, { type: 'column', id: input.columnId }, 'card:edit');
-  return prisma.$transaction(async (tx) => {
+  const events: BoardEvent[] = [];
+  const result = await prisma.$transaction(async (tx) => {
     const first = await tx.card.findFirst({
       where: { id, deletedAt: null },
       select: { boardId: true },
@@ -326,6 +369,7 @@ export async function moveCard(
     }
 
     const siblings = (await liveCardsOf(tx, column.id)).filter((s) => s.id !== id);
+    const respaced: string[] = [];
     const position = await placeWithRebalance(
       siblings,
       input.afterCardId,
@@ -336,6 +380,7 @@ export async function moveCard(
             where: { id: u.id },
             data: { position: u.position, version: { increment: 1 } },
           });
+          respaced.push(u.id);
         }
       },
     );
@@ -350,6 +395,10 @@ export async function moveCard(
         data: { fromColumnId: card.columnId, toColumnId: column.id },
       });
     }
+    events.push(...(await respacedEvents(tx, card.boardId, respaced, user.id, meta)));
+    events.push(cardEvent('card_moved', card.boardId, toCardSummary(row), user.id, meta));
     return toCard(row);
   });
+  publishBoardEvents(events);
+  return result;
 }

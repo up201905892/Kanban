@@ -23,6 +23,8 @@ All notable changes to this project are recorded here, in the format of [Keep a 
 - The server now has a live-connection channel that only signed-in members of a workspace can join; it keeps people's edits in sync, lets read-only viewers watch without changing anything, and disconnects people at once when they are removed from the workspace (KB-016).
 - Cards can now be assigned to a workspace owner or member, given a priority (none, low, medium, high or urgent) and an estimate in story points (0 to 100); these show on the card tile and are edited in the card dialog, and when someone is removed from a workspace or leaves it, their cards become unassigned (KB-013).
 
+- Boards now update live: when someone else adds, edits, moves or deletes a card or changes a column, everyone looking at the board sees it without reloading, viewers included. An open card updates in place without overwriting a field you are typing in, says who deleted it if it disappears, and a card you are focused on that someone else moves is announced to screen readers while keeping your focus on it (KB-018).
+
 ### Changed
 
 - Deleting a column that still has cards now asks where the cards should go and moves them to the end of that column instead of losing them (KB-012).

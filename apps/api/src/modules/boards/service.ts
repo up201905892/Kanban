@@ -2,6 +2,7 @@ import {
   ErrorCode,
   keysBetween,
   needsRebalance,
+  type BoardEvent,
   type BoardResponse,
   type Column,
   type CreateColumnRequest,
@@ -9,9 +10,15 @@ import {
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
 import { AppError, notFound } from '../../lib/app-error.js';
+import {
+  columnDeletedEvent,
+  columnEvent,
+  publishBoardEvents,
+  type MutationMeta,
+} from '../../lib/board-events.js';
 import { authorize } from '../authz/index.js';
 import { recordActivity } from '../cards/activity.js';
-import { toCardSummary } from '../cards/service.js';
+import { respacedEvents, toCardSummary } from '../cards/service.js';
 import { lockBoard, type Tx } from './lock.js';
 import { placeWithRebalance } from './position.js';
 
@@ -59,6 +66,21 @@ async function assertNeighboursUsable(
   if (elsewhere > 0) throw notFound();
 }
 
+/** `column_updated` events for columns changed as a side effect (respaced siblings, the old Done column). */
+async function columnsChangedEvents(
+  tx: Tx,
+  ids: readonly string[],
+  actorId: string,
+  meta: MutationMeta,
+): Promise<BoardEvent[]> {
+  if (ids.length === 0) return [];
+  const rows = await tx.column.findMany({
+    where: { id: { in: [...ids] } },
+    orderBy: [{ position: 'asc' }, { id: 'asc' }],
+  });
+  return rows.map((row) => columnEvent('column_updated', toColumn(row), actorId, meta));
+}
+
 export async function getBoard(
   prisma: PrismaClient,
   user: { id: string },
@@ -89,9 +111,11 @@ export async function createColumn(
   user: { id: string },
   boardId: string,
   input: CreateColumnRequest,
+  meta: MutationMeta = {},
 ): Promise<{ column: Column; created: boolean }> {
   await authorize(prisma, user, { type: 'board', id: boardId }, 'board:manage');
-  return prisma.$transaction(async (tx) => {
+  const events: BoardEvent[] = [];
+  const result = await prisma.$transaction(async (tx) => {
     if (!(await lockBoard(tx, boardId))) throw notFound();
     if (input.id) {
       // A6: repeating a create returns the existing column; another board's id is a conflict.
@@ -105,6 +129,7 @@ export async function createColumn(
     }
     await assertNeighboursUsable(tx, boardId, [input.afterColumnId, input.beforeColumnId]);
     const siblings = await orderedColumns(tx, boardId);
+    const respaced: string[] = [];
     const position = await placeWithRebalance(
       siblings,
       input.afterColumnId,
@@ -112,14 +137,19 @@ export async function createColumn(
       async (updates) => {
         for (const u of updates) {
           await tx.column.update({ where: { id: u.id }, data: { position: u.position } });
+          respaced.push(u.id);
         }
       },
     );
     const row = await tx.column.create({
       data: { ...(input.id && { id: input.id }), boardId, name: input.name, position },
     });
+    events.push(...(await columnsChangedEvents(tx, respaced, user.id, meta)));
+    events.push(columnEvent('column_created', toColumn(row), user.id, meta));
     return { column: toColumn(row), created: true };
   });
+  publishBoardEvents(events);
+  return result;
 }
 
 export async function updateColumn(
@@ -127,9 +157,11 @@ export async function updateColumn(
   user: { id: string },
   id: string,
   input: UpdateColumnRequest,
+  meta: MutationMeta = {},
 ): Promise<Column> {
   await authorize(prisma, user, { type: 'column', id }, 'board:manage');
-  return prisma.$transaction(async (tx) => {
+  const events: BoardEvent[] = [];
+  const result = await prisma.$transaction(async (tx) => {
     const first = await tx.column.findUnique({ where: { id }, select: { boardId: true } });
     if (!first || !(await lockBoard(tx, first.boardId))) throw notFound();
     // Re-read under the lock: the column may have been deleted while we waited.
@@ -137,11 +169,17 @@ export async function updateColumn(
     if (!column) throw notFound();
 
     const data: { name?: string; position?: string; isDone?: boolean } = {};
+    const sideEffects: string[] = [];
     if (input.name !== undefined) data.name = input.name;
 
     if (input.isDone === false && column.isDone) throw doneRequired();
     if (input.isDone === true && !column.isDone) {
       // Clear the old Done column first so the partial unique index never sees two.
+      const previous = await tx.column.findMany({
+        where: { boardId: column.boardId, isDone: true, id: { not: id } },
+        select: { id: true },
+      });
+      sideEffects.push(...previous.map((c) => c.id));
       await tx.column.updateMany({
         where: { boardId: column.boardId, isDone: true, id: { not: id } },
         data: { isDone: false },
@@ -159,13 +197,19 @@ export async function updateColumn(
         async (updates) => {
           for (const u of updates) {
             await tx.column.update({ where: { id: u.id }, data: { position: u.position } });
+            sideEffects.push(u.id);
           }
         },
       );
     }
 
-    return toColumn(await tx.column.update({ where: { id }, data }));
+    const updated = toColumn(await tx.column.update({ where: { id }, data }));
+    events.push(...(await columnsChangedEvents(tx, sideEffects, user.id, meta)));
+    events.push(columnEvent('column_updated', updated, user.id, meta));
+    return updated;
   });
+  publishBoardEvents(events);
+  return result;
 }
 
 export async function deleteColumn(
@@ -173,8 +217,10 @@ export async function deleteColumn(
   user: { id: string },
   id: string,
   moveCardsTo?: string,
+  meta: MutationMeta = {},
 ): Promise<void> {
   await authorize(prisma, user, { type: 'column', id }, 'board:manage');
+  const events: BoardEvent[] = [];
   await prisma.$transaction(async (tx) => {
     const first = await tx.column.findUnique({ where: { id }, select: { boardId: true } });
     if (!first || !(await lockBoard(tx, first.boardId))) throw notFound();
@@ -209,21 +255,28 @@ export async function deleteColumn(
           `This column still has ${cards.length} ${cards.length === 1 ? 'card' : 'cards'}. Choose a column to move them to.`,
         );
       }
-      await moveCardsToEnd(tx, user.id, cards, column, target);
+      const touched = await moveCardsToEnd(tx, user.id, cards, column, target);
+      events.push(...(await respacedEvents(tx, column.boardId, touched, user.id, meta)));
     }
     // Cards soft-deleted earlier in this column go with it (cascade); live cards were moved above.
     await tx.column.delete({ where: { id } });
+    events.push(columnDeletedEvent(column.boardId, column, user.id, meta));
   });
+  publishBoardEvents(events);
 }
 
-/** Appends `cards` (already ordered) to the end of `target`, one transaction with their events. */
+/**
+ * Appends `cards` (already ordered) to the end of `target`, one transaction with their events.
+ * Returns the ids of every card whose position changed (respaced destination cards, then the moved ones).
+ */
 async function moveCardsToEnd(
   tx: Tx,
   actorId: string,
   cards: { id: string }[],
   from: { id: string; name: string },
   target: { id: string; name: string },
-): Promise<void> {
+): Promise<string[]> {
+  const touched: string[] = [];
   const existing = await tx.card.findMany({
     where: { columnId: target.id, deletedAt: null },
     orderBy: [{ position: 'asc' }, { id: 'asc' }],
@@ -239,6 +292,7 @@ async function moveCardsToEnd(
         where: { id: card.id },
         data: { position: respaced[index] as string },
       });
+      touched.push(card.id);
     }
     keys = respaced.slice(existing.length);
   }
@@ -247,6 +301,7 @@ async function moveCardsToEnd(
       where: { id: card.id },
       data: { columnId: target.id, position: keys[index] as string, version: { increment: 1 } },
     });
+    touched.push(card.id);
     await recordActivity(tx, card.id, actorId, {
       type: 'column_deleted_moved',
       data: {
@@ -255,4 +310,5 @@ async function moveCardsToEnd(
       },
     });
   }
+  return touched;
 }
