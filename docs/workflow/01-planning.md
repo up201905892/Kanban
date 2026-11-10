@@ -26,7 +26,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Done |
 | KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Done |
 | KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Done |
-| KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Planned |
+| KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Ready for test |
 | KB-020 | Presence: who is on the board and who is editing a card | Real time | Medium | KB-019 | Proposed |
 | KB-021 | Reconnection, offline edits and connection status | Real time | Medium | KB-018, KB-019 | Proposed |
 | KB-022 | Backlog and sprint planning | Sprints | Medium | KB-013, KB-018 | Proposed |
@@ -918,6 +918,8 @@ Task template (copy for each new task):
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · re-check under João's rule: not on the critical path and blocks only Medium tasks (KB-020, KB-021)
 - 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
+- 2026-11-10 · developer · Planned → In development · started
+- 2026-11-10 · developer · In development → Ready for test · commit 4edff2c
 
 ### KB-020 · Presence: who is on the board and who is editing a card
 
