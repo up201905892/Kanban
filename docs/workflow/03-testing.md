@@ -696,3 +696,39 @@ Report template:
 - One e2e test (`members.spec.ts:98`, revoked invite link) was flaky in the full run and passed on retry; further repeated runs of the members and live-board specs passed. It is unrelated to this task.
 - Known limitations documented by the developer, confirmed by reading the code: until KB-034 is done, respaced siblings on card creation and column deletion keep their `version`, so clients drop those `card_moved` events and may show a different order until the next refetch; there is no tombstone, so a `card_updated` arriving after `card_deleted` would re-add the card until a refetch (needs a reconnect race).
 - The decision about unassigning cards when a member is demoted to viewer is still open.
+
+### KB-019 · Collaborative card description with Yjs — Report 1 — 2026-11-10
+
+- **Commit tested:** 4edff2c (in `develop` history; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 149, web 209, api 355; 9 migrations, none pending) | ✔ |
+| E2E | `pnpm test:e2e` (47 passed) | ✔ |
+| Authorization | code review and tests: viewers' document updates are discarded by the card room (KB-016 rules); e2e viewer sees live text but cannot type; PATCH with `description` is 400 | ✔ |
+| Real time | e2e with two browsers typing at once in different places: identical text, equals `GET /api/cards/:id` after reload; API integration: two simultaneous connections seed once | ✔ |
+| Accessibility | web tests: Tab leaves the editor, accessible name "Description", `aria-readonly` for viewers, assertive announcement only for lost connection or refused access, none while typing; axe in e2e | ✔ |
+
+**Acceptance criteria:**
+- [x] Editor bound to `Y.Text` in `card:<id>:description`, autosave, "Saved"/"Syncing…", Edit/Preview kept: read `DescriptionSection.tsx`; web flow tests and e2e. A textarea binding instead of CodeMirror is recorded in ADR 0004 section 12 as the allowed equivalent.
+- [x] Single seeding: `meta.seeded` marker inside the room load; integration test with two simultaneous connections and no re-seeding after unload.
+- [x] Projection within 2 s (1 s debounce), on unload and shutdown; coalescing by the pure `planDescriptionActivity` (unit tested) per actor per 10 minutes; version untouched.
+- [x] PATCH `description` returns 400 `VALIDATION_ERROR` (shared schema test, API test, e2e).
+- [x] 20,000 limit (`maxLength`, input guard, server cut); viewers `aria-readonly` and live.
+- [x] Tab does not trap focus; accessible name "Description".
+- [x] Common criteria G1, G2, G5, G7, U3-U5, U9, R1-R4, R7: automated checks green.
+
+**Required tests:** coalescing unit, single-seeding, projection and PATCH 400 API tests, two-browser e2e with viewer and axe, and the accessibility tests exist and assert the specified behaviour; not trivial.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was not run (blocked by the environment safety guard in autonomous mode); the test run reports no pending migrations and CI starts from an empty database.
+- Developer-reported limits confirmed by reading the code: if the final flush fails at unload the last window could be lost (needs a database failure); concurrent merges can exceed 20,000 characters in the live document (projection is cut); real SIGTERM delivery is only covered by handler-level tests.
+- The e2e run logged vite ws proxy ECONNRESET noise on teardown; no test failed.
