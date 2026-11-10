@@ -659,3 +659,40 @@ Report template:
 - Real SIGTERM delivery to a spawned `node dist/server.js` could not be run in this environment; it is covered only by handler-level tests.
 - Edge case worth a follow-up: in `persistence.ts` `store()`, if the final flush fails the awaited chain throws and the document is destroyed with the retry timer cleared, so edits of that last window would be lost. Requires a database failure at unload; not covered by the criteria.
 - "Stop accepting connections" is implemented as refusing WebSocket joins and document writes first, then closing the HTTP listener after the flush (documented by the developer).
+
+### KB-018 · Live board updates — Report 1 — 2026-11-10
+
+- **Commit tested:** acab99f (in `develop` history; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 149, web 196, api 343; 9 migrations, none pending) | ✔ |
+| E2E | `pnpm test:e2e` (44 passed, 1 flaky that passed on retry, see observations); `live-board` and `members` specs repeated 3 times: 18 passed | ✔ |
+| Authorization | tests: non-member socket gets 4403 and no events; removed member stops receiving; other boards receive nothing; refused and forbidden requests publish nothing; code review: only room members receive broadcasts | ✔ |
+| Real time | e2e with two browsers (member and viewer B see A's create, edit, move, delete within 2 s; column events); API tests with sockets; web tests for refetch on connect and reconnect | ✔ |
+| Accessibility | web test asserts the live-region announcement and kept focus for a remote move of the focused card (tile and handle), none for unfocused cards; axe checks in e2e | ✔ |
+
+**Acceptance criteria:**
+- [x] Events after commit: read the services. Events are built in the transaction and published after `$transaction` resolves in cards (create, update, move, delete), columns (create, update, delete) and member removal (unassignment); respaced siblings and Done side effects are published first. API tests show no event on rollback, refusal or no-op. `boardEventSchema` is a Zod discriminated union in `packages/shared` with the required fields.
+- [x] `useBoardEvents`: read the hook and reducer. Events with `version` <= cached are ignored (same object returned), own echoes are skipped by `X-Client-Mutation-Id`; unit tests cover every event type, stale, duplicate and out-of-order.
+- [x] Connect and reconnect refetch the board and cards (`onConnected` invalidates); tested with a fake WebSocket.
+- [x] Dialog: remote changes update in place, a typed estimate is not overwritten, remote deletion shows "This card was deleted by <name>" with OK to close; tested in `board-live.test.tsx` and e2e.
+- [x] Remote move of the focused card keeps focus and announces "Card KB-7 was moved to Done by Ana"; nothing for unfocused cards.
+- [x] Viewers receive events (API and e2e tests).
+- [x] Common criteria G1, G2, G8, U5, U6, R1, R2, R6: automated checks green, room authorization verified.
+
+**Required tests:** unit reducer and echo, API (event received, rollback no event, non-member socket), e2e two browsers including a viewer with axe, and the accessibility announcement test all exist and assert the specified behaviour; not trivial.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was not run (blocked by the environment safety guard in autonomous mode); the test run reports no pending migrations and CI starts from an empty database.
+- One e2e test (`members.spec.ts:98`, revoked invite link) was flaky in the full run and passed on retry; further repeated runs of the members and live-board specs passed. It is unrelated to this task.
+- Known limitations documented by the developer, confirmed by reading the code: until KB-034 is done, respaced siblings on card creation and column deletion keep their `version`, so clients drop those `card_moved` events and may show a different order until the next refetch; there is no tombstone, so a `card_updated` arriving after `card_deleted` would re-add the card until a refetch (needs a reconnect race).
+- The decision about unassigning cards when a member is demoted to viewer is still open.
