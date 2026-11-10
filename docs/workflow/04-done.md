@@ -170,6 +170,15 @@ Entry template:
 - **Documentation:** `docs/api.md` (board events section); ADR 0004 updated; no migrations; no new environment variables; no new dependencies
 - **Lessons:** until KB-034 is done, respaced siblings on card creation and column deletion keep their `version`, so clients drop those `card_moved` events and may show a different order until the next refetch; the planner should consider KB-034 as a dependency. There is no tombstone, so a `card_updated` after `card_deleted` (reconnect race) would re-add the card until a refetch. `members.spec.ts:98` was flaky once in E2E. `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. Milestone "Real time" not yet reached (KB-019 is Planned; KB-020, KB-021 are Proposed).
 
+### KB-019 · Collaborative card description with Yjs — done on 2026-11-10
+
+- **Approving test report:** Report 1 (2026-11-10), commit 4edff2c (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** the card description is edited live by several people through a Yjs `Y.Text` in `card:<id>:description` with automatic saving and a "Saved" / "Syncing…" status; the server seeds the text once from `Card.description`, projects it back within about 1 s and on unload, and coalesces `description_changed` activity per person over 10 minutes; `PATCH /api/cards/:id` refuses `description`; viewers see the live text read-only.
+- **CHANGELOG:** "Added: Several people can now edit a card description at the same time without overwriting each other: changes appear live, saving is automatic (the status shows "Saved" or "Syncing…"), viewers see the text update but cannot type, and the description can no longer be changed through the card update request (KB-019)."
+- **Documentation:** `docs/api.md` (PATCH fields, `GET /ws/:room` description room); ADR 0004 section 12; no migrations; no new environment variables; new web dependencies `yjs`, `y-protocols`, `lib0`
+- **Lessons:** a textarea binding is used instead of CodeMirror (allowed equivalent, in the ADR); if the final flush fails at unload the last edit window could be lost; concurrent merges can exceed 20,000 characters in the live document (the projection is cut); real SIGTERM delivery is only covered by handler-level tests; `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. Milestone "Real time" not yet reached (KB-020, KB-021 are Proposed).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->

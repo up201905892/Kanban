@@ -26,7 +26,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Done |
 | KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Done |
 | KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Done |
-| KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Passed |
+| KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Done |
 | KB-020 | Presence: who is on the board and who is editing a card | Real time | Medium | KB-019 | Proposed |
 | KB-021 | Reconnection, offline edits and connection status | Real time | Medium | KB-018, KB-019 | Proposed |
 | KB-022 | Backlog and sprint planning | Sprints | Medium | KB-013, KB-018 | Proposed |
@@ -922,6 +922,7 @@ Task template (copy for each new task):
 - 2026-11-10 · developer · In development → Ready for test · commit 4edff2c
 - 2026-11-10 · tester · Ready for test → In test · testing started
 - 2026-11-10 · tester · In test → Passed · report 1, all checks and criteria verified
+- 2026-11-10 · finisher · Passed → Done · definition of done checked; CHANGELOG, api.md and ADR 0004 already updated
 
 ### KB-020 · Presence: who is on the board and who is editing a card
 
