@@ -13,6 +13,7 @@ import { memberRoutes } from './modules/members/routes.js';
 import { boardRoutes } from './modules/boards/routes.js';
 import { cardRoutes } from './modules/cards/routes.js';
 import { createRealtime, realtimeRoutes, type RealtimeOptions } from './modules/realtime/routes.js';
+import { createDescriptionPersistence } from './modules/realtime/description.js';
 import { createPrismaDocumentStore, createYjsPersistence } from './modules/realtime/persistence.js';
 import { projectRoutes } from './modules/projects/routes.js';
 import { workspaceRoutes } from './modules/workspaces/routes.js';
@@ -90,7 +91,11 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       ...options.realtime,
       persistence:
         options.realtime?.persistence ??
-        createYjsPersistence(createPrismaDocumentStore(options.prisma), { log: app.log }),
+        createDescriptionPersistence(
+          options.prisma,
+          createYjsPersistence(createPrismaDocumentStore(options.prisma), { log: app.log }),
+          { log: app.log },
+        ),
     };
     const realtime = createRealtime(realtimeOptions);
     app.decorate('realtime', realtime);

@@ -1,9 +1,11 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { compareByPosition } from '@kanban/shared';
 import { App } from '../../App';
 import { createTestRouter } from '../../router';
+import { descriptionSocket, serveDescription, type FakeRoom } from '../../test-utils/collab';
 import { jsonResponse, stubFetch, USER } from '../../test-utils/fetch';
+import type { FakeWebSocket } from '../../test-utils/websocket';
 
 const WID = '0192f000-0000-7000-8000-000000000001';
 const PID = '0192f000-0000-7000-8000-0000000000a1';
@@ -289,6 +291,10 @@ describe('card dialog', () => {
     await user.keyboard('{Enter}');
     const dialog = await screen.findByRole('dialog', { name: 'Card KB-1' });
     expect(await within(dialog).findByRole('heading', { level: 3, name: 'Card 1' })).toBeVisible();
+    expect(within(dialog).getByRole('textbox', { name: 'Description' })).toHaveValue(
+      'Some **bold** words',
+    );
+    await user.click(within(dialog).getByRole('button', { name: 'Preview' }));
     expect(within(dialog).getByText('bold').tagName).toBe('STRONG');
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -386,59 +392,147 @@ describe('card dialog', () => {
     expect(screen.getByLabelText('Card title')).toHaveFocus();
   });
 
-  it('edits the description with Edit/Preview and an explicit Save', async () => {
-    const cards = [card(1)];
-    const mock = stubFetch({
-      ...server('owner', cards),
-      [`PATCH /api/cards/${kid(1)}`]: (body) => {
-        const { description } = body as { description: string };
-        const target = cards[0] as Cd;
-        target.description = description;
-        target.version += 1;
-        return jsonResponse(200, { card: full(target) });
-      },
-    });
+  it('edits the description live: no Save button, Syncing/Saved status, Edit/Preview', async () => {
+    const mock = stubFetch(server('owner', [card(1)]));
     const user = board(`/projects/${PID}/cards/1`);
-    expect(await screen.findByText('No description yet.')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Edit description' }));
-    const area = screen.getByLabelText('Description (Markdown)');
-    expect(area).toHaveFocus();
+    const area = await screen.findByRole('textbox', { name: 'Description' });
+    // Before the first sync the REST text is shown, read-only.
+    expect(area).toHaveAttribute('aria-readonly', 'true');
+    expect(screen.getByTestId('description-status')).toHaveTextContent('Connecting…');
+    let room!: FakeRoom;
+    act(() => {
+      room = serveDescription('');
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('description-status')).toHaveTextContent('Saved'),
+    );
+    expect(area).not.toHaveAttribute('aria-readonly');
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+
     await user.type(area, '# Plan{Enter}Do <script>x</script> it');
+    expect(room.text).toBe('# Plan\nDo <script>x</script> it');
+    await waitFor(() =>
+      expect(screen.getByTestId('description-status')).toHaveTextContent('Saved'),
+    );
+
     await user.click(screen.getByRole('button', { name: 'Preview' }));
     const preview = screen.getByRole('group', { name: 'Description preview' });
     expect(within(preview).getByRole('heading', { name: 'Plan' })).toBeVisible();
     expect(preview.querySelector('script')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Edit' }));
-    expect(screen.getByLabelText('Description (Markdown)')).toHaveValue(
+    expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue(
       '# Plan\nDo <script>x</script> it',
     );
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByRole('button', { name: 'Edit description' })).toHaveFocus();
-    expect(screen.getByRole('heading', { name: 'Plan' })).toBeVisible();
-    await waitFor(() => expect(polite()).toHaveTextContent('Card description saved'));
-    const patch = mock.mock.calls.find(([, init]) => init?.method === 'PATCH');
-    expect(JSON.parse(String(patch?.[1]?.body))).toEqual({
-      description: '# Plan\nDo <script>x</script> it',
-    });
+    // One write path: nothing went through PATCH, and typing announced nothing.
+    expect(mock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
+    expect(screen.getByTestId('live-polite')).toBeEmptyDOMElement();
+    expect(screen.getByTestId('live-assertive')).toBeEmptyDOMElement();
   });
 
-  it('keeps the draft and shows the message when saving the description fails', async () => {
-    stubFetch({
-      ...server('owner', [card(1)]),
-      [`PATCH /api/cards/${kid(1)}`]: () =>
-        jsonResponse(500, { error: { code: 'INTERNAL_ERROR', message: 'Server down' } }),
-    });
+  it('shows "Syncing…" until the server confirms a change', async () => {
+    stubFetch(server('owner', [card(1)]));
     const user = board(`/projects/${PID}/cards/1`);
-    await user.click(await screen.findByRole('button', { name: 'Edit description' }));
-    await user.type(screen.getByLabelText('Description (Markdown)'), 'Precious draft');
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Server down')).toBeVisible();
-    expect(screen.getByLabelText('Description (Markdown)')).toHaveValue('Precious draft');
+    const area = await screen.findByRole('textbox', { name: 'Description' });
+    const socket = descriptionSocket() as FakeWebSocket;
+    let room!: FakeRoom;
+    act(() => {
+      room = serveDescription('');
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('description-status')).toHaveTextContent('Saved'),
+    );
+    // A server that does not answer yet: the status stays on "Syncing…".
+    const answer = socket.onSend;
+    socket.onSend = null;
+    const mark = socket.sent.length;
+    await user.type(area, 'a');
+    expect(screen.getByTestId('description-status')).toHaveTextContent('Syncing…');
+    socket.onSend = answer;
+    // The pending messages arrive now, in order.
+    for (const message of socket.sent.slice(mark)) act(() => answer?.(message));
+    await waitFor(() =>
+      expect(screen.getByTestId('description-status')).toHaveTextContent('Saved'),
+    );
+    expect(room.text).toBe('a');
+  });
+
+  it("applies another person's edit without moving the caret", async () => {
+    stubFetch(server('owner', [card(1, cid(1), { description: 'Hello world' })]));
+    const user = board(`/projects/${PID}/cards/1`);
+    const area = await screen.findByRole('textbox', { name: 'Description' });
+    let room!: FakeRoom;
+    act(() => {
+      room = serveDescription('Hello world');
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('description-status')).toHaveTextContent('Saved'),
+    );
+    expect(area).toHaveValue('Hello world');
+    await user.click(area);
+    (area as HTMLTextAreaElement).setSelectionRange(11, 11);
+    act(() => {
+      room.doc.getText('description').insert(0, '>> ');
+    });
+    expect(area).toHaveValue('>> Hello world');
+    expect((area as HTMLTextAreaElement).selectionStart).toBe(14);
+    await user.type(area, '!');
+    expect(room.text).toBe('>> Hello world!');
+  });
+
+  it('keeps the editor read-only for a viewer, and still shows live changes', async () => {
+    stubFetch(server('viewer', [card(1, cid(1), { description: 'Text' })]));
+    board(`/projects/${PID}/cards/1`);
+    const area = await screen.findByRole('textbox', { name: 'Description' });
+    let room!: FakeRoom;
+    act(() => {
+      room = serveDescription('Text');
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('description-status')).toHaveTextContent('Saved'),
+    );
+    expect(area).toHaveAttribute('aria-readonly', 'true');
+    expect(area).toHaveAttribute('readonly');
+    act(() => {
+      room.doc.getText('description').insert(4, ' and more');
+    });
+    expect(area).toHaveValue('Text and more');
+  });
+
+  it('limits the description to 20,000 characters', async () => {
+    stubFetch(server('owner', [card(1)]));
+    board(`/projects/${PID}/cards/1`);
+    const area = await screen.findByRole('textbox', { name: 'Description' });
+    expect(area).toHaveAttribute('maxlength', '20000');
+  });
+
+  it('does not trap Tab in the description editor', async () => {
+    stubFetch(server('owner', [card(1)]));
+    const user = board(`/projects/${PID}/cards/1`);
+    const area = await screen.findByRole('textbox', { name: 'Description' });
+    act(() => {
+      serveDescription('');
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('description-status')).toHaveTextContent('Saved'),
+    );
+    await user.click(area);
+    await user.keyboard('{Tab}');
+    expect(area).not.toHaveFocus();
+    expect(area).toHaveValue('');
+  });
+
+  it('announces a refused connection assertively', async () => {
+    stubFetch(server('owner', [card(1)]));
+    board(`/projects/${PID}/cards/1`);
+    await screen.findByRole('textbox', { name: 'Description' });
+    const socket = descriptionSocket() as FakeWebSocket;
+    act(() => socket.close(4403));
     await waitFor(() =>
       expect(screen.getByTestId('live-assertive')).toHaveTextContent(
-        'Could not save the description: Server down',
+        'Could not sync the description',
       ),
     );
+    expect(screen.getByTestId('description-status')).toHaveTextContent('Description unavailable');
   });
 
   it('asks for confirmation before deleting, then removes the card and announces it', async () => {
@@ -573,9 +667,8 @@ describe('card dialog', () => {
     stubFetch(server('viewer', [card(1, cid(1), { description: 'Text' })]));
     board(`/projects/${PID}/cards/1`);
     const dialog = await screen.findByRole('dialog', { name: 'Card KB-1' });
-    expect(await within(dialog).findByText('Text')).toBeVisible();
+    expect(await within(dialog).findByRole('textbox', { name: 'Description' })).toHaveValue('Text');
     expect(within(dialog).queryByRole('button', { name: 'Edit title' })).toBeNull();
-    expect(within(dialog).queryByRole('button', { name: 'Edit description' })).toBeNull();
     expect(within(dialog).queryByRole('button', { name: 'Delete card' })).toBeNull();
     expect(within(dialog).getByRole('button', { name: 'Close' })).toBeVisible();
   });

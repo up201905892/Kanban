@@ -3,6 +3,10 @@ import { z } from 'zod';
 export const CARD_TITLE_MIN_LENGTH = 1;
 export const CARD_TITLE_MAX_LENGTH = 200;
 export const CARD_DESCRIPTION_MAX_LENGTH = 20_000;
+/** Name of the `Y.Text` inside the `card:<id>:description` document. */
+export const DESCRIPTION_TEXT_NAME = 'description';
+/** Description changes by one person within this window are one activity event (G5). */
+export const DESCRIPTION_ACTIVITY_WINDOW_MS = 10 * 60 * 1000;
 
 export const cardTitleSchema = z
   .string()
@@ -78,8 +82,7 @@ export type CreateCardRequest = z.infer<typeof createCardRequestSchema>;
 export const updateCardRequestSchema = z
   .strictObject({
     title: cardTitleSchema.optional(),
-    /** Interim: KB-019 moves the description to the Yjs document and removes it from here. */
-    description: cardDescriptionSchema.optional(),
+    // The description is not here: its only write path is the Yjs document (KB-019).
     /** Must be an owner or member of the card's workspace (`400 INVALID_ASSIGNEE`); null unassigns. */
     assigneeId: z.uuid().nullable().optional(),
     priority: cardPrioritySchema.optional(),

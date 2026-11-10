@@ -120,8 +120,8 @@ function open(path = `/projects/${PID}`) {
 /** Waits until the board is shown and its socket exists, then returns the socket. */
 async function connected(): Promise<FakeWebSocket> {
   await screen.findByRole('region', { name: 'Column To do' });
-  await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
-  const socket = FakeWebSocket.last;
+  await waitFor(() => expect(FakeWebSocket.boards).toHaveLength(1));
+  const socket = FakeWebSocket.boards[0] as FakeWebSocket;
   const requests = latest.board;
   act(() => socket.open());
   // Connecting refetches the board: let that settle so it cannot overwrite what a test sends next.

@@ -6,6 +6,7 @@ All notable changes to this project are recorded here, in the format of [Keep a 
 
 ### Added
 
+- Several people can now edit a card description at the same time without overwriting each other: changes appear live, saving is automatic (the status shows "Saved" or "Syncing…"), viewers see the text update but cannot type, and the description can no longer be changed through the card update request (KB-019).
 - Collaborative documents are now saved in the database, so they are still there after the server restarts or is redeployed; when the server is told to stop it saves what is pending and asks connected clients to reconnect (KB-017).
 - The app now has a starting point: a web page and a server with a health check that reports when the service is running (KB-001).
 - The server now connects to a database and has a readiness check that tells whether the database is reachable (KB-002).

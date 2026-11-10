@@ -1,8 +1,6 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import {
-  CARD_DESCRIPTION_MAX_LENGTH,
-  cardDescriptionSchema,
   cardReference,
   cardTitleSchema,
   type Card,
@@ -10,18 +8,10 @@ import {
   type Column,
   type Member,
 } from '@kanban/shared';
-import {
-  Button,
-  Dialog,
-  ErrorState,
-  Select,
-  Spinner,
-  TextArea,
-  useAnnounce,
-} from '../../components';
+import { Button, Dialog, ErrorState, Select, Spinner, useAnnounce } from '../../components';
 import { useCard, useUpdateCard } from './api';
 import { CardFields } from './CardFields';
-import { Markdown } from './Markdown';
+import { DescriptionSection } from './DescriptionSection';
 
 export interface CardDialogProps {
   projectId: string;
@@ -149,7 +139,7 @@ function CardDetail({
         <>
           <TitleSection projectId={projectId} card={card.data} canEdit={canEdit} />
           <CardFields projectId={projectId} card={card.data} members={members} canEdit={canEdit} />
-          <DescriptionSection projectId={projectId} card={card.data} canEdit={canEdit} />
+          <DescriptionSection card={card.data} canEdit={canEdit} />
         </>
       )}
       {canEdit && <MoveSection summary={summary} columns={columns} onMove={onMove} />}
@@ -312,134 +302,5 @@ function TitleSection({ projectId, card, canEdit }: SectionProps) {
         </Button>
       )}
     </div>
-  );
-}
-
-/** Markdown description: rendered for everyone; editors get Edit/Preview and an explicit Save. */
-function DescriptionSection({ projectId, card, canEdit }: SectionProps) {
-  const announce = useAnnounce();
-  const update = useUpdateCard(projectId);
-  const [editing, setEditing] = useState(false);
-  const [preview, setPreview] = useState(false);
-  const [draft, setDraft] = useState(card.description);
-  const [error, setError] = useState<string>();
-  const areaRef = useRef<HTMLTextAreaElement>(null);
-  const editButtonRef = useRef<HTMLButtonElement>(null);
-  const refocus = useRef(false);
-
-  useLayoutEffect(() => {
-    if (editing && !preview) areaRef.current?.focus();
-  }, [editing, preview]);
-
-  useLayoutEffect(() => {
-    if (!editing && refocus.current) {
-      refocus.current = false;
-      editButtonRef.current?.focus();
-    }
-  }, [editing]);
-
-  const stop = () => {
-    refocus.current = true;
-    setEditing(false);
-    setPreview(false);
-    setError(undefined);
-  };
-
-  const save = (event: FormEvent) => {
-    event.preventDefault();
-    const parsed = cardDescriptionSchema.safeParse(draft);
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'Invalid description');
-      setPreview(false);
-      return;
-    }
-    if (parsed.data === card.description) {
-      stop();
-      return;
-    }
-    update.mutate(
-      { id: card.id, patch: { description: parsed.data } },
-      {
-        onSuccess: () => {
-          stop();
-          announce('Card description saved');
-        },
-        onError: (e) => {
-          setError(e.message);
-          announce(`Could not save the description: ${e.message}`, 'assertive');
-        },
-      },
-    );
-  };
-
-  if (!editing) {
-    return (
-      <section aria-label="Description">
-        <h3>Description</h3>
-        {card.description.trim() === '' ? (
-          <p>No description yet.</p>
-        ) : (
-          <Markdown source={card.description} />
-        )}
-        {canEdit && (
-          <Button
-            ref={editButtonRef}
-            onClick={() => {
-              setDraft(card.description);
-              setEditing(true);
-            }}
-          >
-            Edit description
-          </Button>
-        )}
-      </section>
-    );
-  }
-
-  return (
-    <section aria-label="Description">
-      <h3>Description</h3>
-      <form
-        onSubmit={save}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            event.stopPropagation();
-            stop();
-          }
-        }}
-      >
-        <div role="group" aria-label="Description mode" className="dialog-actions">
-          <Button aria-pressed={!preview} onClick={() => setPreview(false)}>
-            Edit
-          </Button>
-          <Button aria-pressed={preview} onClick={() => setPreview(true)}>
-            Preview
-          </Button>
-        </div>
-        {preview ? (
-          <div aria-label="Description preview" role="group">
-            {draft.trim() === '' ? <p>Nothing to preview.</p> : <Markdown source={draft} />}
-          </div>
-        ) : (
-          <TextArea
-            ref={areaRef}
-            label="Description (Markdown)"
-            hint={`${draft.length} of ${CARD_DESCRIPTION_MAX_LENGTH} characters`}
-            rows={8}
-            value={draft}
-            error={error}
-            onChange={(event) => setDraft(event.target.value)}
-          />
-        )}
-        {preview && error && <p className="field-error">{error}</p>}
-        <div className="dialog-actions">
-          <Button type="submit" disabled={update.isPending}>
-            Save
-          </Button>
-          <Button onClick={stop}>Cancel</Button>
-        </div>
-      </form>
-    </section>
   );
 }

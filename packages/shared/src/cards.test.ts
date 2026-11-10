@@ -52,7 +52,9 @@ describe('card requests', () => {
   it('requires at least one known field to update', () => {
     expect(updateCardRequestSchema.safeParse({}).success).toBe(false);
     expect(updateCardRequestSchema.safeParse({ title: 'x', version: 2 }).success).toBe(false);
-    expect(updateCardRequestSchema.safeParse({ description: '' }).success).toBe(true);
+    // One write path for the description: the Yjs document (KB-019).
+    expect(updateCardRequestSchema.safeParse({ description: '' }).success).toBe(false);
+    expect(updateCardRequestSchema.safeParse({ title: 'x', description: 'y' }).success).toBe(false);
     expect(updateCardRequestSchema.safeParse({ title: 'x' }).success).toBe(true);
   });
 

@@ -82,18 +82,18 @@ test.describe('cards', () => {
     await expect(dialog.getByRole('heading', { level: 3, name: 'Build it well' })).toBeVisible();
     await expect(page.getByTestId('live-polite')).toHaveText('Card title saved');
 
-    // Edit the description with preview and an explicit Save; raw HTML stays inert.
-    await dialog.getByRole('button', { name: 'Edit description' }).click();
-    await expect(dialog.getByLabel('Description (Markdown)')).toBeFocused();
+    // Edit the description live (no Save button) with preview; raw HTML stays inert.
+    const editor = dialog.getByRole('textbox', { name: 'Description' });
+    await expect(dialog.getByTestId('description-status')).toHaveText('Saved');
+    await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
+    await editor.click();
     await page.keyboard.type('# Steps\n\n- one\n- two <script>window.__pwned = 1</script>');
+    await expect(dialog.getByTestId('description-status')).toHaveText('Saved');
     await dialog.getByRole('button', { name: 'Preview' }).click();
     await expect(
       dialog.getByRole('group', { name: 'Description preview' }).getByRole('listitem'),
     ).toHaveCount(2);
-    await dialog.getByRole('button', { name: 'Edit', exact: true }).click();
-    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(dialog.getByRole('heading', { level: 1, name: 'Steps' })).toBeVisible();
-    await expect(page.getByTestId('live-polite')).toHaveText('Card description saved');
     expect(await page.evaluate(() => (window as unknown as { __pwned?: number }).__pwned)).toBe(
       undefined,
     );
@@ -108,8 +108,8 @@ test.describe('cards', () => {
     await page.reload();
     await page.getByRole('link', { name: 'CT-2 Build it well' }).click();
     await expect(
-      page.getByRole('dialog', { name: 'Card CT-2' }).getByRole('heading', { name: 'Steps' }),
-    ).toBeVisible();
+      page.getByRole('dialog', { name: 'Card CT-2' }).getByRole('textbox', { name: 'Description' }),
+    ).toHaveValue(/^# Steps/);
     await expect(page).toHaveURL(`/projects/${projectId}/cards/2`);
 
     // Delete with confirmation.
@@ -187,7 +187,9 @@ test.describe('cards', () => {
     await userB.page.goto(`/projects/${projectId}/cards/1`);
     const dialog = userB.page.getByRole('dialog', { name: 'Card CT-1' });
     await expect(dialog.getByRole('heading', { level: 3, name: 'Readable' })).toBeVisible();
-    await expect(dialog.getByText('text', { exact: true })).toBeVisible();
+    const readOnly = dialog.getByRole('textbox', { name: 'Description' });
+    await expect(readOnly).toHaveValue('Some *text*');
+    await expect(readOnly).toHaveAttribute('aria-readonly', 'true');
     await expect(dialog.getByRole('button', { name: 'Edit title' })).toHaveCount(0);
     await expect(dialog.getByRole('button', { name: 'Delete card' })).toHaveCount(0);
     await expectNoBlockingAxeViolations(userB.page);

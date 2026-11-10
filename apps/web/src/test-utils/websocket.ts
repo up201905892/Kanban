@@ -26,6 +26,10 @@ export class FakeWebSocket {
   static reset(): void {
     FakeWebSocket.instances = [];
   }
+  /** Sockets of the board room, in creation order (card description sockets are not counted). */
+  static get boards(): FakeWebSocket[] {
+    return FakeWebSocket.instances.filter((s) => s.url.includes('/ws/board:'));
+  }
   /** The most recent socket. */
   static get last(): FakeWebSocket {
     const socket = FakeWebSocket.instances.at(-1);
@@ -33,8 +37,14 @@ export class FakeWebSocket {
     return socket;
   }
 
+  static readonly OPEN = 1;
+
   binaryType = 'blob';
   closed = false;
+  readyState = 0;
+  /** Everything the page sent, and an optional handler (a fake server). */
+  readonly sent: Uint8Array[] = [];
+  onSend: ((data: Uint8Array) => void) | null = null;
   private readonly listeners = new Map<string, Listener[]>();
 
   constructor(readonly url: string) {
@@ -50,7 +60,14 @@ export class FakeWebSocket {
   }
 
   open(): void {
+    this.readyState = 1;
     this.emit('open', {});
+  }
+
+  send(data: Uint8Array): void {
+    const copy = new Uint8Array(data);
+    this.sent.push(copy);
+    this.onSend?.(copy);
   }
 
   receive(event: BoardEvent): void {
@@ -64,6 +81,7 @@ export class FakeWebSocket {
   close(code = 1000): void {
     if (this.closed) return;
     this.closed = true;
+    this.readyState = 3;
     this.emit('close', { code });
   }
 }

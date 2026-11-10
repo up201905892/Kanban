@@ -77,8 +77,8 @@ interface UpdateContext {
 }
 
 /**
- * Title edits show at once (tile and dialog) and roll back on error. The description is applied
- * when the server confirms it, so a failed save never loses the draft in the editor.
+ * Title, assignee, priority and estimate show at once (tile and dialog) and roll back on error.
+ * The description is not part of this request: it travels through the Yjs document (KB-019).
  */
 export function useUpdateCard(projectId: string) {
   const queryClient = useQueryClient();

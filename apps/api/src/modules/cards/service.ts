@@ -214,19 +214,11 @@ export async function updateCard(
     if (!card) throw notFound();
 
     const titleChanged = input.title !== undefined && input.title !== card.title;
-    const descriptionChanged =
-      input.description !== undefined && input.description !== card.description;
     const assigneeChanged = input.assigneeId !== undefined && input.assigneeId !== card.assigneeId;
     const priorityChanged = input.priority !== undefined && input.priority !== card.priority;
     const estimateChanged = input.estimate !== undefined && input.estimate !== card.estimate;
     // Nothing changed: no new version and no event.
-    if (
-      !titleChanged &&
-      !descriptionChanged &&
-      !assigneeChanged &&
-      !priorityChanged &&
-      !estimateChanged
-    ) {
+    if (!titleChanged && !assigneeChanged && !priorityChanged && !estimateChanged) {
       return toCard(card);
     }
 
@@ -258,7 +250,6 @@ export async function updateCard(
       where: { id },
       data: {
         ...(titleChanged && { title: input.title as string }),
-        ...(descriptionChanged && { description: input.description as string }),
         ...(assigneeChanged && { assigneeId: input.assigneeId as string | null }),
         ...(priorityChanged && { priority: input.priority as CardPriority }),
         ...(estimateChanged && { estimate: input.estimate as number | null }),
@@ -287,12 +278,6 @@ export async function updateCard(
       await recordActivity(tx, id, user.id, {
         type: 'title_changed',
         data: { from: card.title, to: row.title },
-      });
-    }
-    if (descriptionChanged) {
-      await recordActivity(tx, id, user.id, {
-        type: 'description_changed',
-        data: { from: card.description.length, to: row.description.length },
       });
     }
     events.push(cardEvent('card_updated', row.boardId, toCardSummary(row), user.id, meta));

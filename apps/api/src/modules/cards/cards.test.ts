@@ -342,44 +342,22 @@ describe('PATCH /api/cards/:id', () => {
     expect(row.actorId).toBe(member.user.id);
   });
 
-  it('stores description lengths, never the text', async () => {
+  it('refuses the description in PATCH: the Yjs document is its only write path', async () => {
     const { owner, todo } = await setup();
     const card = await addCard(owner, todo.id, { title: 'T', description: 'abc' });
-    const res = await call('PATCH', `/api/cards/${card.id}`, owner, {
-      description: 'a secret description',
-    });
-    expect(cardResponseSchema.parse(res.json()).card).toMatchObject({
-      description: 'a secret description',
-      version: 2,
-    });
-    const events = await prisma.activityEvent.findMany({ where: { type: 'description_changed' } });
-    expect(events).toHaveLength(1);
-    expect(events[0]?.data).toEqual({ from: 3, to: 20 });
-    expect(JSON.stringify(events[0]?.data)).not.toContain('secret');
-  });
-
-  it('writes both events (and one version step) when title and description change together', async () => {
-    const { owner, todo } = await setup();
-    const card = await addCard(owner, todo.id, { title: 'T' });
-    const res = await call('PATCH', `/api/cards/${card.id}`, owner, {
-      title: 'U',
-      description: 'd',
-    });
-    expect(cardResponseSchema.parse(res.json()).card.version).toBe(2);
-    expect((await eventsOf(card.id)).map((e) => e.type)).toEqual([
-      'created',
-      'title_changed',
-      'description_changed',
-    ]);
+    for (const body of [{ description: 'new' }, { title: 'U', description: 'new' }]) {
+      const res = await call('PATCH', `/api/cards/${card.id}`, owner, body);
+      expect(res.statusCode).toBe(400);
+      expect(errorOf(res).code).toBe('VALIDATION_ERROR');
+    }
+    const row = await prisma.card.findUniqueOrThrow({ where: { id: card.id } });
+    expect(row).toMatchObject({ title: 'T', description: 'abc', version: 1 });
   });
 
   it('does nothing (same version, no event) when the values are unchanged', async () => {
     const { owner, todo } = await setup();
     const card = await addCard(owner, todo.id, { title: 'Same', description: 'd' });
-    const res = await call('PATCH', `/api/cards/${card.id}`, owner, {
-      title: 'Same',
-      description: 'd',
-    });
+    const res = await call('PATCH', `/api/cards/${card.id}`, owner, { title: 'Same' });
     expect(res.statusCode).toBe(200);
     expect(cardResponseSchema.parse(res.json()).card.version).toBe(1);
     expect(await prisma.activityEvent.count()).toBe(1);
@@ -417,7 +395,7 @@ describe('PATCH /api/cards/:id', () => {
       {},
       { title: '' },
       { title: 'x'.repeat(201) },
-      { description: 'x'.repeat(20_001) },
+      { description: 'x' },
       { version: 5 },
       { columnId: randomUUID() },
     ]) {
