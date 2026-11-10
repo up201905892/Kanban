@@ -161,6 +161,15 @@ Entry template:
 - **Documentation:** `docs/api.md` (`GET /ws/:room` persistence and 1012 close); ADR 0004 section 9 (persistence design and backup implication); migration `20261109201533_add_yjs_document_persistence`; no new environment variables
 - **Lessons:** note for the planner (tester's follow-up): in `store()` in `apps/api/src/modules/realtime/persistence.ts`, if the final flush fails (database failure at unload), the awaited chain throws and the document is destroyed with the retry timer cleared, so edits of that last window could be lost; consider a follow-up task. Real SIGTERM delivery to a spawned `node dist/server.js` was not run (handler-level tests only). `prisma migrate reset` was not run (sandbox); CI applies migrations to an empty database. No TODO found in the task's code; no secret found. Milestone "Real time" not yet reached (KB-018, KB-019 are Planned; KB-020, KB-021 are Proposed).
 
+### KB-018 · Live board updates — done on 2026-11-10
+
+- **Approving test report:** Report 1 (2026-11-10), commit acab99f (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** after each committed mutation of columns, cards, card fields and moves (and card unassignment on member removal) the server publishes a `BoardEvent` to the `board:<id>` room, viewers included; the web client applies events to the TanStack Query cache with a version filter, skips its own echoes, and refetches on connect and reconnect; the open card dialog updates in place without overwriting a field being edited and reports remote deletion; a remote move of the focused card is announced and keeps focus.
+- **CHANGELOG:** "Added: Boards now update live: when someone else adds, edits, moves or deletes a card or changes a column, everyone looking at the board sees it without reloading, viewers included. An open card updates in place without overwriting a field you are typing in, says who deleted it if it disappears, and a card you are focused on that someone else moves is announced to screen readers while keeping your focus on it (KB-018)."
+- **Documentation:** `docs/api.md` (board events section); ADR 0004 updated; no migrations; no new environment variables; no new dependencies
+- **Lessons:** until KB-034 is done, respaced siblings on card creation and column deletion keep their `version`, so clients drop those `card_moved` events and may show a different order until the next refetch; the planner should consider KB-034 as a dependency. There is no tombstone, so a `card_updated` after `card_deleted` (reconnect race) would re-add the card until a refetch. `members.spec.ts:98` was flaky once in E2E. `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. Milestone "Real time" not yet reached (KB-019 is Planned; KB-020, KB-021 are Proposed).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
