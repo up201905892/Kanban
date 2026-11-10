@@ -16,6 +16,23 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-10
+
+- **Decisions for João:**
+  - **Nothing is `Planned` now, so the cycle has nothing to develop until you approve.** Suggested: `Approve | KB-034, KB-022, KB-037, KB-021, KB-024` (all dependencies Done; KB-034 fixes sibling order differing between clients).
+  - Then, in order: KB-039, KB-033, KB-035, KB-040, KB-020, KB-028, KB-014 (Low).
+  - **D11 (new):** deleting a column also hard-deletes its older soft-deleted cards and their history. Recommended A (accept and document for v1.0): `Answer | D11 | A`.
+  - **D10 (open):** recommended `Answer | D10 | A` and `Approve | KB-038`.
+  - **D9 (open):** recommended `Answer | D9 | A` and `Reject | KB-036`.
+  - The earlier `Change | KB-018 | add dependency KB-034` suggestion no longer applies (KB-018 is Done).
+  - FYI, sandbox: `prisma migrate reset --force` was blocked in autonomous mode again (testers confirmed no pending migrations instead).
+- **Done:** KB-018 (live board updates), KB-019 (collaborative card description with Yjs)
+- **Tested:** KB-018 (Passed; flaky `members.spec.ts:98` passed on retry), KB-019 (Passed)
+- **Developed:** KB-018, KB-019 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-014, KB-020 to KB-040 (new: KB-039 tombstones in the live board cache, KB-040 enforce the description length limit in the shared document; several existing proposals amended with lessons from KB-018/KB-019)
+- **Rule violations found:** none
+- **Next step:** wait for approvals; then develop KB-034 and the next approved task.
+
 ## 2026-11-09
 
 - **Decisions for João:**
