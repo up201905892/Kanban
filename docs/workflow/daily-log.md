@@ -16,6 +16,19 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-11
+
+- **Decisions for João:**
+  - **Still blocked: nothing is `Planned`, so there is nothing to develop.** No new lines in `approvals.md` since 2026-11-04. Suggested: `Approve | KB-034, KB-022, KB-037, KB-021, KB-024`.
+  - Then, in order: KB-039, KB-033, KB-035, KB-040, KB-020, KB-028, KB-014 (Low).
+  - Open questions, unchanged from 2026-11-10: D11 (`Answer | D11 | A`), D10 (`Answer | D10 | A` and `Approve | KB-038`), D9 (`Answer | D9 | A` and `Reject | KB-036`).
+- **Done:** none
+- **Tested:** none (nothing `Ready for test`)
+- **Developed:** none
+- **Proposals awaiting approval:** KB-014, KB-020 to KB-040 (no new proposals: the backlog already has more `Proposed` tasks than can be approved at once)
+- **Rule violations found:** none
+- **Next step:** wait for approvals; then develop KB-034 and the next approved task.
+
 ## 2026-11-10
 
 - **Decisions for João:**
