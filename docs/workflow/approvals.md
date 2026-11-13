@@ -13,6 +13,14 @@ How to use it: add one line per decision (on GitHub, on the `develop` branch, ev
 | 2026-11-04 | Approve | KB-011 to KB-013, KB-015 to KB-019 | |
 | 2026-11-04 | Answer | KB-008 | Confirmed: the project key is fixed after creation (PATCH accepts only name) |
 | 2026-11-04 | Answer | KB-007 | Confirmed: role matrix in ADR 0003 as implemented |
+| 2026-11-13 | Approve | KB-034, KB-035, KB-037, KB-039, KB-040, KB-033 | Quality debt first: fixes to tasks already Done |
+| 2026-11-13 | Approve | KB-022, KB-021, KB-024 | Next features: backlog and sprints, reconnection, activity history |
+| 2026-11-13 | Answer | D9 | A: keep KB-015 as built |
+| 2026-11-13 | Reject | KB-036 | Not needed with D9 = A |
+| 2026-11-13 | Answer | D10 | A: demoting a member to viewer unassigns their cards |
+| 2026-11-13 | Approve | KB-038 | Implements D10 = A |
+| 2026-11-13 | Answer | D11 | A: accept and document that deleting a column hard-deletes its soft-deleted cards and their history in v1.0 |
+
 
 Possible decisions:
 
