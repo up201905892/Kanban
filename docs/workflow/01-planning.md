@@ -27,7 +27,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Done |
 | KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Done |
 | KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Done |
-| KB-020 | Presence: who is on the board and who is editing a card | Real time | Medium | KB-019 | Planned |
+| KB-020 | Presence: who is on the board and who is editing a card | Real time | Medium | KB-019 | Ready for test |
 | KB-021 | Reconnection, offline edits and connection status | Real time | Medium | KB-018, KB-019 | Planned |
 | KB-022 | Backlog and sprint planning | Sprints | Medium | KB-013, KB-018 | Planned |
 | KB-023 | Close a sprint | Sprints | Medium | KB-022 | Planned |
@@ -996,6 +996,8 @@ Task template (copy for each new task):
 - 2026-10-21 · planner · created as Proposed
 - 2026-11-10 · planner · spec revised after KB-019 (Done): the editor is a textarea binding, not CodeMirror, so remote carets are drawn in an overlay from Yjs relative positions, and selections are out of scope. Awareness reuses the existing board and card socket clients · stays Proposed
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
+- 2026-11-13 · developer · Planned → In development · started
+- 2026-11-13 · developer · In development → Ready for test · commit 1846f99
 
 ### KB-021 · Reconnection, offline edits and connection status
 
