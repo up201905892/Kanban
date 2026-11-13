@@ -16,6 +16,17 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-13
+
+- **Decisions for João:** none. Your approvals of 2026-11-13 were applied (20 tasks `Planned`, KB-036 `Rejected`; D9, D10 and D11 answered as A).
+  - Note: `prisma migrate reset --force` is blocked by the environment guard in autonomous mode; the tester skipped it on both reports (no pending migrations were reported, and neither task has a migration).
+- **Done:** KB-034 (card versions bumped on respace), KB-020 (presence)
+- **Tested:** KB-034 (Passed), KB-020 (Passed)
+- **Developed:** KB-034, KB-020 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` to be published on npm)
+- **Rule violations found:** none
+- **Next step:** KB-021, KB-022, KB-033, KB-035, KB-037, KB-038, KB-039, KB-040 and KB-024 are the next `Planned` tasks (KB-014 is Low priority).
+
 ## 2026-11-12
 
 - **Decisions for João:**
