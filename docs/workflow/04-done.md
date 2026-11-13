@@ -188,6 +188,15 @@ Entry template:
 - **Documentation:** ADR 0004 ordering note updated (gap closed); `docs/api.md` did not mention the risk; no migrations; no new environment variables
 - **Lessons:** the spec's "320-insert" loop does not force a rebalance on create; tests write keys directly into the database to trigger it. `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. No milestone reached (the Board phase still has other tasks that are not Done).
 
+### KB-020 · Presence: who is on the board and who is editing a card — done on 2026-11-13
+
+- **Approving test report:** Report 1 (2026-11-13), commit 1846f99 (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** awareness over the existing board and card-description sockets, with the server overwriting `userId`, `name` and `color` from the session and ignoring updates for other clients' IDs; the board shows up to 5 avatars plus "+N" with an accessible list; tiles show "Ana is editing", the card dialog shows "Also here", and the description shows remote carets with visible names drawn from Yjs relative positions in an `aria-hidden` overlay; presence is removed at once on a clean close.
+- **CHANGELOG:** "Added: The board now shows who is there: avatars with initials (up to five, then "+N") above the board, "Ana is editing" on a card while someone types in its description, a "Also here" line in the open card, and other people's cursors in the description with their names. People disappear as soon as they leave or lose their connection, and nobody can pretend to be someone else (KB-020)."
+- **Documentation:** `docs/api.md` (awareness state); ADR 0004 section 13; no migrations; no new environment variables; no new dependencies
+- **Lessons:** the 30 s removal after a lost connection relies on the heartbeat and library timeout and is not covered by a test; every tile re-renders on presence changes (relevant to KB-028); `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. Milestone "Real time" not yet reached (KB-021 and others are not Done).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
