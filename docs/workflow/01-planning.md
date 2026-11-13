@@ -1420,7 +1420,7 @@ Task template (copy for each new task):
 - 2026-11-10 · planner · spec revised after KB-018 (Done, without this dependency): the KB-018 developer, tester and finisher confirm that clients drop the sibling `card_moved` events, so order can differ between clients until a refetch. Added the event and client criteria and tests, and R6. Priority stays High: it fixes a convergence defect in a Done High task and is now a dependency of KB-029 · stays Proposed
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
 - 2026-11-13 · developer · Planned → In development · started
-- 2026-11-13 · developer · In development → Ready for test · commit 571a512
+- 2026-11-13 · developer · In development → Ready for test · commit cb54a72
 
 ### KB-035 · Stabilise the flaky members and move-cards E2E tests
 

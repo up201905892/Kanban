@@ -449,7 +449,7 @@ Entry template:
 - **Position writes on `card` in `apps/api/src` (grep for `position`):** `cards/service.ts` create respace (now bumps), create insert (new row, version 1), move respace (already bumped), move of the card (already bumped); `boards/service.ts` `moveCardsToEnd` respace (now bumps) and moved cards (already bumped). The other `position` writes are on `column` (not versioned) or the project seed.
 - **Changed files:** `apps/api/src/modules/cards/service.ts`, `apps/api/src/modules/boards/service.ts`, `apps/api/src/modules/cards/cards.test.ts`, `apps/api/src/modules/realtime/board-events.test.ts`, `apps/web/src/features/board/board-live.test.tsx`, `docs/adr/0004-real-time-architecture.md`
 - **Migrations:** none
-- **Commit(s):** `571a512` feat(api): KB-034 bump card versions when positions are respaced
+- **Commit(s):** `cb54a72` feat(api): KB-034 bump card versions when positions are respaced
 - **Acceptance criteria covered:** create respace and column-delete respace bump versions (`cards.test.ts`); no-rebalance create leaves versions at 1 (`cards.test.ts`); events carry bumped versions over a real socket (`board-events.test.ts`, create and column delete); client applies the burst and order equals the server's (`board-live.test.tsx`); G1, G4, G8, A7, R6.
 - **Tests written by the developer:** as listed above.
 - **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 149, web 210, api 360) · test:e2e ok (47 passed)
