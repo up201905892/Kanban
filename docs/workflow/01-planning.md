@@ -21,33 +21,33 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Done |
 | KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Done |
 | KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Done |
-| KB-014 | Labels | Board | Low | KB-012, KB-018 | Proposed |
+| KB-014 | Labels | Board | Low | KB-012, KB-018 | Planned |
 | KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | Done |
 | KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Done |
 | KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Done |
 | KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Done |
 | KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Done |
-| KB-020 | Presence: who is on the board and who is editing a card | Real time | Medium | KB-019 | Proposed |
-| KB-021 | Reconnection, offline edits and connection status | Real time | Medium | KB-018, KB-019 | Proposed |
-| KB-022 | Backlog and sprint planning | Sprints | Medium | KB-013, KB-018 | Proposed |
-| KB-023 | Close a sprint | Sprints | Medium | KB-022 | Proposed |
-| KB-024 | Card activity history | Reports and history | Medium | KB-013, KB-015 | Proposed |
-| KB-025 | Sprint burndown | Reports and history | Medium | KB-022 | Proposed |
-| KB-026 | Velocity of recent sprints | Reports and history | Low | KB-023 | Proposed |
+| KB-020 | Presence: who is on the board and who is editing a card | Real time | Medium | KB-019 | Planned |
+| KB-021 | Reconnection, offline edits and connection status | Real time | Medium | KB-018, KB-019 | Planned |
+| KB-022 | Backlog and sprint planning | Sprints | Medium | KB-013, KB-018 | Planned |
+| KB-023 | Close a sprint | Sprints | Medium | KB-022 | Planned |
+| KB-024 | Card activity history | Reports and history | Medium | KB-013, KB-015 | Planned |
+| KB-025 | Sprint burndown | Reports and history | Medium | KB-022 | Planned |
+| KB-026 | Velocity of recent sprints | Reports and history | Low | KB-023 | Planned |
 | KB-027 | Adopt `@up201905892/ui` and replace local components | Design system | Medium | KB-004, external: `@up201905892/ui` published on npm | Proposed |
-| KB-028 | Performance with 500+ cards | Quality and delivery | Medium | KB-018 | Proposed |
-| KB-029 | End-to-end collaboration suite (two browsers) | Quality and delivery | Medium | KB-009, KB-021, KB-023, KB-034, KB-039 | Proposed |
-| KB-030 | Accessibility audit and fixes | Quality and delivery | Medium | KB-020, KB-021, KB-024, KB-025 | Proposed |
-| KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017, KB-037 | Proposed |
-| KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Proposed |
-| KB-033 | Close real-time sockets on logout, session expiry and resource deletion | Real time | Medium | KB-016 | Proposed |
-| KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Proposed |
-| KB-035 | Stabilise the flaky members and move-cards E2E tests | Quality and delivery | Medium | KB-009, KB-015 | Proposed |
-| KB-036 | Card actions menu on the board tile (D9) | Board | Low | KB-015, D9 answered | Proposed |
-| KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Proposed |
-| KB-038 | Unassign a member's cards when they are demoted to viewer (D10) | Authentication and workspaces | Medium | KB-009, KB-013 | Proposed |
-| KB-039 | Card and column tombstones in the live board cache | Real time | Medium | KB-018 | Proposed |
-| KB-040 | Enforce the description length limit in the shared document | Real time | Medium | KB-019 | Proposed |
+| KB-028 | Performance with 500+ cards | Quality and delivery | Medium | KB-018 | Planned |
+| KB-029 | End-to-end collaboration suite (two browsers) | Quality and delivery | Medium | KB-009, KB-021, KB-023, KB-034, KB-038, KB-039 | Planned |
+| KB-030 | Accessibility audit and fixes | Quality and delivery | Medium | KB-020, KB-021, KB-024, KB-025 | Planned |
+| KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017, KB-037 | Planned |
+| KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Planned |
+| KB-033 | Close real-time sockets on logout, session expiry and resource deletion | Real time | Medium | KB-016 | Planned |
+| KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Planned |
+| KB-035 | Stabilise the flaky members and move-cards E2E tests | Quality and delivery | Medium | KB-009, KB-015 | Planned |
+| KB-036 | Card actions menu on the board tile (D9) | Board | Low | KB-015, D9 answered | Rejected |
+| KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Planned |
+| KB-038 | Unassign a member's cards when they are demoted to viewer (D10) | Authentication and workspaces | Medium | KB-009, KB-013 | Planned |
+| KB-039 | Card and column tombstones in the live board cache | Real time | Medium | KB-018 | Planned |
+| KB-040 | Enforce the description length limit in the shared document | Real time | Medium | KB-019 | Planned |
 
 **Priority rule used:** High = blocks at least one other High/Medium task on the path to the v1.0 release; Medium = MVP scope that blocks nothing (or only Medium tasks at the end of the plan); Low = MVP scope that is the first candidate to move to v1.1 if the schedule slips.
 
@@ -58,6 +58,8 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 **Estimate update (2026-11-09):** KB-037 (M) and KB-038 (S) add 1.25 ideal days; new total 4 S + 24 M + 10 L = **50 ideal days** (55 if every L takes 3 days). Without KB-036: 49.75.
 
 **Estimate update (2026-11-10):** KB-039 (S) and KB-040 (M) add 1.25 ideal days. Correction found while recounting every task's Estimate line: the 2026-11-06 update counted KB-033 to KB-036 as 2 S + 2 M, but they are 3 S (KB-034, KB-035, KB-036) + 1 M (KB-033), so the 2026-11-06 and 2026-11-09 totals were 0.75 day too high (correct values: 48.0 and 49.25). Recounted total: 6 S + 24 M + 10 L = **50.5 ideal days** (55.5 if every L takes 3 days); without KB-036: 50.25. Done (KB-001 to KB-013, KB-015 to KB-019): 10 M + 8 L = 30 ideal days. Remaining (all Proposed): 6 S + 14 M + 2 L = 20.5 ideal days (20.25 without KB-036).
+
+**Estimate update (2026-11-13):** KB-036 rejected (D9 = A), so the plan total is 5 S + 24 M + 10 L = **50.25 ideal days** (55.25 if every L takes 3 days). Done: 30 ideal days. Planned: 5 S + 13 M + 2 L = 19.25 ideal days. Still Proposed: KB-027 (M, 1 day; waits for `@up201905892/ui` on npm).
 
 **ADRs required** (files in `docs/adr/NNNN-<slug>.md`, next free number): auth and sessions (KB-005), authorization model (KB-007), ordering and conflict handling (KB-010), real-time architecture and Yjs↔DB authority (KB-016, extended by KB-017, KB-019, KB-033, KB-037 and KB-040), deployment topology (KB-031).
 
@@ -120,7 +122,11 @@ Consequence for the plan: every later task authorizes through the KB-007 policy 
 
 Original question (daily log, 2026-10-30): confirm the role matrix chosen in KB-007 (ADR 0003).
 
-### D9 · Keyboard pick-up key and where "Move to…" lives — **Open** (asked 2026-11-06)
+### D9 · Keyboard pick-up key and where "Move to…" lives — **Decided** (João, 2026-11-13, `approvals.md`)
+
+**Decision:** option A, keep KB-015 as built. Enter on the card tile (a link) opens the card dialog; keyboard pick-up is Space on the tile or Space/Enter on the move handle ("Move card KB-n"); "Move to…" lives in the card dialog, which is the single-pointer alternative for WCAG 2.2 SC 2.5.7. KB-015 stays Done with no rework (its "Space/Enter picks up" and "in the card menu" wording is superseded by this decision). KB-036 is Rejected. KB-028 keeps two Tab stops per tile (link and move handle); KB-030 audits this pattern.
+
+Original question, kept for the record:
 
 KB-015 was implemented with two deviations from its wording, both flagged by the developer and the tester: (a) Enter on the card tile (a link) still opens the card dialog, as KB-012 requires; keyboard pick-up is Space on the tile, or Space/Enter on a separate move handle ("Move card KB-n"); the spec said "Space/Enter picks up". (b) "Move to…" lives in the card dialog, because the board has no per-card menu; the spec said "in the card menu".
 
@@ -130,7 +136,11 @@ KB-015 was implemented with two deviations from its wording, both flagged by the
 - **How to answer:** `Answer | D9 | A` (and `Reject | KB-036`), or `Answer | D9 | B` (and `Approve | KB-036`), or `Change | KB-036 | option C`.
 - **Affects:** KB-015 (record only, no rework under A or B), KB-036, KB-028 (Tab stops per tile), KB-030 (audit of the chosen pattern).
 
-### D10 · What happens to a member's cards when they are demoted to viewer — **Open** (asked 2026-11-09)
+### D10 · What happens to a member's cards when they are demoted to viewer — **Decided** (João, 2026-11-13, `approvals.md`)
+
+**Decision:** option A, demoting an owner or member to viewer unassigns their cards in that workspace, the same way as removal and leaving (one transaction, `version` + 1, an `assignee_changed` event per card with the owner as actor, board events after commit). Invariant: a card's assignee is always an owner or member of the card's workspace. Implemented by KB-038 (approved, Planned). KB-029's journey step "A demotes B to viewer" now also asserts that B's cards are unassigned, so KB-029 depends on KB-038. KB-013 stays Done with no rework.
+
+Original question, kept for the record:
 
 KB-013 unassigns a person's cards when they are removed or leave, but not when an owner demotes them to viewer (the spec did not say). Since viewers cannot be assigned (`400 INVALID_ASSIGNEE`), such cards end up assigned to someone who could not be assigned to them today and who cannot work on them. The KB-013 developer, tester and finisher all flagged this.
 
@@ -139,7 +149,11 @@ KB-013 unassigns a person's cards when they are removed or leave, but not when a
 - **How to answer:** `Answer | D10 | A` with `Approve | KB-038`, or `Answer | D10 | B` with `Change | KB-038 | option B` (the planner rewrites KB-038 for B).
 - **Affects:** KB-038, KB-029 (the journey step "A demotes B to viewer"), KB-025 (burndown is not affected under either option; it uses estimates, not assignees).
 
-### D11 · History of cards deleted before their column is deleted — **Open** (asked in the daily log 2026-11-06; formalised 2026-11-10)
+### D11 · History of cards deleted before their column is deleted — **Decided** (João, 2026-11-13, `approvals.md`)
+
+**Decision:** option A, accept and document. In v1.0, deleting a column hard-deletes (through the `cards.column_id` cascade) the cards that were soft-deleted in it earlier, together with their `ActivityEvent` rows. No new task and no migration; the foreign key stays `CASCADE`. Documentation: KB-024 writes the behaviour in `docs/api.md` (column delete and card activity sections); KB-025 adds the matching known limitation of the burndown (scope of past days) to `docs/api.md`. KB-011 and KB-012 stay Done with no rework. Keeping this history (option B) is a candidate for v1.1, together with restoring deleted cards.
+
+Original question, kept for the record:
 
 The `cards.column_id` foreign key cascades (KB-012 development note and test report 1). A column can only be deleted when it has no live cards, or with `moveCardsTo`, which moves only live cards. So deleting a column hard-deletes the cards that were soft-deleted in it earlier, together with their `ActivityEvent` rows.
 
@@ -210,6 +224,14 @@ Lines from `approvals.md` already handled by the planner (prevents applying the 
 | 2026-11-04 | Approve | KB-011 to KB-013, KB-015 to KB-019 | 2026-11-05 |
 | 2026-11-04 | Answer | KB-008 | 2026-11-05 |
 | 2026-11-04 | Answer | KB-007 | 2026-11-05 |
+| 2026-11-13 | Approve | KB-034, KB-035, KB-037, KB-039, KB-040, KB-033 | 2026-11-13 |
+| 2026-11-13 | Approve | KB-022, KB-021, KB-024 | 2026-11-13 |
+| 2026-11-13 | Answer | D9 | 2026-11-13 |
+| 2026-11-13 | Reject | KB-036 | 2026-11-13 |
+| 2026-11-13 | Answer | D10 | 2026-11-13 |
+| 2026-11-13 | Approve | KB-038 | 2026-11-13 |
+| 2026-11-13 | Answer | D11 | 2026-11-13 |
+| 2026-11-13 | Approve | KB-014, KB-020, KB-023, KB-025, KB-026, KB-028, KB-029, KB-030, KB-031, KB-032 | 2026-11-13 |
 
 Note: the first row of the `approvals.md` table (`YYYY-MM-DD · Approve · KB-001 to KB-008`, in italics) is the usage example, not a decision; it is not applied. KB-001 to KB-004 and KB-010 were approved in the conversation on 2026-10-24.
 
@@ -648,6 +670,7 @@ Task template (copy for each new task):
 - 2026-11-05 · tester · Ready for test → In test · testing started
 - 2026-11-05 · tester · In test → Passed · report 1, commit 60565ef, zero failures
 - 2026-11-05 · finisher · Passed → Done · CHANGELOG and docs in place, recorded in 04-done.md
+- 2026-11-13 · planner · Done (no status change) · D11 answered with option A (approvals.md, 2026-11-13): the cascade that hard-deletes previously soft-deleted cards and their activity on column delete is accepted for v1.0 and documented by KB-024/KB-025; no rework
 
 ### KB-012 · Cards: create, view, edit and delete
 
@@ -689,6 +712,7 @@ Task template (copy for each new task):
 - 2026-11-05 · tester · Ready for test → In test · testing started
 - 2026-11-05 · tester · In test → Passed · report 1, commit 512a5e9, zero failures
 - 2026-11-05 · finisher · Passed → Done · CHANGELOG and docs/api.md up to date, no production code after the tested commit
+- 2026-11-13 · planner · Done (no status change) · D11 answered with option A (approvals.md, 2026-11-13): `cards.column_id` keeps `ON DELETE CASCADE`; the behaviour is documented by KB-024/KB-025; no rework
 
 ### KB-013 · Card fields: assignee, priority and estimate
 
@@ -725,6 +749,7 @@ Task template (copy for each new task):
 - 2026-11-09 · tester · In test → Passed · report 1, all checks and criteria verified
 - 2026-11-09 · finisher · Passed → Done · CHANGELOG, api docs and migration verified; no TODO or secret
 - 2026-11-09 · planner · Done (no status change) · the developer, tester and finisher note (demotion to viewer does not unassign the person's cards) is put to João as D10, recommending unassignment; proposed as KB-038; no rework of this task
+- 2026-11-13 · planner · Done (no status change) · D10 answered with option A (approvals.md, 2026-11-13): demotion to viewer will unassign cards through KB-038 (Planned), which shares the unassign helper with this task's removal path; no rework of this task
 
 ### KB-014 · Labels
 
@@ -752,6 +777,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13); dependencies KB-012 and KB-018 are Done
 
 ### KB-015 · Drag and drop and keyboard moving of cards
 
@@ -788,6 +814,7 @@ Task template (copy for each new task):
 - 2026-11-06 · tester · In test → Passed · report 1, all checks and criteria verified
 - 2026-11-06 · finisher · Passed → Done · definition of done confirmed; CHANGELOG and docs/api.md up to date
 - 2026-11-06 · planner · Done (no status change) · the two wording deviations noted by developer and tester (Enter on the tile opens the card; "Move to…" lives in the card dialog) are put to João as D9 with the recommendation to keep them as implemented; the optional tile menu is proposed as KB-036; the flaky `move-cards.spec.ts:105` is covered by KB-035; the create-card and column-delete respacing that does not bump sibling `version` (ADR 0001 section 4) is covered by KB-034
+- 2026-11-13 · planner · Done (no status change) · D9 answered with option A (approvals.md, 2026-11-13): kept as built. Enter on the tile opens the card, pick-up is Space on the tile or Space/Enter on the move handle, and "Move to…" lives in the card dialog; the "Space/Enter picks up" and "in the card menu" wording above is superseded by D9. KB-036 rejected; no rework
 
 ### KB-016 · WebSocket server with the y-websocket protocol and room authorization
 
@@ -968,6 +995,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-11-10 · planner · spec revised after KB-019 (Done): the editor is a textarea binding, not CodeMirror, so remote carets are drawn in an overlay from Yjs relative positions, and selections are out of scope. Awareness reuses the existing board and card socket clients · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-021 · Reconnection, offline edits and connection status
 
@@ -1000,6 +1028,7 @@ Task template (copy for each new task):
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · João's decision (2026-10-24): robustness layer that only blocks the Medium KB-029
 - 2026-11-10 · planner · spec revised after KB-018 and KB-019 (Done): both already ship a simple reconnect, so this task unifies them under one connection-state module and one announcement instead of adding a third one · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-022 · Backlog and sprint planning
 
@@ -1029,6 +1058,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · re-check under João's rule: not on the critical path and blocks only Medium tasks (KB-023, KB-025)
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-023 · Close a sprint
 
@@ -1056,6 +1086,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · João's decision (2026-10-24): end of the sprint flow, blocks only Medium/Low tasks (KB-026, KB-029)
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-024 · Card activity history
 
@@ -1072,7 +1103,7 @@ Task template (copy for each new task):
 - [ ] Rendering uses an exhaustive switch over the shared event union, so any future event type fails the typecheck until it has a renderer.
 - [ ] New events for the open card appear live (board event → activity query invalidated). Exception: the KB-019 projection writes `description_changed` without a board event (ADR 0004 section 12), so these entries appear the next time the activity is fetched (dialog reopened or "Load more"). They are not required to appear live.
 - [ ] `description_changed` lines show the coalesced shape from KB-019 (one line per person per 10-minute window, lengths only, never the text).
-- [ ] `docs/api.md` states that deleting a column removes the cards that were soft-deleted in it earlier, together with their activity (D11, option A). If João chooses option B, this line is dropped and the planner proposes a separate task.
+- [ ] `docs/api.md` states, in the column-delete section and in the card-activity section, that in v1.0 deleting a column permanently removes the cards that were soft-deleted in it earlier, together with their activity (D11, decided: option A). It also states that a soft-deleted card cannot be viewed or restored (`GET /api/cards/:id` and the activity endpoint return 404).
 - [ ] Common criteria: G1, G2, G8, A1–A4, A7, A8, U1–U10.
 
 **Required tests:**
@@ -1086,6 +1117,8 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-11-10 · planner · spec revised after KB-018 and KB-019 (Done): `description_changed` entries do not appear live because the projection publishes no board event, and they keep the coalesced shape; added a documentation line for D11 (recommended option A). Approving this task does not have to wait for D11 · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
+- 2026-11-13 · planner · Planned (no status change) · D11 answered with option A (approvals.md, 2026-11-13): the documentation criterion is made final (both `docs/api.md` sections named, the "if option B" clause removed); no new task
 
 ### KB-025 · Sprint burndown
 
@@ -1101,6 +1134,7 @@ Task template (copy for each new task):
 - [ ] `GET /api/sprints/:id/burndown` → {days, ideal, unestimatedCount} (any role).
 - [ ] Reports page per project: Recharts line chart (remaining vs ideal), a text summary ("12 of 30 points remaining, 4 days left") and a "Show as table" toggle rendering a real `<table>` with caption and headers.
 - [ ] Empty states: no active sprint; no estimated cards.
+- [ ] Known limitation documented in the burndown section of `docs/api.md` (D11, option A): if a column is deleted during the active sprint, cards that were soft-deleted from it earlier in the sprint, and their events, no longer exist, so they drop out of the scope line of past days; today's remaining points are not affected.
 - [ ] Common criteria: G1, G2, G8, A1–A4, A7, U1–U10.
 
 **Required tests:**
@@ -1109,10 +1143,12 @@ Task template (copy for each new task):
 - E2E: start a sprint with estimated cards, move one to Done → today's remaining value drops in the table; axe on the reports page.
 - Accessibility: table toggle reachable by keyboard; the chart is never the only source of the information.
 
-**Out of scope:** burnup, cumulative flow, hour-based burndown, burndown of past sprints, per-project time zones.
+**Out of scope:** burnup, cumulative flow, hour-based burndown, burndown of past sprints, per-project time zones, keeping the history of cards removed by a column delete (D11 option B, v1.1 candidate).
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-13 · planner · spec revised for D11 = A (approvals.md, 2026-11-13): added the documented known limitation on past-day scope and the matching out-of-scope line; no change to tests or estimate
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-026 · Velocity of recent sprints
 
@@ -1138,6 +1174,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-027 · Adopt `@up201905892/ui` and replace local components
 
@@ -1193,18 +1230,19 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13); D9 = A keeps two Tab stops per tile (link and move handle) for the virtualized keyboard navigation
 
 ### KB-029 · End-to-end collaboration suite (two browsers)
 
 - **MVP phase:** Quality and delivery
 - **Priority:** Medium
-- **Depends on:** KB-009, KB-021, KB-023, KB-034, KB-039
+- **Depends on:** KB-009, KB-021, KB-023, KB-034, KB-038, KB-039
 - **Estimate:** M
 
 **Goal:** One reliable journey test that proves the product works for a real group, run in CI on every push.
 
 **Acceptance criteria:**
-- [ ] Playwright spec(s) in `e2e/journeys/` with two users: A signs up, creates a workspace and project, creates an invite; B signs up through the link; both open the board; A moves a card while B edits its fields; both edit the same description; B goes offline, makes changes and reconnects; A starts and closes a sprint; A demotes B to viewer and B can no longer edit (read-only UI and API 403).
+- [ ] Playwright spec(s) in `e2e/journeys/` with two users: A signs up, creates a workspace and project, creates an invite; B signs up through the link; both open the board; A moves a card while B edits its fields; both edit the same description; B goes offline, makes changes and reconnects; A starts and closes a sprint; A demotes B to viewer (confirming the KB-038 dialog) and B can no longer edit (read-only UI and API 403), and the cards that were assigned to B show no assignee in both browsers (D10).
 - [ ] No fixed sleeps (only auto-waiting assertions); the suite runs in under 5 minutes in CI.
 - [ ] `pnpm test:e2e -- --repeat-each=10` on the journey passes with zero failures (flakiness check, result recorded in the development entry).
 - [ ] Common criteria: G1, R4, R5, R6.
@@ -1220,6 +1258,8 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-11-10 · planner · dependencies KB-034 and KB-039 added: the journey asserts convergence (R4, R6) and must pass 10 repeats, so the two known causes of client divergence in the live board (respaced siblings keep their `version`, and a late event re-adds a deleted card or column) are fixed first. No cycle: neither task depends on KB-029 · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
+- 2026-11-13 · planner · Planned (no status change) · D10 answered with option A (approvals.md, 2026-11-13): the demotion step now also asserts that B's cards are unassigned, so KB-038 is added as a dependency (no cycle: KB-038 does not depend on KB-029); estimate stays M
 
 ### KB-030 · Accessibility audit and fixes
 
@@ -1232,6 +1272,7 @@ Task template (copy for each new task):
 
 **Acceptance criteria:**
 - [ ] `docs/accessibility-audit.md`: WCAG 2.2 AA checklist per screen (log-in, sign-up, workspaces, members, invite, board, card dialog, backlog, reports), keyboard-only walkthrough with results, screen-reader spot check (NVDA + Chrome) of drag-and-drop and live announcements, text contrast ≥ 4.5:1.
+- [ ] The audit covers the D9 card pattern explicitly: Enter on a tile opens the card, Space on the tile or Space/Enter on the move handle picks it up, and "Move to…" in the card dialog is the single-pointer alternative to dragging (WCAG 2.2 SC 2.5.7); the result is written in the board section of the audit.
 - [ ] An axe sweep spec visits every route with zero serious/critical violations.
 - [ ] Every A/AA failure found is fixed in this task; anything else is listed in the audit with severity and added to "Decisions for João" in the daily log for planning.
 - [ ] Common criteria: G1, U3–U5, U9, U10.
@@ -1246,6 +1287,8 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-13 · planner · spec revised for D9 = A (approvals.md, 2026-11-13): added a criterion to audit the chosen keyboard pattern for cards; estimate stays M
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-031 · Deploy preparation for Railway
 
@@ -1284,6 +1327,7 @@ Task template (copy for each new task):
 - 2026-10-29 · planner · spec revised from the KB-005 developer, tester and finisher notes: `trustProxy` made configurable (`TRUST_PROXY`) and testable (rate-limit key behind the proxy); argon2 dummy hash warmed at start-up · stays Proposed
 - 2026-11-09 · planner · dependency KB-037 added: every redeploy goes through the graceful shutdown, and a database hiccup during its final flush must not lose the last edits of open descriptions before the app is deployed · stays Proposed
 - 2026-11-10 · planner · spec revised from the KB-017 and KB-019 test observations (real SIGTERM delivery tested only at handler level): added a child-process SIGTERM test against the built api · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-032 · README with demo
 
@@ -1310,6 +1354,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-033 · Close real-time sockets on logout, session expiry and resource deletion
 
@@ -1341,6 +1386,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-11-06 · planner · created as Proposed · follow-up from KB-016 (ADR 0004 section 7, developer and tester notes)
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
 
 ### KB-034 · Bump card versions when positions are respaced
 
@@ -1372,6 +1418,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-11-06 · planner · created as Proposed · follow-up from the KB-015 developer note (create-card rebalance does not bump sibling `version`); a code read found the same gap in the column-delete respace. Priority High because KB-018 (High) relies on it; recommended as a KB-018 dependency (see the KB-018 history)
 - 2026-11-10 · planner · spec revised after KB-018 (Done, without this dependency): the KB-018 developer, tester and finisher confirm that clients drop the sibling `card_moved` events, so order can differ between clients until a refetch. Added the event and client criteria and tests, and R6. Priority stays High: it fixes a convergence defect in a Done High task and is now a dependency of KB-029 · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
 
 ### KB-035 · Stabilise the flaky members and move-cards E2E tests
 
@@ -1402,6 +1449,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-11-06 · planner · created as Proposed · follow-up from the KB-012 and KB-015 development notes, the KB-012 and KB-016 test reports and the daily log of 2026-11-05
 - 2026-11-10 · planner · spec revised: added the revoked-invite flake (`members.spec.ts:98`) from the KB-018 test report 1; estimate stays S · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
 
 ### KB-036 · Card actions menu on the board tile (D9)
 
@@ -1429,6 +1477,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-11-06 · planner · created as Proposed · from the KB-015 developer and tester notes; depends on João's answer to D9 (recommendation: option A, which rejects this task)
+- 2026-11-13 · planner · Proposed → Rejected · rejected by João (approvals.md, 2026-11-13): "Not needed with D9 = A"; specification kept for the record
 
 ### KB-037 · Keep unsaved collaborative edits when the final flush fails
 
@@ -1462,12 +1511,13 @@ Task template (copy for each new task):
 **History:**
 - 2026-11-09 · planner · created as Proposed · follow-up from the KB-017 test report 1 observation, confirmed by reading `persistence.ts` (`store()`, the doc `destroy` handler) and `rooms.ts` (`leave()`, `drop()`); added as a KB-031 dependency so it is fixed before the first deploy
 - 2026-11-10 · planner · spec revised after KB-019 (Done): its done record repeats the lost-last-window risk, and KB-019 added a second write on unload and shutdown (the projection into `Card.description`). Both writes are now covered by the retain-and-retry rule; estimate stays M · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
 
 ### KB-038 · Unassign a member's cards when they are demoted to viewer (D10)
 
 - **MVP phase:** Authentication and workspaces
 - **Priority:** Medium
-- **Depends on:** KB-009, KB-013; D10 answered with option A (under option B this task is rewritten)
+- **Depends on:** KB-009, KB-013 (D10 answered with option A on 2026-11-13)
 - **Estimate:** S
 
 **Goal:** Keep the invariant "a card's assignee is always an owner or member of the card's workspace". A role change to viewer unassigns that person's cards, as removal and leaving already do (KB-013).
@@ -1492,6 +1542,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-11-09 · planner · created as Proposed · follow-up from the KB-013 developer, tester and finisher notes; approve only together with `Answer | D10 | A` (recommended)
 - 2026-11-10 · planner · spec revised after KB-018 (Done): board events now exist, so the demotion path must publish them like the removal path (criterion, test and R6 added); estimate stays S · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13) together with `Answer | D10 | A`; the dependency line now records the answer; KB-029 now depends on this task
 
 ### KB-039 · Card and column tombstones in the live board cache
 
@@ -1521,6 +1572,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-11-10 · planner · created as Proposed · follow-up from the KB-018 development note ("no tombstone"), test report 1 observations and done record lessons; columns included because their events are never filtered by version
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
 
 ### KB-040 · Enforce the description length limit in the shared document
 
@@ -1552,3 +1604,4 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-11-10 · planner · created as Proposed · follow-up from the KB-019 development note, test report 1 observations and done record lessons (concurrent merges can exceed 20,000 characters; the projection cuts the copy silently)
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
