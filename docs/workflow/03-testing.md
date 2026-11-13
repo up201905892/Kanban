@@ -768,3 +768,40 @@ Report template:
 **Observations (not failures):**
 - `prisma migrate reset --force` was not run (blocked by the environment safety guard in autonomous mode); the test run reports no pending migrations and CI starts from an empty database.
 - The e2e run logged vite ws proxy ECONNRESET noise on teardown; no test failed.
+
+### KB-020 · Presence: who is on the board and who is editing a card — Report 1 — 2026-11-13
+
+- **Commit tested:** 1846f99 (in `develop` history; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 152, web 231, api 363) | ✔ |
+| E2E | `pnpm test:e2e` (48 passed) | ✔ |
+| Authorization | awareness goes through the existing authenticated sockets; `sanitizeAwarenessUpdate` overwrites `userId`, `name`, `color` and ignores updates/removals of other clients' IDs; states per connection are capped | ✔ |
+| Database | no migration | n/a |
+| Real time | `presence.spec.ts` two browsers: avatar and list, "is editing" on tile, "Also here", moving remote caret, removal when A closes | ✔ |
+| Accessibility | `ul` with aria-label list, caret overlay `aria-hidden` with visible name, no live announcements (tested), axe in E2E | ✔ |
+
+**Acceptance criteria:**
+- [x] Awareness schema and server overwrite: read `presence.ts` (api) and `realtime.test.ts` "replaces a spoofed userId, name and color".
+- [x] Up to 5 avatars plus "+N" and accessible list: `PresenceList.tsx` (`MAX_AVATARS = 5`, aria-label), `presence-flow.test.tsx`, E2E.
+- [x] Tile "is editing", dialog "Also here", labelled remote carets: flow test and E2E.
+- [x] Carets as relative positions in an `aria-hidden` overlay with mirror element and visible name: `caret.ts`, `RemoteCarets.tsx`, `caret.test.ts` (insert before, delete around).
+- [x] Awareness added to the existing clients, no second socket: `awareness-sync.ts` used by `board-socket.ts` and `card-description.ts`; flow test checks one socket.
+- [x] Presence removed on clean close at once (API test and E2E); 30 s for lost connections relies on heartbeat and library timeout (not simulated, see observations).
+- [x] Common criteria G1, G2, U3, U4, U9, R1, R2: automated checks green.
+
+**Required tests:** unit (view model dedupe, caret positions), API spoofing, E2E two browsers and accessibility all exist and assert the specified behaviour; not trivial.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was not run (blocked by the environment safety guard in autonomous mode); CI starts from an empty database.
+- The 30 s lost-connection removal is not exercised by a test (developer-noted); only the clean close is.
+- The e2e run logged vite ws proxy ECONNRESET noise on teardown; no test failed.
