@@ -732,3 +732,39 @@ Report template:
 - `prisma migrate reset --force` was not run (blocked by the environment safety guard in autonomous mode); the test run reports no pending migrations and CI starts from an empty database.
 - Developer-reported limits confirmed by reading the code: if the final flush fails at unload the last window could be lost (needs a database failure); concurrent merges can exceed 20,000 characters in the live document (projection is cut); real SIGTERM delivery is only covered by handler-level tests.
 - The e2e run logged vite ws proxy ECONNRESET noise on teardown; no test failed.
+
+### KB-034 · Bump card versions when positions are respaced — Report 1 — 2026-11-13
+
+- **Commit tested:** cb54a72 (in `develop` history; working tree clean before testing)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 149, web 210, api 360; 9 migrations, none pending) | ✔ |
+| E2E | `pnpm test:e2e` (47 passed) | ✔ |
+| Authorization | no route or permission change; the diff touches only the `data` of two existing updates inside the existing transactions | ✔ |
+| Database | no migration; versions incremented in the same transaction as the position writes | ✔ |
+| Real time | `board-events.test.ts` (real socket, create and column delete) asserts sibling `card_moved` events carry bumped versions; `board-live.test.tsx` applies the burst and the order equals the server order | ✔ |
+| Accessibility | no UI change | n/a |
+
+**Acceptance criteria:**
+- [x] Create rebalance bumps siblings' `version` in the same transaction: read `cards/service.ts` (`createCard` callback, `version: { increment: 1 }`); API test with 51-character keys leaves both siblings at version 2 with the same order.
+- [x] Column delete with `moveCardsTo` bumps rewritten destination cards: read `boards/service.ts` `moveCardsToEnd`; API test with a maximal last key and 120 moved cards, all versions 2.
+- [x] No other card position write skips the bump: my own grep of `card.update`/`create` in `apps/api/src` (non-test) shows the create insert (new row, version 1), move respace and move (bump), `moveCardsToEnd` (both bump); the rest do not write `position` (title/assignee/priority, delete, unassign, description). No raw SQL. The developer's list matches.
+- [x] Responses unchanged: diff adds no response fields; existing tests green.
+- [x] Sibling `card_moved` events carry bumped versions and clients apply them: events are built after the writes; `board-events.test.ts` and `board-live.test.tsx` cover it.
+- [x] ADR 0004 ordering note updated (gap closed); `docs/api.md` does not mention the risk (grep).
+- [x] Common criteria G1, G4, G8, A7, R6: automated checks green.
+
+**Required tests:** rebalance create, column-delete respace, no-rebalance create (versions stay 1), ws events, and the web burst test all exist and assert the specified behaviour; not trivial. The forced respace via direct key writes is a reasonable way to trigger the rebalance.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was not run (blocked by the environment safety guard in autonomous mode); the test run reports no pending migrations and CI starts from an empty database.
+- The e2e run logged vite ws proxy ECONNRESET noise on teardown; no test failed.
