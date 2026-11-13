@@ -20,6 +20,7 @@ How to use it: add one line per decision (on GitHub, on the `develop` branch, ev
 | 2026-11-13 | Answer | D10 | A: demoting a member to viewer unassigns their cards |
 | 2026-11-13 | Approve | KB-038 | Implements D10 = A |
 | 2026-11-13 | Answer | D11 | A: accept and document that deleting a column hard-deletes its soft-deleted cards and their history in v1.0 |
+| 2026-11-13 | Approve | KB-014, KB-020, KB-023, KB-025, KB-026, KB-028, KB-029, KB-030, KB-031, KB-032 | Approve the rest of the MVP; develop as dependencies close |
 
 
 Possible decisions:
