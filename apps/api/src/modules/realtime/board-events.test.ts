@@ -11,6 +11,7 @@ import {
   boardResponseSchema,
   cardResponseSchema,
   columnResponseSchema,
+  keysBetween,
   projectResponseSchema,
   workspaceResponseSchema,
   type BoardEvent,
@@ -220,6 +221,64 @@ describe('board events published after commit', () => {
       version: 2,
       entity: { id: card.id, columnId: s.doing.id },
     });
+  });
+
+  it('publishes respaced siblings with bumped versions on a column delete (KB-034)', async () => {
+    const s = await setup();
+    const one = cardResponseSchema.parse(
+      (await call('POST', `/api/columns/${s.doing.id}/cards`, s.owner, { title: 'One' })).json(),
+    ).card;
+    await prisma.card.update({ where: { id: one.id }, data: { position: 'z'.repeat(27) } });
+    await prisma.card.createMany({
+      data: keysBetween(null, null, 120).map((position, i) => ({
+        boardId: s.boardId,
+        columnId: s.todo.id,
+        number: 1000 + i,
+        title: `s${i}`,
+        position,
+        createdById: s.owner.user.id,
+      })),
+    });
+    const listener = await listen(s.boardId, s.member);
+    const res = await call(
+      'DELETE',
+      `/api/columns/${s.todo.id}?moveCardsTo=${s.doing.id}`,
+      s.owner,
+    );
+    expect(res.statusCode, res.body).toBe(204);
+    await waitFor(() => listener.events.length === 122);
+    expect(listener.events[0]).toMatchObject({
+      type: 'card_moved',
+      version: 2,
+      entity: { id: one.id },
+    });
+    const moves = listener.events.filter((e) => e.type === 'card_moved');
+    expect(moves).toHaveLength(121);
+    expect(moves.every((e) => e.version === 2)).toBe(true);
+    expect(listener.events.at(-1)?.type).toBe('column_deleted');
+  });
+
+  it('publishes respaced siblings with bumped versions on a card create (KB-034)', async () => {
+    const s = await setup();
+    const first = cardResponseSchema.parse(
+      (await call('POST', `/api/columns/${s.todo.id}/cards`, s.owner, { title: 'first' })).json(),
+    ).card;
+    const last = cardResponseSchema.parse(
+      (await call('POST', `/api/columns/${s.todo.id}/cards`, s.owner, { title: 'last' })).json(),
+    ).card;
+    const long = `a0${'V'.repeat(49)}`;
+    await prisma.card.update({ where: { id: first.id }, data: { position: long } });
+    await prisma.card.update({ where: { id: last.id }, data: { position: `${long}W` } });
+    const listener = await listen(s.boardId, s.member);
+    const res = await call('POST', `/api/columns/${s.todo.id}/cards`, s.owner, {
+      title: 'mid',
+      afterCardId: first.id,
+    });
+    expect(res.statusCode, res.body).toBe(201);
+    await waitFor(() => listener.events.length === 3);
+    expect(listener.types).toEqual(['card_moved', 'card_moved', 'card_created']);
+    expect(listener.events[0]).toMatchObject({ version: 2, entity: { id: first.id } });
+    expect(listener.events[1]).toMatchObject({ version: 2, entity: { id: last.id } });
   });
 
   it('publishes assignee changes when a member is removed', async () => {

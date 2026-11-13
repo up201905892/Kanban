@@ -5,6 +5,7 @@ import {
   activityEventDataSchema,
   apiErrorSchema,
   boardResponseSchema,
+  keysBetween,
   cardResponseSchema,
   projectResponseSchema,
   workspaceResponseSchema,
@@ -301,6 +302,32 @@ describe('POST /api/columns/:cid/cards', () => {
     expect(board.cards.at(-1)?.title).toBe('last');
     expect(Math.max(...board.cards.map((c) => c.position.length))).toBeLessThanOrEqual(50);
   }, 30_000);
+
+  it('bumps the version of respaced siblings, keeping their order (KB-034)', async () => {
+    const { owner, todo, project } = await setup();
+    const first = await addCard(owner, todo.id, { title: 'first' });
+    const last = await addCard(owner, todo.id, { title: 'last' });
+    // Neighbouring keys at the length limit: a key between them would outgrow it.
+    const long = `a0${'V'.repeat(49)}`;
+    await prisma.card.update({ where: { id: first.id }, data: { position: long } });
+    await prisma.card.update({ where: { id: last.id }, data: { position: `${long}W` } });
+    const mid = await addCard(owner, todo.id, { title: 'mid', afterCardId: first.id });
+    expect(mid.version).toBe(1);
+    const board = await getBoard(owner, project.id);
+    expect(board.cards.map((c) => c.title)).toEqual(['first', 'mid', 'last']);
+    expect(board.cards.find((c) => c.id === first.id)?.version).toBe(2);
+    expect(board.cards.find((c) => c.id === last.id)?.version).toBe(2);
+    expect(Math.max(...board.cards.map((c) => c.position.length))).toBeLessThanOrEqual(50);
+  });
+
+  it('leaves the siblings version alone when no rebalance is needed (KB-034)', async () => {
+    const { owner, todo, project } = await setup();
+    const first = await addCard(owner, todo.id, { title: 'first' });
+    await addCard(owner, todo.id, { title: 'last' });
+    await addCard(owner, todo.id, { title: 'mid', afterCardId: first.id });
+    const board = await getBoard(owner, project.id);
+    expect(board.cards.map((c) => c.version)).toEqual([1, 1, 1]);
+  });
 });
 
 describe('GET /api/cards/:id', () => {
@@ -545,6 +572,30 @@ describe('DELETE /api/columns/:id with cards', () => {
       },
     ]);
   });
+
+  it('bumps the version of the destination cards it respaces (KB-034)', async () => {
+    const { owner, todo, doing, project, board } = await setup();
+    const one = await addCard(owner, doing.id, { title: 'One' });
+    // The last key at its maximum makes appending the moved cards outgrow the key limit.
+    await prisma.card.update({ where: { id: one.id }, data: { position: 'z'.repeat(27) } });
+    await prisma.card.createMany({
+      data: keysBetween(null, null, 120).map((position, i) => ({
+        boardId: board.board.id,
+        columnId: todo.id,
+        number: 1000 + i,
+        title: `s${i}`,
+        position,
+        createdById: owner.user.id,
+      })),
+    });
+    const res = await call('DELETE', `/api/columns/${todo.id}?moveCardsTo=${doing.id}`, owner);
+    expect(res.statusCode).toBe(204);
+    const after = await getBoard(owner, project.id);
+    expect(after.cards).toHaveLength(121);
+    expect(after.cards[0]?.id).toBe(one.id);
+    expect(after.cards.every((c) => c.version === 2)).toBe(true);
+    expect(Math.max(...after.cards.map((c) => c.position.length))).toBeLessThanOrEqual(50);
+  }, 30_000);
 
   it('ignores soft-deleted cards when deciding whether the column is empty', async () => {
     const { owner, todo, project } = await setup();

@@ -439,3 +439,20 @@ Entry template:
   - The server-side limit is a cut of the projected copy at 20,000 characters; clients stop input at the limit but two concurrent merges can exceed it in the live document.
   - Remote cursors and presence are KB-020.
   - Suggestions for the planner: none.
+
+### KB-034 · Bump card versions when positions are respaced
+
+**Iteration 1 — 2026-11-13**
+
+- **Status at the end:** Ready for test
+- **What was done:** `createCard` (rebalance callback) and the respace branch of `moveCardsToEnd` (column delete with `moveCardsTo`) now increment `version` on every rewritten card in the same transaction. The sibling `card_moved` events that KB-018 already published are built after the transaction writes, so they now carry the bumped version and clients apply them. Responses are unchanged. ADR 0004 ordering note updated (the gap is closed); `docs/api.md` did not mention the risk.
+- **Position writes on `card` in `apps/api/src` (grep for `position`):** `cards/service.ts` create respace (now bumps), create insert (new row, version 1), move respace (already bumped), move of the card (already bumped); `boards/service.ts` `moveCardsToEnd` respace (now bumps) and moved cards (already bumped). The other `position` writes are on `column` (not versioned) or the project seed.
+- **Changed files:** `apps/api/src/modules/cards/service.ts`, `apps/api/src/modules/boards/service.ts`, `apps/api/src/modules/cards/cards.test.ts`, `apps/api/src/modules/realtime/board-events.test.ts`, `apps/web/src/features/board/board-live.test.tsx`, `docs/adr/0004-real-time-architecture.md`
+- **Migrations:** none
+- **Commit(s):** `571a512` feat(api): KB-034 bump card versions when positions are respaced
+- **Acceptance criteria covered:** create respace and column-delete respace bump versions (`cards.test.ts`); no-rebalance create leaves versions at 1 (`cards.test.ts`); events carry bumped versions over a real socket (`board-events.test.ts`, create and column delete); client applies the burst and order equals the server's (`board-live.test.tsx`); G1, G4, G8, A7, R6.
+- **Tests written by the developer:** as listed above.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 149, web 210, api 360) · test:e2e ok (47 passed)
+- **Notes for the tester:**
+  - The respace is forced in tests by writing keys straight into the database: two neighbouring keys of 51 characters for the create, and a destination whose last key is `z` x 27 plus 120 cards moved into it for the column delete (appending after a maximal key is the only way an append outgrows 50 characters; the spec's "320-insert" loop did not trigger a rebalance for a create).
+  - Suggestions for the planner: none.

@@ -41,7 +41,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017, KB-037 | Planned |
 | KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Planned |
 | KB-033 | Close real-time sockets on logout, session expiry and resource deletion | Real time | Medium | KB-016 | Planned |
-| KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Planned |
+| KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Ready for test |
 | KB-035 | Stabilise the flaky members and move-cards E2E tests | Quality and delivery | Medium | KB-009, KB-015 | Planned |
 | KB-036 | Card actions menu on the board tile (D9) | Board | Low | KB-015, D9 answered | Rejected |
 | KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Planned |
@@ -1419,6 +1419,8 @@ Task template (copy for each new task):
 - 2026-11-06 · planner · created as Proposed · follow-up from the KB-015 developer note (create-card rebalance does not bump sibling `version`); a code read found the same gap in the column-delete respace. Priority High because KB-018 (High) relies on it; recommended as a KB-018 dependency (see the KB-018 history)
 - 2026-11-10 · planner · spec revised after KB-018 (Done, without this dependency): the KB-018 developer, tester and finisher confirm that clients drop the sibling `card_moved` events, so order can differ between clients until a refetch. Added the event and client criteria and tests, and R6. Priority stays High: it fixes a convergence defect in a Done High task and is now a dependency of KB-029 · stays Proposed
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
+- 2026-11-13 · developer · Planned → In development · started
+- 2026-11-13 · developer · In development → Ready for test · commit 571a512
 
 ### KB-035 · Stabilise the flaky members and move-cards E2E tests
 

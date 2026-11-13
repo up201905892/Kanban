@@ -178,6 +178,36 @@ describe('live board updates', () => {
     await waitFor(() => expect(screen.queryByRole('link', { name: /KB-2/ })).toBeNull());
   });
 
+  it('applies a respacing burst of sibling moves with bumped versions (KB-034)', async () => {
+    const s = server('owner', [
+      card(1, { position: 'a1' }),
+      card(2, { position: 'a2' }),
+      card(3, { position: 'a3' }),
+    ]);
+    stubFetch(s.handlers);
+    open();
+    const socket = await connected();
+    const todo = screen.getByRole('region', { name: 'Column To do' });
+    const titles = () =>
+      within(todo)
+        .getAllByRole('link')
+        .map((l) => l.textContent);
+    expect(titles()).toEqual(['KB-1 Card 1', 'KB-2 Card 2', 'KB-3 Card 3']);
+
+    // A respacing create: the siblings get new keys and version 2, then the new card arrives.
+    send(socket, cardEvent('card_moved', card(1, { position: 'a0', version: 2 })));
+    send(socket, cardEvent('card_moved', card(2, { position: 'a2', version: 2 })));
+    send(socket, cardEvent('card_moved', card(3, { position: 'a3', version: 2 })));
+    send(socket, cardEvent('card_created', card(4, { position: 'a1' })));
+
+    await waitFor(() =>
+      expect(titles()).toEqual(['KB-1 Card 1', 'KB-4 Card 4', 'KB-2 Card 2', 'KB-3 Card 3']),
+    );
+    expect(titles()).toEqual(
+      [...latestCards].sort(compareByPosition).map((c) => `KB-${c.number} ${c.title}`),
+    );
+  });
+
   it('applies events for a viewer too', async () => {
     stubFetch(server('viewer', [card(1)]).handlers);
     open();

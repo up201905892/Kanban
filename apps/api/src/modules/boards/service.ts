@@ -290,7 +290,7 @@ async function moveCardsToEnd(
     for (const [index, card] of existing.entries()) {
       await tx.card.update({
         where: { id: card.id },
-        data: { position: respaced[index] as string },
+        data: { position: respaced[index] as string, version: { increment: 1 } },
       });
       touched.push(card.id);
     }

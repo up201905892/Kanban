@@ -153,7 +153,10 @@ export async function createCard(
       input.beforeCardId,
       async (updates) => {
         for (const u of updates) {
-          await tx.card.update({ where: { id: u.id }, data: { position: u.position } });
+          await tx.card.update({
+            where: { id: u.id },
+            data: { position: u.position, version: { increment: 1 } },
+          });
           respaced.push(u.id);
         }
       },
@@ -186,7 +189,6 @@ export async function createCard(
       type: 'created',
       data: { title: row.title, column: { columnId, columnName: column.name } },
     });
-    // KB-034: respacing here does not bump the siblings' version yet, so clients keep their old keys.
     events.push(...(await respacedEvents(tx, boardId, respaced, user.id, meta)));
     events.push(cardEvent('card_created', boardId, toCardSummary(row), user.id, meta));
     return { card: toCard(row), created: true };
