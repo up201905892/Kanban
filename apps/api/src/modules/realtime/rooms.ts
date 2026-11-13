@@ -12,6 +12,7 @@ import {
   type Role,
   type RoomRef,
 } from '@kanban/shared';
+import { sanitizeAwarenessUpdate } from './presence.js';
 
 /** The socket surface the rooms need (satisfied by `ws`'s WebSocket and by test doubles). */
 export interface RoomSocket {
@@ -42,6 +43,8 @@ export interface Connection {
   readonly socket: RoomSocket;
   readonly userId: string;
   readonly workspaceId: string;
+  /** Display name from the session, written into this connection's awareness states. */
+  readonly name: string;
   /** Mutable: re-authorized when the user's role changes. */
   role: Role;
   /** Awareness client IDs this connection controls, removed when it leaves. */
@@ -239,14 +242,17 @@ export class RoomManager {
         if (encoding.length(reply) > 1) send(conn, encoding.toUint8Array(reply));
         break;
       }
-      case WS_MESSAGE.awareness:
-        // Allowed for every role, viewers included.
-        awarenessProtocol.applyAwarenessUpdate(
-          room.awareness,
-          decoding.readVarUint8Array(decoder),
-          conn,
-        );
+      case WS_MESSAGE.awareness: {
+        // Allowed for every role, viewers included. Identity fields come from the session (R1).
+        const clean = sanitizeAwarenessUpdate(decoding.readVarUint8Array(decoder), {
+          userId: conn.userId,
+          name: conn.name,
+          ownIds: conn.awarenessIds,
+          existingIds: new Set(room.awareness.getStates().keys()),
+        });
+        if (clean) awarenessProtocol.applyAwarenessUpdate(room.awareness, clean, conn);
         break;
+      }
       case WS_MESSAGE.queryAwareness: {
         const states = [...room.awareness.getStates().keys()];
         if (states.length === 0) break;

@@ -1,8 +1,10 @@
 import * as decoding from 'lib0/decoding';
 import * as encoding from 'lib0/encoding';
 import * as syncProtocol from 'y-protocols/sync';
+import { Awareness } from 'y-protocols/awareness';
 import * as Y from 'yjs';
 import { DESCRIPTION_TEXT_NAME, WS_CLOSE, WS_MESSAGE } from '@kanban/shared';
+import { awarenessPayload, createAwarenessSync, type AwarenessSync } from './awareness-sync';
 
 export type DescriptionStatus =
   /** Not connected yet, or connected but the first sync has not arrived. */
@@ -22,6 +24,8 @@ export interface DescriptionConnection {
   /** True once the server state has been received at least once. */
   readonly synced: boolean;
   readonly status: DescriptionStatus;
+  /** Awareness (carets) on the same socket; `null` when the current user is not known. */
+  readonly presence: AwarenessSync | null;
   /** Called after `synced` or `status` changed. Returns the unsubscribe function. */
   subscribe(listener: () => void): () => void;
   /** Closes the socket for good and drops the document. */
@@ -50,9 +54,15 @@ const socketUrl = (cardId: string): string => {
  * client sends sync step 1 as well; the server answers in order, so its step 2 reply means every
  * earlier update has been applied. Reconnects with backoff (the full offline UX is KB-021).
  */
-export function connectCardDescription(cardId: string): DescriptionConnection {
+export function connectCardDescription(
+  cardId: string,
+  self: { id: string; name: string } | null = null,
+): DescriptionConnection {
   const doc = new Y.Doc();
   const text = doc.getText(DESCRIPTION_TEXT_NAME);
+  // Remote carets (KB-020): awareness on this same socket.
+  const presence = self ? createAwarenessSync(new Awareness(doc), self) : null;
+  presence?.setLocal({ activeCardId: cardId });
   const listeners = new Set<() => void>();
   let socket: WebSocket | null = null;
   let timer: number | undefined;
@@ -125,6 +135,11 @@ export function connectCardDescription(cardId: string): DescriptionConnection {
 
   const handle = (data: ArrayBuffer) => {
     const bytes = new Uint8Array(data);
+    const awarenessUpdate = presence ? awarenessPayload(bytes) : null;
+    if (awarenessUpdate) {
+      presence?.receive(awarenessUpdate);
+      return;
+    }
     const decoder = decoding.createDecoder(bytes);
     if (decoding.readVarUint(decoder) !== WS_MESSAGE.sync) return;
     const subType = decoding.readVarUint(decoding.createDecoder(bytes.subarray(1)));
@@ -155,6 +170,9 @@ export function connectCardDescription(cardId: string): DescriptionConnection {
       ackInFlight = false;
       ackAgain = false;
       requestAck();
+      presence?.attach((message) => {
+        if (ws.readyState === WebSocket.OPEN) ws.send(message as Uint8Array<ArrayBuffer>);
+      });
       refresh();
     });
     ws.addEventListener('message', (message: MessageEvent) => {
@@ -168,6 +186,7 @@ export function connectCardDescription(cardId: string): DescriptionConnection {
     ws.addEventListener('close', (closed: CloseEvent) => {
       if (socket === ws) socket = null;
       open = false;
+      presence?.detach();
       if (stopped) return;
       if (FATAL_CLOSE_CODES.includes(closed.code)) {
         fatal = true;
@@ -196,8 +215,10 @@ export function connectCardDescription(cardId: string): DescriptionConnection {
         listeners.delete(listener);
       };
     },
+    presence,
     destroy() {
       stopped = true;
+      presence?.destroy();
       window.clearTimeout(timer);
       socket?.close();
       listeners.clear();

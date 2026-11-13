@@ -1,8 +1,13 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type * as Y from 'yjs';
 import { CARD_DESCRIPTION_MAX_LENGTH, type Card } from '@kanban/shared';
 import { Button, TextArea, useAnnounce } from '../../components';
+import type { AwarenessSync } from '../../lib/realtime/awareness-sync';
 import type { DescriptionStatus } from '../../lib/realtime/card-description';
+import { caretToJSON } from '../../lib/realtime/caret';
+import { useCurrentUser } from '../auth/api/auth';
+import { usePresence } from '../presence/PresenceContext';
+import { RemoteCarets } from '../presence/RemoteCarets';
 import { LOCAL_ORIGIN, applyTextChange, transformPosition } from './binding';
 import { Markdown } from './Markdown';
 import { useCardDescription } from './useCardDescription';
@@ -29,7 +34,9 @@ export interface DescriptionSectionProps {
  */
 export function DescriptionSection({ card, canEdit }: DescriptionSectionProps) {
   const announce = useAnnounce();
-  const { connection, status, synced } = useCardDescription(card.id);
+  const user = useCurrentUser().data ?? null;
+  const self = useMemo(() => (user ? { id: user.id, name: user.name } : null), [user]);
+  const { connection, status, synced } = useCardDescription(card.id, self);
   const [preview, setPreview] = useState(false);
   const [value, setValue] = useState(card.description);
   const headingId = useId();
@@ -75,6 +82,7 @@ export function DescriptionSection({ card, canEdit }: DescriptionSectionProps) {
       ) : (
         <Editor
           text={text}
+          presence={connection?.presence ?? null}
           live={live}
           fallback={card.description}
           readOnly={!canEdit}
@@ -88,6 +96,8 @@ export function DescriptionSection({ card, canEdit }: DescriptionSectionProps) {
 
 interface EditorProps {
   text: Y.Text | null;
+  /** Carets of the other people (and this person's own) travel through it; null when unknown. */
+  presence: AwarenessSync | null;
   /** True once the server state arrived: before that the REST text is shown, read-only. */
   live: boolean;
   fallback: string;
@@ -96,8 +106,30 @@ interface EditorProps {
   length: number;
 }
 
-function Editor({ text, live, fallback, readOnly, onValue, length }: EditorProps) {
+function Editor({ text, presence, live, fallback, readOnly, onValue, length }: EditorProps) {
   const areaRef = useRef<HTMLTextAreaElement>(null);
+  const { setEditing } = usePresence();
+  const canType = live && !readOnly;
+
+  // Leaving the editor (Preview, closing the dialog) ends "editing" even without a blur event.
+  useEffect(() => {
+    return () => {
+      setEditing(false);
+      presence?.setLocal({ editing: false, caret: null });
+    };
+  }, [presence, setEditing]);
+
+  /** Shares where the caret is (as a relative position) and that this person is editing. */
+  const share = (blurred = false) => {
+    const area = areaRef.current;
+    if (!area || !text || !presence || !live) return;
+    const focused = !blurred && document.activeElement === area;
+    presence.setLocal({
+      editing: focused && canType,
+      caret: focused ? caretToJSON(text, Math.min(area.selectionStart, text.length)) : null,
+    });
+    setEditing(focused && canType);
+  };
 
   useLayoutEffect(() => {
     const area = areaRef.current;
@@ -131,26 +163,37 @@ function Editor({ text, live, fallback, readOnly, onValue, length }: EditorProps
   }, [text, live]);
 
   return (
-    <TextArea
-      ref={areaRef}
-      label="Description"
-      hint={`${length} of ${CARD_DESCRIPTION_MAX_LENGTH} characters`}
-      rows={8}
-      maxLength={CARD_DESCRIPTION_MAX_LENGTH}
-      readOnly={readOnly || !live}
-      aria-readonly={readOnly || !live ? true : undefined}
-      aria-busy={!live ? true : undefined}
-      defaultValue={fallback}
-      onInput={(event) => {
-        if (!text || !live || readOnly) return;
-        const next = event.currentTarget.value;
-        if (next.length > CARD_DESCRIPTION_MAX_LENGTH) {
-          event.currentTarget.value = text.toString();
-          return;
-        }
-        applyTextChange(text, next);
-        onValue(next);
-      }}
-    />
+    <div className="editor-wrap">
+      <TextArea
+        ref={areaRef}
+        label="Description"
+        hint={`${length} of ${CARD_DESCRIPTION_MAX_LENGTH} characters`}
+        rows={8}
+        maxLength={CARD_DESCRIPTION_MAX_LENGTH}
+        readOnly={readOnly || !live}
+        aria-readonly={readOnly || !live ? true : undefined}
+        aria-busy={!live ? true : undefined}
+        defaultValue={fallback}
+        onFocus={() => share()}
+        onBlur={() => share(true)}
+        onSelect={() => share()}
+        onKeyUp={() => share()}
+        onClick={() => share()}
+        onInput={(event) => {
+          if (!text || !live || readOnly) return;
+          const next = event.currentTarget.value;
+          if (next.length > CARD_DESCRIPTION_MAX_LENGTH) {
+            event.currentTarget.value = text.toString();
+            return;
+          }
+          applyTextChange(text, next);
+          onValue(next);
+          share();
+        }}
+      />
+      {live && text && presence && (
+        <RemoteCarets areaRef={areaRef} text={text} presence={presence} />
+      )}
+    </div>
   );
 }

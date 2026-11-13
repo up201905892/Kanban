@@ -1,8 +1,17 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { Awareness } from 'y-protocols/awareness';
+import * as Y from 'yjs';
 import type { BoardEvent, BoardResponse, Card } from '@kanban/shared';
 import { isOwnMutation } from '../../lib/api';
+import {
+  createAwarenessSync,
+  type AwarenessSync,
+  type LocalPresence,
+} from '../../lib/realtime/awareness-sync';
 import { connectBoardSocket } from '../../lib/realtime/board-socket';
+import type { PresenceContextValue } from '../presence/PresenceContext';
+import { toPresentPeople, type PresentPerson } from '../presence/view-model';
 import { cardKey } from '../cards/api';
 import { boardKey } from './api';
 import { applyBoardEvent, applyCardEvent, remoteChangeOf, type RemoteChange } from './board-events';
@@ -25,16 +34,52 @@ export function useBoardEvents(
   projectId: string,
   boardId: string,
   onRemoteChange?: (context: RemoteChangeContext) => void,
-): void {
+  self?: { id: string; name: string } | null,
+): PresenceContextValue {
   const queryClient = useQueryClient();
   const callback = useRef(onRemoteChange);
   useEffect(() => {
     callback.current = onRemoteChange;
   });
 
+  // Presence (KB-020) rides on the same socket: awareness messages of the `board:<id>` room.
+  const selfId = self?.id ?? null;
+  const selfName = self?.name ?? '';
+  const [people, setPeople] = useState<PresentPerson[]>([]);
+  const sync = useRef<AwarenessSync | null>(null);
+  const local = useRef<Pick<LocalPresence, 'activeCardId' | 'editing'>>({
+    activeCardId: null,
+    editing: false,
+  });
+  const setActiveCard = useCallback((cardId: string | null) => {
+    local.current.activeCardId = cardId;
+    if (cardId === null) local.current.editing = false;
+    sync.current?.setLocal({ ...local.current });
+  }, []);
+  const setEditing = useCallback((editing: boolean) => {
+    local.current.editing = editing;
+    sync.current?.setLocal({ ...local.current });
+  }, []);
+
   useEffect(() => {
     if (boardId === '') return;
     const key = boardKey(projectId);
+    let presence: AwarenessSync | undefined;
+    let stopPresence = () => {};
+    if (selfId !== null) {
+      const awareness = new Awareness(new Y.Doc());
+      const refresh = () => setPeople(toPresentPeople(awareness.getStates(), selfId));
+      awareness.on('change', refresh);
+      presence = createAwarenessSync(awareness, { id: selfId, name: selfName });
+      presence.setLocal({ ...local.current });
+      sync.current = presence;
+      const created = presence;
+      stopPresence = () => {
+        sync.current = null;
+        created.destroy();
+        setPeople([]);
+      };
+    }
 
     const handle = (event: BoardEvent) => {
       if (isOwnMutation(event.clientMutationId)) return;
@@ -61,13 +106,24 @@ export function useBoardEvents(
       }
     };
 
-    return connectBoardSocket({
+    const close = connectBoardSocket({
       boardId,
       onEvent: handle,
       onConnected: () => {
         void queryClient.invalidateQueries({ queryKey: key });
         void queryClient.invalidateQueries({ queryKey: ['cards'] });
       },
+      presence,
     });
-  }, [queryClient, projectId, boardId]);
+    return () => {
+      // The removal of our presence goes out before the socket closes.
+      stopPresence();
+      close();
+    };
+  }, [queryClient, projectId, boardId, selfId, selfName]);
+
+  return useMemo(
+    () => ({ people, setActiveCard, setEditing }),
+    [people, setActiveCard, setEditing],
+  );
 }

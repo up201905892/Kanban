@@ -14,6 +14,7 @@ import {
   boardEventMessageSchema,
   boardResponseSchema,
   cardResponseSchema,
+  presenceColorOf,
   projectResponseSchema,
   workspaceResponseSchema,
   type RoomRef,
@@ -177,6 +178,15 @@ async function waitFor(check: () => boolean, ms = 2000): Promise<void> {
   }
   throw new Error('condition not met in time');
 }
+
+/** A valid awareness state (the server overwrites the identity fields). */
+const presence = (userId: string, name: string) => ({
+  userId,
+  name,
+  color: '#aabbcc',
+  activeCardId: null,
+  editing: false,
+});
 
 /** Lets the server process what was sent (a round trip is not observable when updates are dropped). */
 const settle = (ms = 150) => new Promise((r) => setTimeout(r, ms));
@@ -377,12 +387,78 @@ describe('document sync', () => {
     const editor = await open(s.cardRoom, s.owner);
     const viewer = await open(s.cardRoom, s.viewer);
     await waitFor(() => editor.received.length > 0 && viewer.received.length > 0);
-    viewer.awareness.setLocalState({ name: 'Vera' });
-    await waitFor(() => editor.awareness.getStates().get(viewer.doc.clientID)?.['name'] === 'Vera');
+    viewer.awareness.setLocalState({ ...presence('x', 'Vera'), editing: true });
+    await waitFor(
+      () => editor.awareness.getStates().get(viewer.doc.clientID)?.['editing'] === true,
+    );
 
     // Leaving clears the state for the others.
     viewer.ws.close();
     await waitFor(() => !editor.awareness.getStates().has(viewer.doc.clientID));
+  });
+
+  it('replaces a spoofed userId, name and color with the session values', async () => {
+    const s = await setup();
+    const watcher = await open(s.boardRoom, s.owner);
+    const liar = await open(s.boardRoom, s.member);
+    await waitFor(() => watcher.received.length > 0 && liar.received.length > 0);
+    const cardId = '8c0e3f4e-4b0a-4a53-9a39-0f5d0c4e8a11';
+    liar.awareness.setLocalState({
+      ...presence(s.owner.user.id, 'Olivia the Owner'),
+      color: '#000000',
+      activeCardId: cardId,
+    });
+    await waitFor(() => watcher.awareness.getStates().has(liar.doc.clientID));
+    const seen = watcher.awareness.getStates().get(liar.doc.clientID);
+    expect(seen?.['userId']).toBe(s.member.user.id);
+    expect(seen?.['name']).toBe('Mark');
+    expect(seen?.['color']).toBe(presenceColorOf(s.member.user.id));
+    expect(seen?.['activeCardId']).toBe(cardId);
+  });
+
+  it('drops invalid awareness states and refuses to touch other people states', async () => {
+    const s = await setup();
+    const a = await open(s.boardRoom, s.owner);
+    const b = await open(s.boardRoom, s.member);
+    await waitFor(() => a.received.length > 0 && b.received.length > 0);
+    a.awareness.setLocalState(presence(s.owner.user.id, 'Olivia'));
+    await waitFor(() => b.awareness.getStates().has(a.doc.clientID));
+
+    // Not valid state: ignored, not stored.
+    b.awareness.setLocalState({ name: 'no other fields' });
+    await settle();
+    expect(a.awareness.getStates().has(b.doc.clientID)).toBe(false);
+
+    // B forges updates for A's client ID: first an overwrite, then a removal.
+    const forge = (state: object | null): Uint8Array => {
+      const inner = encoding.createEncoder();
+      encoding.writeVarUint(inner, 1);
+      encoding.writeVarUint(inner, a.doc.clientID);
+      encoding.writeVarUint(inner, 1_000_000);
+      encoding.writeVarString(inner, JSON.stringify(state));
+      const e = encoding.createEncoder();
+      encoding.writeVarUint(e, WS_MESSAGE.awareness);
+      encoding.writeVarUint8Array(e, encoding.toUint8Array(inner));
+      return encoding.toUint8Array(e);
+    };
+    b.send(forge({ ...presence(s.member.user.id, 'Mark'), editing: true }));
+    b.send(forge(null));
+    await settle();
+    expect(b.closeCode).toBeNull();
+    const stillThere = b.awareness.getStates().get(a.doc.clientID);
+    expect(stillThere?.['userId']).toBe(s.owner.user.id);
+    expect(stillThere?.['editing']).toBe(false);
+  });
+
+  it('clears presence at once when a client closes cleanly', async () => {
+    const s = await setup();
+    const a = await open(s.boardRoom, s.owner);
+    const b = await open(s.boardRoom, s.member);
+    await waitFor(() => a.received.length > 0 && b.received.length > 0);
+    a.awareness.setLocalState(presence(s.owner.user.id, 'Olivia'));
+    await waitFor(() => b.awareness.getStates().has(a.doc.clientID));
+    a.ws.close();
+    await waitFor(() => !b.awareness.getStates().has(a.doc.clientID), 1000);
   });
 
   it('keeps board rooms server-written only and pushes board events to every client', async () => {

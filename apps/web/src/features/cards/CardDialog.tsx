@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import {
   cardReference,
@@ -9,6 +9,8 @@ import {
   type Member,
 } from '@kanban/shared';
 import { Button, Dialog, ErrorState, Select, Spinner, useAnnounce } from '../../components';
+import { usePresence } from '../presence/PresenceContext';
+import { othersOnCard } from '../presence/view-model';
 import { useCard, useUpdateCard } from './api';
 import { CardFields } from './CardFields';
 import { DescriptionSection } from './DescriptionSection';
@@ -103,6 +105,14 @@ function CardDetail({
 }: CardDetailProps) {
   const card = useCard(summary.id);
   const [confirming, setConfirming] = useState(false);
+  const { people, setActiveCard } = usePresence();
+  const others = othersOnCard(people, summary.id);
+
+  // Tell the board which card this person has open (presence, KB-020).
+  useEffect(() => {
+    setActiveCard(summary.id);
+    return () => setActiveCard(null);
+  }, [summary.id, setActiveCard]);
   const title = `Card ${reference}`;
 
   if (confirming) {
@@ -127,6 +137,14 @@ function CardDetail({
 
   return (
     <Dialog key="detail" open onClose={onClose} title={title}>
+      {others.length > 0 && (
+        <p className="card-presence" data-testid="card-presence">
+          Also here:{' '}
+          {others
+            .map((p) => (p.editingCardIds.includes(summary.id) ? `${p.name} (editing)` : p.name))
+            .join(', ')}
+        </p>
+      )}
       {card.isPending && <Spinner label="Loading card" />}
       {card.isError && (
         <ErrorState

@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import {
   cardReference,
@@ -37,7 +37,10 @@ import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { AddCard, addCardButtonId } from '../cards/AddCard';
 import { CardDialog } from '../cards/CardDialog';
 import { useCreateCard, useDeleteCard, useMoveCard } from '../cards/api';
+import { useCurrentUser } from '../auth/api/auth';
 import { useMembers } from '../members/api';
+import { PresenceContext } from '../presence/PresenceContext';
+import { PresenceList } from '../presence/PresenceList';
 import { CardOverlay, ColumnCards, cardHandleId, cardTileId } from './CardList';
 import { ColumnMenu, type ColumnMenuItem } from './ColumnMenu';
 import { useBoard, useCreateColumn, useDeleteColumn, useUpdateColumn } from './api';
@@ -343,28 +346,35 @@ export function BoardView({
   const [deletedBy, setDeletedBy] = useState<{ number: number; name: string } | null>(null);
 
   // Other people's moves and deletions (KB-018): announced only where they matter to this user.
-  useBoardEvents(project.id, boardId, ({ change, before, after }) => {
-    const who = members.find((m) => m.userId === change.actorId)?.name ?? 'someone';
-    if (change.kind === 'deleted') {
-      if (change.number === openCardNumber) {
-        setDeletedBy({ number: change.number, name: who });
-        announce(`Card ${cardReference(project.key, change.number)} was deleted by ${who}`);
+  const user = useCurrentUser().data ?? null;
+  const self = useMemo(() => (user ? { id: user.id, name: user.name } : null), [user]);
+  const presence = useBoardEvents(
+    project.id,
+    boardId,
+    ({ change, before, after }) => {
+      const who = members.find((m) => m.userId === change.actorId)?.name ?? 'someone';
+      if (change.kind === 'deleted') {
+        if (change.number === openCardNumber) {
+          setDeletedBy({ number: change.number, name: who });
+          announce(`Card ${cardReference(project.key, change.number)} was deleted by ${who}`);
+        }
+        return;
       }
-      return;
-    }
-    const { card } = change;
-    const indexIn = (b: BoardResponse) =>
-      cardsOf(b, card.columnId).findIndex((c) => c.id === card.id);
-    const previous = before.cards.find((c) => c.id === card.id);
-    // A sibling that was only respaced keeps its place in the list: nothing to announce.
-    if (previous?.columnId === card.columnId && indexIn(before) === indexIn(after)) return;
-    const active = document.activeElement;
-    const focusedId = active?.id;
-    if (focusedId !== cardTileId(card.id) && focusedId !== cardHandleId(card.id)) return;
-    focusAfterRender.current = focusedId;
-    const column = after.columns.find((c) => c.id === change.toColumnId)?.name ?? '';
-    announce(`Card ${cardReference(project.key, card.number)} was moved to ${column} by ${who}`);
-  });
+      const { card } = change;
+      const indexIn = (b: BoardResponse) =>
+        cardsOf(b, card.columnId).findIndex((c) => c.id === card.id);
+      const previous = before.cards.find((c) => c.id === card.id);
+      // A sibling that was only respaced keeps its place in the list: nothing to announce.
+      if (previous?.columnId === card.columnId && indexIn(before) === indexIn(after)) return;
+      const active = document.activeElement;
+      const focusedId = active?.id;
+      if (focusedId !== cardTileId(card.id) && focusedId !== cardHandleId(card.id)) return;
+      focusAfterRender.current = focusedId;
+      const column = after.columns.find((c) => c.id === change.toColumnId)?.name ?? '';
+      announce(`Card ${cardReference(project.key, card.number)} was moved to ${column} by ${who}`);
+    },
+    self,
+  );
 
   if (board.isPending) return <Spinner label="Loading board" />;
   if (board.isError) {
@@ -670,111 +680,116 @@ export function BoardView({
   ];
 
   return (
-    <section aria-label="Board">
-      {columns.length === 0 && (
-        <EmptyState
-          title="No columns yet"
-          description={
-            canManage ? 'Add a column to start organising work.' : 'This board has no columns.'
-          }
-        />
-      )}
-      {/* The scroll container is focusable so keyboard users can scroll it (axe: scrollable-region). */}
-      <div className="board-scroll" tabIndex={0} role="group" aria-label="Board columns">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          accessibility={{
-            announcements: SILENT_ANNOUNCEMENTS,
-            screenReaderInstructions: { draggable: DRAG_INSTRUCTIONS },
-          }}
-          onDragStart={onDragStart}
-          onDragOver={onDragOver}
-          onDragEnd={onDragEnd}
-          onDragCancel={onDragCancel}
-        >
-          <ul className="board">
-            {columns.map((column, index) => (
-              <li key={column.id} className="board-column">
-                <section aria-label={`Column ${column.name}`}>
-                  <header className="column-header">
-                    <ColumnTitle
-                      column={column}
-                      canManage={canManage}
-                      editing={editingId === column.id}
-                      onStartEdit={() => setEditingId(column.id)}
-                      onCancel={() => {
-                        setEditingId(null);
-                        focusAfterRender.current = triggerIdOf(column.id);
-                      }}
-                      onSave={(name) => rename(column, name)}
-                    />
-                    {canManage && (
-                      <ColumnMenu
-                        triggerId={triggerIdOf(column.id)}
-                        columnName={column.name}
-                        items={menuItems(column, index)}
-                      />
-                    )}
-                  </header>
-                  <ColumnCards
-                    project={project}
-                    column={column}
-                    cards={cardsShown(column.id)}
-                    canDrag={canEditCards}
-                    members={members}
-                  />
-                  {canEditCards && (
-                    <AddCard
-                      columnId={column.id}
-                      columnName={column.name}
-                      onAdd={(title) => addCard(column, title)}
-                    />
-                  )}
-                </section>
-              </li>
-            ))}
-            {canManage && (
-              <li className="board-column">
-                <AddColumn onAdd={addColumn} />
-              </li>
-            )}
-          </ul>
-          <DragOverlay dropAnimation={null}>
-            {heldCard && <CardOverlay project={project} card={heldCard} />}
-          </DragOverlay>
-        </DndContext>
-      </div>
-      <Dialog
-        open={deleting !== null}
-        onClose={() => setDeleting(null)}
-        title={`Delete column ${deleting?.name ?? ''}?`}
-      >
-        {deleting && (
-          <DeleteColumnBody
-            column={deleting}
-            otherColumns={columns.filter((c) => c.id !== deleting.id)}
-            cardCount={cardsOf(board.data, deleting.id).length}
-            onConfirm={confirmDelete}
-            onCancel={() => setDeleting(null)}
+    <PresenceContext.Provider value={presence}>
+      <section aria-label="Board">
+        <div className="board-header">
+          <PresenceList people={presence.people} />
+        </div>
+        {columns.length === 0 && (
+          <EmptyState
+            title="No columns yet"
+            description={
+              canManage ? 'Add a column to start organising work.' : 'This board has no columns.'
+            }
           />
         )}
-      </Dialog>
-      {openCardNumber !== undefined && (
-        <CardDialog
-          projectId={project.id}
-          projectKey={project.key}
-          number={openCardNumber}
-          summary={board.data.cards.find((c) => c.number === openCardNumber)}
-          deletedBy={deletedBy?.number === openCardNumber ? deletedBy.name : undefined}
-          canEdit={canEditCards}
-          columns={columns}
-          members={members}
-          onMove={moveTo}
-          onClose={() => closeCard(board.data.cards.find((c) => c.number === openCardNumber))}
-          onDelete={removeCard}
-        />
-      )}
-    </section>
+        {/* The scroll container is focusable so keyboard users can scroll it (axe: scrollable-region). */}
+        <div className="board-scroll" tabIndex={0} role="group" aria-label="Board columns">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            accessibility={{
+              announcements: SILENT_ANNOUNCEMENTS,
+              screenReaderInstructions: { draggable: DRAG_INSTRUCTIONS },
+            }}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDragEnd={onDragEnd}
+            onDragCancel={onDragCancel}
+          >
+            <ul className="board">
+              {columns.map((column, index) => (
+                <li key={column.id} className="board-column">
+                  <section aria-label={`Column ${column.name}`}>
+                    <header className="column-header">
+                      <ColumnTitle
+                        column={column}
+                        canManage={canManage}
+                        editing={editingId === column.id}
+                        onStartEdit={() => setEditingId(column.id)}
+                        onCancel={() => {
+                          setEditingId(null);
+                          focusAfterRender.current = triggerIdOf(column.id);
+                        }}
+                        onSave={(name) => rename(column, name)}
+                      />
+                      {canManage && (
+                        <ColumnMenu
+                          triggerId={triggerIdOf(column.id)}
+                          columnName={column.name}
+                          items={menuItems(column, index)}
+                        />
+                      )}
+                    </header>
+                    <ColumnCards
+                      project={project}
+                      column={column}
+                      cards={cardsShown(column.id)}
+                      canDrag={canEditCards}
+                      members={members}
+                    />
+                    {canEditCards && (
+                      <AddCard
+                        columnId={column.id}
+                        columnName={column.name}
+                        onAdd={(title) => addCard(column, title)}
+                      />
+                    )}
+                  </section>
+                </li>
+              ))}
+              {canManage && (
+                <li className="board-column">
+                  <AddColumn onAdd={addColumn} />
+                </li>
+              )}
+            </ul>
+            <DragOverlay dropAnimation={null}>
+              {heldCard && <CardOverlay project={project} card={heldCard} />}
+            </DragOverlay>
+          </DndContext>
+        </div>
+        <Dialog
+          open={deleting !== null}
+          onClose={() => setDeleting(null)}
+          title={`Delete column ${deleting?.name ?? ''}?`}
+        >
+          {deleting && (
+            <DeleteColumnBody
+              column={deleting}
+              otherColumns={columns.filter((c) => c.id !== deleting.id)}
+              cardCount={cardsOf(board.data, deleting.id).length}
+              onConfirm={confirmDelete}
+              onCancel={() => setDeleting(null)}
+            />
+          )}
+        </Dialog>
+        {openCardNumber !== undefined && (
+          <CardDialog
+            projectId={project.id}
+            projectKey={project.key}
+            number={openCardNumber}
+            summary={board.data.cards.find((c) => c.number === openCardNumber)}
+            deletedBy={deletedBy?.number === openCardNumber ? deletedBy.name : undefined}
+            canEdit={canEditCards}
+            columns={columns}
+            members={members}
+            onMove={moveTo}
+            onClose={() => closeCard(board.data.cards.find((c) => c.number === openCardNumber))}
+            onDelete={removeCard}
+          />
+        )}
+      </section>
+    </PresenceContext.Provider>
   );
 }

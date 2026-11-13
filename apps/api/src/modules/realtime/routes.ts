@@ -199,6 +199,7 @@ export function realtimeRoutes({
               socket,
               userId: session.user.id,
               workspaceId: ctx.workspaceId,
+              name: session.user.name,
               role: ctx.role,
               awarenessIds: new Set(),
               room: null,

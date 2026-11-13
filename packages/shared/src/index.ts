@@ -202,3 +202,10 @@ export {
   type RoomRef,
   type BoardEventMessage,
 } from './realtime.js';
+export {
+  PRESENCE_COLORS,
+  MAX_AWARENESS_STATES_PER_CONNECTION,
+  presenceColorOf,
+  awarenessStateSchema,
+  type AwarenessState,
+} from './presence.js';

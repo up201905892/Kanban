@@ -11,6 +11,8 @@ import {
   type Project,
 } from '@kanban/shared';
 import { initialsOf, priorityDisplay } from '../cards/fields';
+import { usePresence } from '../presence/PresenceContext';
+import { editingLabel, othersEditing } from '../presence/view-model';
 
 export const cardTileId = (cardId: string) => `card-tile-${cardId}`;
 export const cardHandleId = (cardId: string) => `card-handle-${cardId}`;
@@ -67,6 +69,8 @@ function CardItem({ project, card, canDrag, members }: CardItemProps) {
     disabled: !canDrag || pending,
   });
   const style = { transform: CSS.Transform.toString(transform), transition };
+  const { people } = usePresence();
+  const editors = othersEditing(people, card.id);
 
   if (pending) {
     return (
@@ -101,6 +105,11 @@ function CardItem({ project, card, canDrag, members }: CardItemProps) {
         <span className="card-ref">{reference}</span>{' '}
         <span className="card-title">{card.title}</span>
         <CardMeta card={card} members={members} />
+        {editors.length > 0 && (
+          <span className="card-editing" data-testid="card-editing">
+            {editingLabel(editors.map((p) => p.name))}
+          </span>
+        )}
       </Link>
       {canDrag ? (
         <button

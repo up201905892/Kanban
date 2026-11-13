@@ -21,11 +21,19 @@ const NO_CONNECTION: CardDescriptionState = {
  * The live description of a card: joins `card:<id>:description` while the component is mounted and
  * leaves on unmount. The Yjs document is the authority; nothing here goes through REST.
  */
-export function useCardDescription(cardId: string): CardDescriptionState {
+export function useCardDescription(
+  cardId: string,
+  self: { id: string; name: string } | null = null,
+): CardDescriptionState {
   const [connection, setConnection] = useState<DescriptionConnection | null>(null);
+  const selfId = self?.id ?? null;
+  const selfName = self?.name ?? '';
 
   useEffect(() => {
-    const next = connectCardDescription(cardId);
+    const next = connectCardDescription(
+      cardId,
+      selfId === null ? null : { id: selfId, name: selfName },
+    );
     // The connection is an external resource created here (not in render) and handed to React.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setConnection(next);
@@ -33,7 +41,7 @@ export function useCardDescription(cardId: string): CardDescriptionState {
       setConnection(null);
       next.destroy();
     };
-  }, [cardId]);
+  }, [cardId, selfId, selfName]);
 
   const snapshot = useSyncExternalStore(
     (listener) => connection?.subscribe(listener) ?? (() => {}),

@@ -1,4 +1,5 @@
 import { WS_CLOSE, WS_MESSAGE, boardEventSchema, type BoardEvent } from '@kanban/shared';
+import { awarenessPayload, type AwarenessSync } from './awareness-sync';
 
 /** Reads a lib0 variable-length unsigned integer; returns the value and the next offset. */
 function readVarUint(bytes: Uint8Array, offset: number): [number, number] | null {
@@ -44,6 +45,8 @@ export interface BoardSocketOptions {
   onEvent: (event: BoardEvent) => void;
   /** Called on every (re)connection: events may have been missed before it. */
   onConnected: () => void;
+  /** Presence on the same socket (KB-020): awareness messages are exchanged through it. */
+  presence?: AwarenessSync | undefined;
 }
 
 const FATAL_CLOSE_CODES: number[] = [
@@ -64,7 +67,12 @@ const socketUrl = (boardId: string): string => {
  * (the full offline behaviour is KB-021); gives up when the server says the user may not be there.
  * Returns the function that closes the connection for good.
  */
-export function connectBoardSocket({ boardId, onEvent, onConnected }: BoardSocketOptions) {
+export function connectBoardSocket({
+  boardId,
+  onEvent,
+  onConnected,
+  presence,
+}: BoardSocketOptions) {
   let socket: WebSocket | null = null;
   let timer: number | undefined;
   let attempt = 0;
@@ -77,16 +85,28 @@ export function connectBoardSocket({ boardId, onEvent, onConnected }: BoardSocke
     socket = ws;
     ws.addEventListener('open', () => {
       attempt = 0;
+      presence?.attach((message) => {
+        if (ws.readyState === WebSocket.OPEN) ws.send(message as Uint8Array<ArrayBuffer>);
+      });
       onConnected();
     });
     ws.addEventListener('message', (message: MessageEvent) => {
       // `binaryType` is "arraybuffer": text frames (never sent by the server) are skipped.
       if (typeof message.data === 'string') return;
-      const event = parseBoardMessage(message.data as ArrayBuffer);
+      const bytes = new Uint8Array(message.data as ArrayBuffer);
+      if (presence) {
+        const payload = awarenessPayload(bytes);
+        if (payload) {
+          presence.receive(payload);
+          return;
+        }
+      }
+      const event = parseBoardMessage(bytes);
       if (event && event.boardId === boardId) onEvent(event);
     });
     ws.addEventListener('close', (closed: CloseEvent) => {
       if (socket === ws) socket = null;
+      presence?.detach();
       if (stopped || FATAL_CLOSE_CODES.includes(closed.code)) return;
       const delay = Math.min(RETRY_MAX_MS, RETRY_MIN_MS * 2 ** attempt);
       attempt += 1;
