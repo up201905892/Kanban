@@ -1,6 +1,7 @@
-import { apiErrorSchema } from '@kanban/shared';
+import { CLIENT_MUTATION_HEADER, apiErrorSchema } from '@kanban/shared';
 import type { ZodType, z } from 'zod';
 import { ApiError } from './api-error';
+import { newMutationId } from './mutation-ids';
 
 type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
@@ -22,6 +23,7 @@ export async function request<S extends ZodType | undefined = undefined>(
   const { method = 'GET', body, schema, signal } = options;
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (method !== 'GET') headers[CLIENT_MUTATION_HEADER] = newMutationId();
 
   let response: Response;
   try {

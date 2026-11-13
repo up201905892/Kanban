@@ -18,34 +18,50 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-008 | Projects within a workspace | Authentication and workspaces | High | KB-007 | Done |
 | KB-009 | Invite links, members and roles | Authentication and workspaces | Medium | KB-007 | Done |
 | KB-010 | Fractional indexing utility and ordering/conflict ADR | Board | High | KB-001 | Done |
-| KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Proposed |
-| KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Proposed |
-| KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Proposed |
-| KB-014 | Labels | Board | Low | KB-012, KB-018 | Proposed |
-| KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | Proposed |
-| KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Proposed |
-| KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Proposed |
-| KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Proposed |
-| KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Proposed |
-| KB-020 | Presence: who is on the board and who is editing a card | Real time | Medium | KB-019 | Proposed |
-| KB-021 | Reconnection, offline edits and connection status | Real time | Medium | KB-018, KB-019 | Proposed |
-| KB-022 | Backlog and sprint planning | Sprints | Medium | KB-013, KB-018 | Proposed |
-| KB-023 | Close a sprint | Sprints | Medium | KB-022 | Proposed |
-| KB-024 | Card activity history | Reports and history | Medium | KB-013, KB-015 | Proposed |
-| KB-025 | Sprint burndown | Reports and history | Medium | KB-022 | Proposed |
-| KB-026 | Velocity of recent sprints | Reports and history | Low | KB-023 | Proposed |
+| KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Done |
+| KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Done |
+| KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Done |
+| KB-014 | Labels | Board | Low | KB-012, KB-018 | Planned |
+| KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | Done |
+| KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Done |
+| KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Done |
+| KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Done |
+| KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Done |
+| KB-020 | Presence: who is on the board and who is editing a card | Real time | Medium | KB-019 | Done |
+| KB-021 | Reconnection, offline edits and connection status | Real time | Medium | KB-018, KB-019 | Planned |
+| KB-022 | Backlog and sprint planning | Sprints | Medium | KB-013, KB-018 | Planned |
+| KB-023 | Close a sprint | Sprints | Medium | KB-022 | Planned |
+| KB-024 | Card activity history | Reports and history | Medium | KB-013, KB-015 | Planned |
+| KB-025 | Sprint burndown | Reports and history | Medium | KB-022 | Planned |
+| KB-026 | Velocity of recent sprints | Reports and history | Low | KB-023 | Planned |
 | KB-027 | Adopt `@up201905892/ui` and replace local components | Design system | Medium | KB-004, external: `@up201905892/ui` published on npm | Proposed |
-| KB-028 | Performance with 500+ cards | Quality and delivery | Medium | KB-018 | Proposed |
-| KB-029 | End-to-end collaboration suite (two browsers) | Quality and delivery | Medium | KB-009, KB-021, KB-023 | Proposed |
-| KB-030 | Accessibility audit and fixes | Quality and delivery | Medium | KB-020, KB-021, KB-024, KB-025 | Proposed |
-| KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017 | Proposed |
-| KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Proposed |
+| KB-028 | Performance with 500+ cards | Quality and delivery | Medium | KB-018 | Planned |
+| KB-029 | End-to-end collaboration suite (two browsers) | Quality and delivery | Medium | KB-009, KB-021, KB-023, KB-034, KB-038, KB-039 | Planned |
+| KB-030 | Accessibility audit and fixes | Quality and delivery | Medium | KB-020, KB-021, KB-024, KB-025 | Planned |
+| KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017, KB-037 | Planned |
+| KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Planned |
+| KB-033 | Close real-time sockets on logout, session expiry and resource deletion | Real time | Medium | KB-016 | Planned |
+| KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Done |
+| KB-035 | Stabilise the flaky members and move-cards E2E tests | Quality and delivery | Medium | KB-009, KB-015 | Planned |
+| KB-036 | Card actions menu on the board tile (D9) | Board | Low | KB-015, D9 answered | Rejected |
+| KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Planned |
+| KB-038 | Unassign a member's cards when they are demoted to viewer (D10) | Authentication and workspaces | Medium | KB-009, KB-013 | Planned |
+| KB-039 | Card and column tombstones in the live board cache | Real time | Medium | KB-018 | Planned |
+| KB-040 | Enforce the description length limit in the shared document | Real time | Medium | KB-019 | Planned |
 
 **Priority rule used:** High = blocks at least one other High/Medium task on the path to the v1.0 release; Medium = MVP scope that blocks nothing (or only Medium tasks at the end of the plan); Low = MVP scope that is the first candidate to move to v1.1 if the schedule slips.
 
 **Estimate convention:** S = 0.25 day, M = 1 day, L = 2.5 days (ideal days). Total: 1 S + 21 M + 10 L = **46.25 ideal days** (51.25 if every L takes the full 3 days).
 
-**ADRs required** (files in `docs/adr/NNNN-<slug>.md`, next free number): auth and sessions (KB-005), authorization model (KB-007), ordering and conflict handling (KB-010), real-time architecture and Yjs↔DB authority (KB-016, extended by KB-017 and KB-019), deployment topology (KB-031).
+**Estimate update (2026-11-06):** KB-033 to KB-036 add 2 S + 2 M = 2.5 ideal days; new total 3 S + 23 M + 10 L = **48.75 ideal days** (53.75 if every L takes 3 days). Without KB-036 (only needed if D9 option B is chosen): 47.75.
+
+**Estimate update (2026-11-09):** KB-037 (M) and KB-038 (S) add 1.25 ideal days; new total 4 S + 24 M + 10 L = **50 ideal days** (55 if every L takes 3 days). Without KB-036: 49.75.
+
+**Estimate update (2026-11-10):** KB-039 (S) and KB-040 (M) add 1.25 ideal days. Correction found while recounting every task's Estimate line: the 2026-11-06 update counted KB-033 to KB-036 as 2 S + 2 M, but they are 3 S (KB-034, KB-035, KB-036) + 1 M (KB-033), so the 2026-11-06 and 2026-11-09 totals were 0.75 day too high (correct values: 48.0 and 49.25). Recounted total: 6 S + 24 M + 10 L = **50.5 ideal days** (55.5 if every L takes 3 days); without KB-036: 50.25. Done (KB-001 to KB-013, KB-015 to KB-019): 10 M + 8 L = 30 ideal days. Remaining (all Proposed): 6 S + 14 M + 2 L = 20.5 ideal days (20.25 without KB-036).
+
+**Estimate update (2026-11-13):** KB-036 rejected (D9 = A), so the plan total is 5 S + 24 M + 10 L = **50.25 ideal days** (55.25 if every L takes 3 days). Done: 30 ideal days. Planned: 5 S + 13 M + 2 L = 19.25 ideal days. Still Proposed: KB-027 (M, 1 day; waits for `@up201905892/ui` on npm).
+
+**ADRs required** (files in `docs/adr/NNNN-<slug>.md`, next free number): auth and sessions (KB-005), authorization model (KB-007), ordering and conflict handling (KB-010), real-time architecture and Yjs↔DB authority (KB-016, extended by KB-017, KB-019, KB-033, KB-037 and KB-040), deployment topology (KB-031).
 
 ## Technical decisions
 
@@ -91,6 +107,60 @@ Original question, kept for the record:
 - **Working assumption (recommended, chosen):** no email in v1.0. Invites are links copied and shared by the owner (KB-009); forgotten passwords are handled by an operator CLI that sets a temporary password and revokes the user's sessions (KB-005). Why: avoids an email provider, domain setup (SPF/DKIM) and extra failure modes in a 7–8 week plan; the user base is João and his groups.
 - **Alternative:** an email provider (e.g. Resend or Postmark over SMTP) for password reset and emailed invites: about one extra M task, plus a provider account and a sending domain.
 - **If the alternative is chosen:** KB-005 (CLI replaced or complemented by a reset flow), KB-009 (optional email invite), KB-031 (new variables); a new task is added.
+
+### D7 · Project key is immutable after creation — **Decided** (João, 2026-11-04, `approvals.md`, Answer KB-008)
+
+**Decision:** confirmed as implemented in KB-008. A project's `key` is set at creation and never changes; `PATCH /api/projects/:pid` accepts only `name` (a body with `key` is rejected as an unknown field, `400 VALIDATION_ERROR`, per A2).
+Rationale: card references are built as `KEY-number` (KB-012) and appear in deep links, activity history and announcements; a mutable key would break links and history text. Key renaming (with redirects/aliases) is a candidate for v1.1. Affects KB-012 (card reference stays stable), KB-018, KB-024 (references in events and history).
+
+Original question (daily log, 2026-10-30): confirm that the project key is fixed after creation, or ask for key edits with `Change` on KB-008.
+
+### D8 · Role matrix — **Decided** (João, 2026-11-04, `approvals.md`, Answer KB-007)
+
+**Decision:** confirmed as implemented in ADR 0003 (`docs/adr/0003-authorization-model.md`, Status: Accepted). Members can edit cards and manage columns, labels, sprints and projects; viewers only read; deleting a project, managing members and invites, and renaming or deleting the workspace are owner-only. 404 for non-members and 403 for members without the permission (A4).
+Consequence for the plan: every later task authorizes through the KB-007 policy with this matrix; specs that say "owner and member manage; viewer reads" (KB-011, KB-012, KB-013, KB-014, KB-015, KB-022, KB-023) are consistent with it and need no change. ADR 0003 already has Status Accepted, so no ADR amendment is required.
+
+Original question (daily log, 2026-10-30): confirm the role matrix chosen in KB-007 (ADR 0003).
+
+### D9 · Keyboard pick-up key and where "Move to…" lives — **Decided** (João, 2026-11-13, `approvals.md`)
+
+**Decision:** option A, keep KB-015 as built. Enter on the card tile (a link) opens the card dialog; keyboard pick-up is Space on the tile or Space/Enter on the move handle ("Move card KB-n"); "Move to…" lives in the card dialog, which is the single-pointer alternative for WCAG 2.2 SC 2.5.7. KB-015 stays Done with no rework (its "Space/Enter picks up" and "in the card menu" wording is superseded by this decision). KB-036 is Rejected. KB-028 keeps two Tab stops per tile (link and move handle); KB-030 audits this pattern.
+
+Original question, kept for the record:
+
+KB-015 was implemented with two deviations from its wording, both flagged by the developer and the tester: (a) Enter on the card tile (a link) still opens the card dialog, as KB-012 requires; keyboard pick-up is Space on the tile, or Space/Enter on a separate move handle ("Move card KB-n"); the spec said "Space/Enter picks up". (b) "Move to…" lives in the card dialog, because the board has no per-card menu; the spec said "in the card menu".
+
+- **Recommendation (option A): keep both as implemented.** Enter on a link opening it is the behaviour keyboard and screen-reader users expect, and it keeps the deep link from KB-012 one key away; Space and the handle already give a keyboard pick-up. "Move to…" in the dialog already meets WCAG 2.2 SC 2.5.7 (Dragging Movements: a single-pointer alternative exists) and avoids a third Tab stop per tile, which matters on the 500+ card boards of KB-028. KB-015 is recorded as implemented with no rework, and KB-036 is rejected.
+- **Option B:** keep Enter = open, and add a per-card "Card actions" menu button on each tile with "Move to…" (and "Open"), so moving without dragging does not need the dialog. This is KB-036 (Low, S).
+- **Option C:** Enter on the tile picks up and opening the card moves to another key or control. Not recommended: it breaks the link semantics and the KB-012 E2E flow; if chosen, answer with `Change | KB-036` and the planner rewrites KB-036 for it.
+- **How to answer:** `Answer | D9 | A` (and `Reject | KB-036`), or `Answer | D9 | B` (and `Approve | KB-036`), or `Change | KB-036 | option C`.
+- **Affects:** KB-015 (record only, no rework under A or B), KB-036, KB-028 (Tab stops per tile), KB-030 (audit of the chosen pattern).
+
+### D10 · What happens to a member's cards when they are demoted to viewer — **Decided** (João, 2026-11-13, `approvals.md`)
+
+**Decision:** option A, demoting an owner or member to viewer unassigns their cards in that workspace, the same way as removal and leaving (one transaction, `version` + 1, an `assignee_changed` event per card with the owner as actor, board events after commit). Invariant: a card's assignee is always an owner or member of the card's workspace. Implemented by KB-038 (approved, Planned). KB-029's journey step "A demotes B to viewer" now also asserts that B's cards are unassigned, so KB-029 depends on KB-038. KB-013 stays Done with no rework.
+
+Original question, kept for the record:
+
+KB-013 unassigns a person's cards when they are removed or leave, but not when an owner demotes them to viewer (the spec did not say). Since viewers cannot be assigned (`400 INVALID_ASSIGNEE`), such cards end up assigned to someone who could not be assigned to them today and who cannot work on them. The KB-013 developer, tester and finisher all flagged this.
+
+- **Recommendation (option A): unassign on demotion**, the same way as on removal: one transaction, `version` bump and an `assignee_changed` event per card, with the owner as actor. Why: it keeps one invariant ("an assignee is always an owner or member of the card's workspace") that the API, burndown and the assignee select can rely on; it matches what removal already does; the activity history shows who caused the change. This is KB-038 (Medium, S).
+- **Option B:** keep the assignment and show the person as "(viewer)" on the tile and in the dialog, so the work stays visibly theirs (useful if demotion is temporary). The invariant becomes "an assignee was assignable when set", and the assignee select has to show a person that cannot be picked. Not recommended.
+- **How to answer:** `Answer | D10 | A` with `Approve | KB-038`, or `Answer | D10 | B` with `Change | KB-038 | option B` (the planner rewrites KB-038 for B).
+- **Affects:** KB-038, KB-029 (the journey step "A demotes B to viewer"), KB-025 (burndown is not affected under either option; it uses estimates, not assignees).
+
+### D11 · History of cards deleted before their column is deleted — **Decided** (João, 2026-11-13, `approvals.md`)
+
+**Decision:** option A, accept and document. In v1.0, deleting a column hard-deletes (through the `cards.column_id` cascade) the cards that were soft-deleted in it earlier, together with their `ActivityEvent` rows. No new task and no migration; the foreign key stays `CASCADE`. Documentation: KB-024 writes the behaviour in `docs/api.md` (column delete and card activity sections); KB-025 adds the matching known limitation of the burndown (scope of past days) to `docs/api.md`. KB-011 and KB-012 stay Done with no rework. Keeping this history (option B) is a candidate for v1.1, together with restoring deleted cards.
+
+Original question, kept for the record:
+
+The `cards.column_id` foreign key cascades (KB-012 development note and test report 1). A column can only be deleted when it has no live cards, or with `moveCardsTo`, which moves only live cards. So deleting a column hard-deletes the cards that were soft-deleted in it earlier, together with their `ActivityEvent` rows.
+
+- **Recommendation (option A): accept and document it for v1.0.** A soft-deleted card cannot be viewed or restored in v1.0: `GET /api/cards/:id` and the KB-024 activity endpoint return 404 for it. The only visible effect is on KB-025: if a column is deleted during the active sprint, cards that were deleted from it earlier in the sprint disappear from the scope line of past days. This needs two rare actions in the same sprint and does not change today's remaining points. KB-024 documents the behaviour in `docs/api.md`; there is no extra task.
+- **Option B: keep the history.** Deleting a column also moves its soft-deleted cards (keeping `deletedAt`) to the `moveCardsTo` column, or to the board's Done column when there is no live card to move. The foreign key becomes `RESTRICT`, so the database enforces it (G4). This would be a new task (Board, Medium, S) that KB-025 depends on.
+- **How to answer:** `Answer | D11 | A`, or `Answer | D11 | B` (the planner then proposes the task for option B).
+- **Affects:** KB-024 (documentation line), KB-025 (burndown of past days), KB-011/KB-012 (record only, no rework under A).
 
 ## Common criteria
 
@@ -151,6 +221,17 @@ Lines from `approvals.md` already handled by the planner (prevents applying the 
 | 2026-10-28 | Approve | KB-005 to KB-009 | 2026-10-29 |
 | 2026-10-28 | Answer | D6 | 2026-10-29 |
 | 2026-10-28 | Answer | D5 | 2026-10-29 |
+| 2026-11-04 | Approve | KB-011 to KB-013, KB-015 to KB-019 | 2026-11-05 |
+| 2026-11-04 | Answer | KB-008 | 2026-11-05 |
+| 2026-11-04 | Answer | KB-007 | 2026-11-05 |
+| 2026-11-13 | Approve | KB-034, KB-035, KB-037, KB-039, KB-040, KB-033 | 2026-11-13 |
+| 2026-11-13 | Approve | KB-022, KB-021, KB-024 | 2026-11-13 |
+| 2026-11-13 | Answer | D9 | 2026-11-13 |
+| 2026-11-13 | Reject | KB-036 | 2026-11-13 |
+| 2026-11-13 | Answer | D10 | 2026-11-13 |
+| 2026-11-13 | Approve | KB-038 | 2026-11-13 |
+| 2026-11-13 | Answer | D11 | 2026-11-13 |
+| 2026-11-13 | Approve | KB-014, KB-020, KB-023, KB-025, KB-026, KB-028, KB-029, KB-030, KB-031, KB-032 | 2026-11-13 |
 
 Note: the first row of the `approvals.md` table (`YYYY-MM-DD · Approve · KB-001 to KB-008`, in italics) is the usage example, not a decision; it is not applied. KB-001 to KB-004 and KB-010 were approved in the conversation on 2026-10-24.
 
@@ -443,6 +524,7 @@ Task template (copy for each new task):
 - 2026-10-30 · finisher · Passed → Done · CHANGELOG, docs/api.md and ADR 0003 in place, no new environment variables, no secrets or TODOs found
 - 2026-10-30 · tester · Ready for test → In test · testing started on commit 3175dc4
 - 2026-10-30 · tester · In test → Passed · report 1, all criteria verified, zero failures
+- 2026-11-05 · planner · Done (no status change) · answer from João (approvals.md, 2026-11-04): role matrix in ADR 0003 confirmed as implemented; recorded as D8 in "Technical decisions"; ADR 0003 already Accepted, spec unchanged
 
 ### KB-008 · Projects within a workspace
 
@@ -468,6 +550,8 @@ Task template (copy for each new task):
 
 **Out of scope:** board and columns (KB-011), archiving projects.
 
+**Decision note (D7, 2026-11-04):** the project key is immutable after creation; `PATCH` accepts only `name`.
+
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · Proposed → Planned · approved by João (approvals.md, 2026-10-28)
@@ -477,6 +561,7 @@ Task template (copy for each new task):
 - 2026-10-30 · tester · Ready for test → In test · starting report 1
 - 2026-10-30 · tester · In test → Passed · report 1, all checks and criteria verified, zero failures
 - 2026-10-30 · finisher · Passed → Done · definition of done met; CHANGELOG, docs/api.md and ADR 0003 already updated
+- 2026-11-05 · planner · Done (no status change) · answer from João (approvals.md, 2026-11-04): the project key is fixed after creation and `PATCH` accepts only `name`, as implemented; recorded as D7 in "Technical decisions"; no rework
 
 ### KB-009 · Invite links, members and roles
 
@@ -579,6 +664,13 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · spec revised after D5 answer (approvals.md, 2026-10-28): added the ADR 0001 section 7 amendment and the `COLLATE "C"` requirement from ADR 0001 (finisher's KB-010 lesson) · stays Proposed
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
+- 2026-11-05 · developer · Planned → In development · started
+- 2026-11-05 · developer · In development → Ready for test · commit 60565ef
+- 2026-11-05 · tester · Ready for test → In test · testing started
+- 2026-11-05 · tester · In test → Passed · report 1, commit 60565ef, zero failures
+- 2026-11-05 · finisher · Passed → Done · CHANGELOG and docs in place, recorded in 04-done.md
+- 2026-11-13 · planner · Done (no status change) · D11 answered with option A (approvals.md, 2026-11-13): the cascade that hard-deletes previously soft-deleted cards and their activity on column delete is accepted for v1.0 and documented by KB-024/KB-025; no rework
 
 ### KB-012 · Cards: create, view, edit and delete
 
@@ -609,9 +701,18 @@ Task template (copy for each new task):
 
 **Out of scope:** card fields (KB-013), labels (KB-014), moving cards (KB-015), live updates (KB-018), activity UI (KB-024), restoring deleted cards.
 
+**Decision notes:** the `KEY-number` card reference is stable because the project key is immutable (D7); card permissions follow the ADR 0003 role matrix (D8): owner and member create, edit and delete cards, viewers read only.
+
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · spec revised after D5 answer (approvals.md, 2026-10-28): the hybrid split matches the existing spec; added an explicit authority criterion (interim REST description until KB-019) and the `COLLATE "C"` position column from ADR 0001 · stays Proposed
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04); decision notes for D7 and D8 added (no change to criteria)
+- 2026-11-05 · developer · Planned → In development · started
+- 2026-11-05 · developer · In development → Ready for test · commit 512a5e9
+- 2026-11-05 · tester · Ready for test → In test · testing started
+- 2026-11-05 · tester · In test → Passed · report 1, commit 512a5e9, zero failures
+- 2026-11-05 · finisher · Passed → Done · CHANGELOG and docs/api.md up to date, no production code after the tested commit
+- 2026-11-13 · planner · Done (no status change) · D11 answered with option A (approvals.md, 2026-11-13): `cards.column_id` keeps `ON DELETE CASCADE`; the behaviour is documented by KB-024/KB-025; no rework
 
 ### KB-013 · Card fields: assignee, priority and estimate
 
@@ -641,6 +742,14 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · João's decision (2026-10-24): card fields are not on the MVP critical path
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
+- 2026-11-09 · developer · Planned → In development · started
+- 2026-11-09 · developer · In development → Ready for test · commit 13fd332
+- 2026-11-09 · tester · Ready for test → In test · testing started
+- 2026-11-09 · tester · In test → Passed · report 1, all checks and criteria verified
+- 2026-11-09 · finisher · Passed → Done · CHANGELOG, api docs and migration verified; no TODO or secret
+- 2026-11-09 · planner · Done (no status change) · the developer, tester and finisher note (demotion to viewer does not unassign the person's cards) is put to João as D10, recommending unassignment; proposed as KB-038; no rework of this task
+- 2026-11-13 · planner · Done (no status change) · D10 answered with option A (approvals.md, 2026-11-13): demotion to viewer will unassign cards through KB-038 (Planned), which shares the unassign helper with this task's removal path; no rework of this task
 
 ### KB-014 · Labels
 
@@ -668,6 +777,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13); dependencies KB-012 and KB-018 are Done
 
 ### KB-015 · Drag and drop and keyboard moving of cards
 
@@ -697,6 +807,14 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
+- 2026-11-06 · developer · Planned → In development · started
+- 2026-11-06 · developer · In development → Ready for test · commit 4cf8b44
+- 2026-11-06 · tester · Ready for test → In test · testing started
+- 2026-11-06 · tester · In test → Passed · report 1, all checks and criteria verified
+- 2026-11-06 · finisher · Passed → Done · definition of done confirmed; CHANGELOG and docs/api.md up to date
+- 2026-11-06 · planner · Done (no status change) · the two wording deviations noted by developer and tester (Enter on the tile opens the card; "Move to…" lives in the card dialog) are put to João as D9 with the recommendation to keep them as implemented; the optional tile menu is proposed as KB-036; the flaky `move-cards.spec.ts:105` is covered by KB-035; the create-card and column-delete respacing that does not bump sibling `version` (ADR 0001 section 4) is covered by KB-034
+- 2026-11-13 · planner · Done (no status change) · D9 answered with option A (approvals.md, 2026-11-13): kept as built. Enter on the tile opens the card, pick-up is Space on the tile or Space/Enter on the move handle, and "Move to…" lives in the card dialog; the "Space/Enter picks up" and "in the card menu" wording above is superseded by D9. KB-036 rejected; no rework
 
 ### KB-016 · WebSocket server with the y-websocket protocol and room authorization
 
@@ -730,6 +848,13 @@ Task template (copy for each new task):
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-29 · planner · D5 answered by João (approvals.md, 2026-10-28): hybrid; the ADR records Yjs as authority for descriptions and presence and PostgreSQL for structured data, consistent with ADR 0001 section 7 · spec unchanged
 - 2026-10-29 · planner · dependency KB-009 added: the socket close/re-authorization criterion and its "removing a member closes their socket" test need KB-009's member removal and role change; KB-009 is Planned, so there is no cycle · stays Proposed
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04); room authorization uses the ADR 0003 role matrix confirmed as D8
+- 2026-11-06 · developer · Planned → In development · started
+- 2026-11-06 · developer · In development → Ready for test · commit cc55adb
+- 2026-11-06 · tester · Ready for test → In test · testing started
+- 2026-11-06 · tester · In test → Passed · report 1 in 03-testing.md, zero failures
+- 2026-11-06 · finisher · Passed → Done · definition of done checked; CHANGELOG, docs/api.md and ADR 0004 in place
+- 2026-11-06 · planner · Done (no status change) · gaps listed in ADR 0004 section 7 and the development/test records (sockets not closed on logout, session expiry or workspace/project/card deletion; removal between authorization and room join) proposed as KB-033
 
 ### KB-017 · Yjs document persistence in PostgreSQL
 
@@ -759,6 +884,13 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · re-check under João's rule: not on the critical path and blocks only Medium tasks (KB-019, KB-031)
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
+- 2026-11-09 · developer · Planned → In development · dependency KB-016 is Done
+- 2026-11-09 · developer · In development → Ready for test · commit ff62944
+- 2026-11-09 · tester · Ready for test → In test · testing started
+- 2026-11-09 · tester · In test → Passed · report 1, all checks and criteria verified
+- 2026-11-09 · finisher · Passed → Done · CHANGELOG, ADR 0004 and docs/api.md verified; no TODO or secret found
+- 2026-11-09 · planner · Done (no status change) · tester observation in report 1 confirmed by a code read: when the final append in `store()` fails, `RoomManager.leave()` swallows the error and drops the room, and the doc `destroy` handler clears the retry timer, so the last batch is lost if no client still holds it; proposed as KB-037 and added as a KB-031 dependency
 
 ### KB-018 · Live board updates
 
@@ -788,6 +920,14 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
+- 2026-11-06 · planner · Planned (no status change) · note: the version-based event filter in this task relies on every position change bumping `version`; KB-034 (Proposed) fixes the two respacing paths that do not. The planner recommends João adds KB-034 as a dependency with `Change | KB-018 | add dependency KB-034`; the spec is not changed without that decision
+- 2026-11-10 · developer · Planned → In development · started
+- 2026-11-10 · developer · In development → Ready for test · commit acab99f
+- 2026-11-10 · tester · Ready for test → In test · testing started
+- 2026-11-10 · tester · In test → Passed · report 1, all checks and criteria verified
+- 2026-11-10 · finisher · Passed → Done · definition of done met; CHANGELOG, docs/api.md and ADR 0004 already updated
+- 2026-11-10 · planner · Done (no status change) · lessons from the development note, test report 1 and done record: (1) the recommendation `Change | KB-018 | add dependency KB-034` is no longer relevant because the task is Done, but KB-034 is still needed (respaced siblings keep their `version`, so clients drop their `card_moved` events); KB-034 is now a dependency of KB-029. (2) With no tombstone, a `card_updated` after `card_deleted` (and the same for columns) re-adds the entity until the next refetch; proposed as KB-039. (3) `members.spec.ts:98` was flaky; added to KB-035. No rework of this task
 
 ### KB-019 · Collaborative card description with Yjs
 
@@ -818,6 +958,13 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · re-check under João's rule: not on the critical path and blocks only Medium tasks (KB-020, KB-021)
+- 2026-11-05 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-04)
+- 2026-11-10 · developer · Planned → In development · started
+- 2026-11-10 · developer · In development → Ready for test · commit 4edff2c
+- 2026-11-10 · tester · Ready for test → In test · testing started
+- 2026-11-10 · tester · In test → Passed · report 1, all checks and criteria verified
+- 2026-11-10 · finisher · Passed → Done · definition of done checked; CHANGELOG, api.md and ADR 0004 already updated
+- 2026-11-10 · planner · Done (no status change) · lessons from the development note, test report 1 and done record: (1) a failed final flush at unload can lose the last edit window; KB-037 already covers the Yjs append and now also covers the description projection added here. (2) Concurrent merges, or a client that bypasses the textarea, can take the live `Y.Text` past 20,000 characters, while the projection silently cuts the stored copy; proposed as KB-040. (3) Real SIGTERM delivery is only tested at handler level; a process-level test is added to KB-031. (4) A textarea binding is used instead of CodeMirror (ADR 0004 section 12); KB-020 is adjusted for remote carets on a textarea. No rework of this task
 
 ### KB-020 · Presence: who is on the board and who is editing a card
 
@@ -831,20 +978,29 @@ Task template (copy for each new task):
 **Acceptance criteria:**
 - [ ] Awareness state {userId, name, color, activeCardId, editing} with a Zod schema (R1); the server overwrites `userId` and `name` from the session (no identity spoofing).
 - [ ] Board header shows up to 5 avatars (initials) plus "+N", with an accessible list "3 people on this board: …".
-- [ ] Tiles show "Ana is editing" when someone is editing that card; the card dialog shows who else has it open; the description editor shows remote cursors and selections labelled with names.
+- [ ] Tiles show "Ana is editing" when someone is editing that card; the card dialog shows who else has it open; the description editor shows remote carets labelled with names.
+- [ ] Remote carets on the KB-019 textarea binding (ADR 0004 section 12; no CodeMirror): awareness carries the caret as a Yjs relative position (`Y.createRelativePositionFromTypeIndex`), so it stays correct while text changes. Each caret is drawn in an overlay with `aria-hidden="true"`, positioned with a mirror element that copies the textarea's text and styles. The label with the person's name is visible text, so the caret is not shown by colour alone. Remote selection ranges are out of scope.
+- [ ] Awareness is added to the existing clients (`lib/realtime/board-socket.ts` for `board:<id>`, `lib/realtime/card-description.ts` for the card room) through `y-protocols/awareness`; there is no second socket per room.
 - [ ] Presence disappears immediately on a clean close and within 30 s after a lost connection.
 - [ ] Common criteria: G1, G2, U3, U4, U9, R1, R2.
 
 **Required tests:**
-- Unit: awareness → presence view model (dedupe by user across tabs).
+- Unit: awareness → presence view model (dedupe by user across tabs); relative-position caret stays on the same character after a remote insert before it and after a remote delete around it.
 - API (integration): a spoofed `userId` in awareness is replaced by the session user.
 - E2E (two browsers): A opens the board → B sees A's avatar; A opens a card and types → B sees "A is editing" on the tile and A's cursor; A closes the page → removed for B within 30 s.
 - Accessibility: presence readable as a list by screen readers; indicators not colour-only; no live announcements for people joining/leaving.
 
-**Out of scope:** follow mode, typing indicators outside the description, presence across boards.
+**Out of scope:** follow mode, typing indicators outside the description, presence across boards, remote selection highlights.
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-10 · planner · spec revised after KB-019 (Done): the editor is a textarea binding, not CodeMirror, so remote carets are drawn in an overlay from Yjs relative positions, and selections are out of scope. Awareness reuses the existing board and card socket clients · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
+- 2026-11-13 · developer · Planned → In development · started
+- 2026-11-13 · developer · In development → Ready for test · commit 1846f99
+- 2026-11-13 · tester · Ready for test → In test · testing started
+- 2026-11-13 · tester · In test → Passed · report 1, all checks and criteria verified
+- 2026-11-13 · finisher · Passed → Done · definition of done met; CHANGELOG, docs/api.md and ADR 0004 already updated; no milestone (KB-021 not Done)
 
 ### KB-021 · Reconnection, offline edits and connection status
 
@@ -857,6 +1013,7 @@ Task template (copy for each new task):
 
 **Acceptance criteria:**
 - [ ] Connection status in the board header: "Connected", "Reconnecting…", "Offline", announced politely on change; WebSocket reconnect with exponential backoff (1 s up to 30 s, with jitter); the browser `online` event triggers an immediate retry; a 1012 close (KB-017) is treated as a reconnect.
+- [ ] One connection-state module drives both existing clients: the KB-018 board socket (`lib/realtime/board-socket.ts`, backoff today 0.5–10 s, stops on 4400/4401/4403) and the KB-019 description client (`lib/realtime/card-description.ts`, states `connecting | saved | syncing | reconnecting | unavailable`, and an assertive "Offline: changes are kept…" message). Both use the backoff above. The header status is derived from both, and the description's own offline announcement is replaced by the header status, so a lost connection is announced once, not twice. There is no third reconnect implementation.
 - [ ] Description edits made offline keep working locally and sync on reconnect (R5).
 - [ ] Structured mutations made offline are paused (TanStack Query network mode) and replayed in order on reconnect; creates are safe to retry (A6); a target deleted meanwhile → rollback plus "Card KB-12 was deleted while you were offline"; the header shows "N changes pending".
 - [ ] After reconnect the board is refetched (KB-018) and Yjs resyncs; the final state equals the server state.
@@ -875,6 +1032,8 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · João's decision (2026-10-24): robustness layer that only blocks the Medium KB-029
+- 2026-11-10 · planner · spec revised after KB-018 and KB-019 (Done): both already ship a simple reconnect, so this task unifies them under one connection-state module and one announcement instead of adding a third one · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-022 · Backlog and sprint planning
 
@@ -904,6 +1063,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · re-check under João's rule: not on the critical path and blocks only Medium tasks (KB-023, KB-025)
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-023 · Close a sprint
 
@@ -931,6 +1091,7 @@ Task template (copy for each new task):
 **History:**
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · João's decision (2026-10-24): end of the sprint flow, blocks only Medium/Low tasks (KB-026, KB-029)
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-024 · Card activity history
 
@@ -945,7 +1106,9 @@ Task template (copy for each new task):
 - [ ] `GET /api/cards/:id/activity?cursor&limit` → newest first, cursor on (createdAt, id), `limit` ≤ 100 (A8), each event with actor {id, name}.
 - [ ] "Activity" section in the card dialog with readable lines ("Ana moved this card from To do to In progress · 2 h ago"), a `<time>` element with the absolute date, and "Load more".
 - [ ] Rendering uses an exhaustive switch over the shared event union, so any future event type fails the typecheck until it has a renderer.
-- [ ] New events for the open card appear live (board event → activity query invalidated).
+- [ ] New events for the open card appear live (board event → activity query invalidated). Exception: the KB-019 projection writes `description_changed` without a board event (ADR 0004 section 12), so these entries appear the next time the activity is fetched (dialog reopened or "Load more"). They are not required to appear live.
+- [ ] `description_changed` lines show the coalesced shape from KB-019 (one line per person per 10-minute window, lengths only, never the text).
+- [ ] `docs/api.md` states, in the column-delete section and in the card-activity section, that in v1.0 deleting a column permanently removes the cards that were soft-deleted in it earlier, together with their activity (D11, decided: option A). It also states that a soft-deleted card cannot be viewed or restored (`GET /api/cards/:id` and the activity endpoint return 404).
 - [ ] Common criteria: G1, G2, G8, A1–A4, A7, A8, U1–U10.
 
 **Required tests:**
@@ -954,10 +1117,13 @@ Task template (copy for each new task):
 - E2E: change the title, move the card and set an estimate → three entries in the right order; axe on the dialog.
 - Accessibility: activity is a list; "Load more" moves focus to the first newly loaded item.
 
-**Out of scope:** workspace-wide activity feed, comments, notifications.
+**Out of scope:** workspace-wide activity feed, comments, notifications, live updates of `description_changed` entries.
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-10 · planner · spec revised after KB-018 and KB-019 (Done): `description_changed` entries do not appear live because the projection publishes no board event, and they keep the coalesced shape; added a documentation line for D11 (recommended option A). Approving this task does not have to wait for D11 · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
+- 2026-11-13 · planner · Planned (no status change) · D11 answered with option A (approvals.md, 2026-11-13): the documentation criterion is made final (both `docs/api.md` sections named, the "if option B" clause removed); no new task
 
 ### KB-025 · Sprint burndown
 
@@ -973,6 +1139,7 @@ Task template (copy for each new task):
 - [ ] `GET /api/sprints/:id/burndown` → {days, ideal, unestimatedCount} (any role).
 - [ ] Reports page per project: Recharts line chart (remaining vs ideal), a text summary ("12 of 30 points remaining, 4 days left") and a "Show as table" toggle rendering a real `<table>` with caption and headers.
 - [ ] Empty states: no active sprint; no estimated cards.
+- [ ] Known limitation documented in the burndown section of `docs/api.md` (D11, option A): if a column is deleted during the active sprint, cards that were soft-deleted from it earlier in the sprint, and their events, no longer exist, so they drop out of the scope line of past days; today's remaining points are not affected.
 - [ ] Common criteria: G1, G2, G8, A1–A4, A7, U1–U10.
 
 **Required tests:**
@@ -981,10 +1148,12 @@ Task template (copy for each new task):
 - E2E: start a sprint with estimated cards, move one to Done → today's remaining value drops in the table; axe on the reports page.
 - Accessibility: table toggle reachable by keyboard; the chart is never the only source of the information.
 
-**Out of scope:** burnup, cumulative flow, hour-based burndown, burndown of past sprints, per-project time zones.
+**Out of scope:** burnup, cumulative flow, hour-based burndown, burndown of past sprints, per-project time zones, keeping the history of cards removed by a column delete (D11 option B, v1.1 candidate).
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-13 · planner · spec revised for D11 = A (approvals.md, 2026-11-13): added the documented known limitation on past-day scope and the matching out-of-scope line; no change to tests or estimate
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-026 · Velocity of recent sprints
 
@@ -1010,6 +1179,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-027 · Adopt `@up201905892/ui` and replace local components
 
@@ -1065,18 +1235,19 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13); D9 = A keeps two Tab stops per tile (link and move handle) for the virtualized keyboard navigation
 
 ### KB-029 · End-to-end collaboration suite (two browsers)
 
 - **MVP phase:** Quality and delivery
 - **Priority:** Medium
-- **Depends on:** KB-009, KB-021, KB-023
+- **Depends on:** KB-009, KB-021, KB-023, KB-034, KB-038, KB-039
 - **Estimate:** M
 
 **Goal:** One reliable journey test that proves the product works for a real group, run in CI on every push.
 
 **Acceptance criteria:**
-- [ ] Playwright spec(s) in `e2e/journeys/` with two users: A signs up, creates a workspace and project, creates an invite; B signs up through the link; both open the board; A moves a card while B edits its fields; both edit the same description; B goes offline, makes changes and reconnects; A starts and closes a sprint; A demotes B to viewer and B can no longer edit (read-only UI and API 403).
+- [ ] Playwright spec(s) in `e2e/journeys/` with two users: A signs up, creates a workspace and project, creates an invite; B signs up through the link; both open the board; A moves a card while B edits its fields; both edit the same description; B goes offline, makes changes and reconnects; A starts and closes a sprint; A demotes B to viewer (confirming the KB-038 dialog) and B can no longer edit (read-only UI and API 403), and the cards that were assigned to B show no assignee in both browsers (D10).
 - [ ] No fixed sleeps (only auto-waiting assertions); the suite runs in under 5 minutes in CI.
 - [ ] `pnpm test:e2e -- --repeat-each=10` on the journey passes with zero failures (flakiness check, result recorded in the development entry).
 - [ ] Common criteria: G1, R4, R5, R6.
@@ -1091,6 +1262,9 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-10 · planner · dependencies KB-034 and KB-039 added: the journey asserts convergence (R4, R6) and must pass 10 repeats, so the two known causes of client divergence in the live board (respaced siblings keep their `version`, and a late event re-adds a deleted card or column) are fixed first. No cycle: neither task depends on KB-029 · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
+- 2026-11-13 · planner · Planned (no status change) · D10 answered with option A (approvals.md, 2026-11-13): the demotion step now also asserts that B's cards are unassigned, so KB-038 is added as a dependency (no cycle: KB-038 does not depend on KB-029); estimate stays M
 
 ### KB-030 · Accessibility audit and fixes
 
@@ -1103,6 +1277,7 @@ Task template (copy for each new task):
 
 **Acceptance criteria:**
 - [ ] `docs/accessibility-audit.md`: WCAG 2.2 AA checklist per screen (log-in, sign-up, workspaces, members, invite, board, card dialog, backlog, reports), keyboard-only walkthrough with results, screen-reader spot check (NVDA + Chrome) of drag-and-drop and live announcements, text contrast ≥ 4.5:1.
+- [ ] The audit covers the D9 card pattern explicitly: Enter on a tile opens the card, Space on the tile or Space/Enter on the move handle picks it up, and "Move to…" in the card dialog is the single-pointer alternative to dragging (WCAG 2.2 SC 2.5.7); the result is written in the board section of the audit.
 - [ ] An axe sweep spec visits every route with zero serious/critical violations.
 - [ ] Every A/AA failure found is fixed in this task; anything else is listed in the audit with severity and added to "Decisions for João" in the daily log for planning.
 - [ ] Common criteria: G1, U3–U5, U9, U10.
@@ -1117,12 +1292,14 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-13 · planner · spec revised for D9 = A (approvals.md, 2026-11-13): added a criterion to audit the chosen keyboard pattern for cards; estimate stays M
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-031 · Deploy preparation for Railway
 
 - **MVP phase:** Quality and delivery
 - **Priority:** Medium
-- **Depends on:** KB-017
+- **Depends on:** KB-017, KB-037
 - **Estimate:** M
 - **ADR required:** deployment topology (D4)
 
@@ -1131,6 +1308,7 @@ Task template (copy for each new task):
 **Acceptance criteria:**
 - [ ] Multi-stage `Dockerfile` at the root: pnpm via corepack (version from `packageManager`), Node 22, production dependencies only, non-root user; the api serves the built web app (static files + SPA fallback) on the same origin as `/api` and `/ws`; listens on Railway's `PORT`; `.dockerignore` present; image size recorded.
 - [ ] The process runs as `node …` (no shell wrapper), so SIGTERM reaches it and the KB-017 graceful shutdown runs on redeploy.
+- [ ] A process-level test covers real signal delivery, which KB-017 and KB-019 only tested at handler level. It starts the built api (`node apps/api/dist/…`) as a child process against the test database, has a `ws` client edit a card description, sends a real `SIGTERM` to the child before the batch window ends, and asserts exit code 0, the client closed with `1012`, and the edit present in `YDocumentUpdate` and in `Card.description`.
 - [ ] `railway.json` (config as code): Dockerfile builder, healthcheck path `/health/ready`, pre-deploy command running `prisma migrate deploy`, restart policy on failure, 1 replica.
 - [ ] Production hardening: `trustProxy` for Railway's proxy, `Secure` cookies, `WEB_ORIGIN` set to the public Railway/custom domain, security headers (`@fastify/helmet`, CSP compatible with the app and its WebSocket), request body limit.
 - [ ] `trustProxy` comes from a validated config variable (e.g. `TRUST_PROXY` as a hop count, default off so local and test runs ignore `X-Forwarded-*`), added to `.env.example` and `docs/deployment.md` per G6; when it is on, `request.ip` (the KB-005 rate-limit key) is the client address from `X-Forwarded-For`, not the proxy's.
@@ -1152,6 +1330,9 @@ Task template (copy for each new task):
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · João's decision (2026-10-24): release preparation at the end of the plan, blocks only the Medium KB-032
 - 2026-10-29 · planner · spec revised from the KB-005 developer, tester and finisher notes: `trustProxy` made configurable (`TRUST_PROXY`) and testable (rate-limit key behind the proxy); argon2 dummy hash warmed at start-up · stays Proposed
+- 2026-11-09 · planner · dependency KB-037 added: every redeploy goes through the graceful shutdown, and a database hiccup during its final flush must not lose the last edits of open descriptions before the app is deployed · stays Proposed
+- 2026-11-10 · planner · spec revised from the KB-017 and KB-019 test observations (real SIGTERM delivery tested only at handler level): added a child-process SIGTERM test against the built api · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 
 ### KB-032 · README with demo
 
@@ -1178,3 +1359,259 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
+
+### KB-033 · Close real-time sockets on logout, session expiry and resource deletion
+
+- **MVP phase:** Real time
+- **Priority:** Medium
+- **Depends on:** KB-016
+- **Estimate:** M
+- **ADR required:** amend `docs/adr/0004-real-time-architecture.md` section 7
+
+**Goal:** Close the access gaps listed in ADR 0004 section 7: an open WebSocket keeps receiving documents and presence after its session ends or after the workspace, project or card it is attached to is deleted. Access over WebSocket must end when access over REST ends.
+
+**Acceptance criteria:**
+- [ ] `POST /api/auth/logout` publishes a session-ended event on the in-process bus after the session row is deleted; every socket opened with that session closes with `4401` within 1 s. Sockets of the same user opened with other sessions stay open.
+- [ ] Sessions that end without an in-process event (expiry, or deletion by the operator CLI `admin:reset-password`, which runs in another process) are caught by a revalidation on each heartbeat tick (KB-016, 30 s, configurable for tests): one database query per tick for all open sockets' session ids (no query per socket); a missing or expired session closes its sockets with `4401`.
+- [ ] Deleting a workspace (`DELETE /api/workspaces/:id`), a project (`DELETE /api/projects/:pid`) or a card (`DELETE /api/cards/:id`, soft delete) publishes a resource-deleted event after the transaction commits. Within 1 s the server closes, with `4403`, every socket in the affected rooms: all board and card rooms of the workspace; the project's board room and its cards' rooms; the card's description room. Those rooms are then unloaded through the persistence hook, as with any room whose last client leaves. Sockets in other rooms are untouched (for a deleted card, the board room stays open).
+- [ ] A refused or rolled-back deletion (e.g. wrong confirmation name → `400`, or an injected failure) publishes nothing and closes nothing.
+- [ ] Race closed: if a membership is removed between the room authorization and joining the room, the socket ends up closed with `4403`. Accepted approaches: subscribe to the bus before authorizing, or re-check the membership right after joining. The approach used is recorded in the ADR.
+- [ ] The bus event types (session ended, resource deleted) are typed in `apps/api/src/lib/`, next to the membership events. They are server-internal, so they need no shared schema.
+- [ ] ADR 0004 section 7 is amended (not rewritten): it lists what is now covered, the 30 s worst case for expiry and CLI resets, and the single-instance assumption of the bus (section 10).
+- [ ] Common criteria: G1, G4, G7, G8, R2.
+
+**Required tests:**
+- Unit: room selection for a deleted resource (workspace → all its board and card rooms; project → its board and card rooms; card → its description room only); session-revalidation batching (one query for N sockets).
+- API (integration with a real `ws` client, as in KB-016): logout closes that session's sockets with `4401` in under 1 s while a second session of the same user stays open; a session whose `expiresAt` is moved into the past closes at the next heartbeat tick; a session deleted directly in the database (simulating the CLI) closes at the next tick; workspace deletion closes board and card sockets of that workspace with `4403` and leaves a socket in another workspace open; project deletion closes its board and card rooms; card deletion closes its description room and leaves the board room open; a delete with the wrong confirmation name closes nothing; a membership removed during authorization (test seam that delays the join) leaves the socket closed with `4403`.
+- E2E: n/a (client handling of `4401`/`4403` comes with KB-019, KB-020 and KB-021).
+- Accessibility: n/a.
+
+**Out of scope:** client UI for closed sockets (KB-021 handles `4401`; KB-019/KB-020 show "no access"), purging the Yjs documents of deleted cards (KB-017 out of scope), multi-instance fan-out of bus events (ADR 0004 section 10), "log out of all devices".
+
+**History:**
+- 2026-11-06 · planner · created as Proposed · follow-up from KB-016 (ADR 0004 section 7, developer and tester notes)
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
+
+### KB-034 · Bump card versions when positions are respaced
+
+- **MVP phase:** Board
+- **Priority:** High
+- **Depends on:** KB-012, KB-015
+- **Estimate:** S
+
+**Goal:** Every change to a card's position increments its `version`, as ADR 0001 section 4 requires. Without this, the version-based event filter of KB-018 would drop the new positions of respaced siblings, and their order would differ between clients.
+
+**Acceptance criteria:**
+- [ ] When a card create rebalances its column (`apps/api/src/modules/cards/service.ts`, `createCard` → `placeWithRebalance`), every sibling whose position is rewritten gets `version` incremented in the same transaction (the move path already does this).
+- [ ] When a column delete with `moveCardsTo` respaces the destination (`apps/api/src/modules/boards/service.ts`, the respace branch of the cards-move helper), every rewritten existing card also gets `version` incremented.
+- [ ] No other card position write in `apps/api/src` skips the `version` increment. The developer greps for writes to `position` on `card` and lists them in the development entry.
+- [ ] The response of the triggering request is unchanged (no new fields); clients see the new versions through `GET /api/projects/:pid/board`.
+- [ ] The sibling `card_moved` events that KB-018 already publishes for respaced cards carry the bumped `version`, so `useBoardEvents` applies them instead of dropping them as stale. After a respacing create or column delete, a second client on the board has the same order as `GET /api/projects/:pid/board` without refetching.
+- [ ] The KB-018 ordering-risk note in ADR 0004 (and `docs/api.md`, if it mentions it) is updated to say the gap is closed.
+- [ ] Common criteria: G1, G4, G8, A7, R6.
+
+**Required tests:**
+- Unit: n/a (no new pure logic).
+- API: creating a card into a column whose keys force a rebalance (as in the 320-insert move test) leaves every sibling with `version` + 1 and the same relative order; a column delete with `moveCardsTo` whose destination needs respacing bumps the existing cards' `version`; a create with no rebalance leaves siblings' `version` unchanged; a board-room `ws` client receives the sibling `card_moved` events with the new versions (extend `realtime/board-events.test.ts`).
+- Web: in `board-live.test.tsx`, a cached board receives a respacing burst of sibling `card_moved` events with bumped versions → every tile takes its new position, and the rendered order equals the server order.
+- E2E: n/a.
+- Accessibility: n/a.
+
+**Out of scope:** column `version` (columns are not versioned), publishing events (KB-018).
+
+**History:**
+- 2026-11-06 · planner · created as Proposed · follow-up from the KB-015 developer note (create-card rebalance does not bump sibling `version`); a code read found the same gap in the column-delete respace. Priority High because KB-018 (High) relies on it; recommended as a KB-018 dependency (see the KB-018 history)
+- 2026-11-10 · planner · spec revised after KB-018 (Done, without this dependency): the KB-018 developer, tester and finisher confirm that clients drop the sibling `card_moved` events, so order can differ between clients until a refetch. Added the event and client criteria and tests, and R6. Priority stays High: it fixes a convergence defect in a Done High task and is now a dependency of KB-029 · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
+- 2026-11-13 · developer · Planned → In development · started
+- 2026-11-13 · developer · In development → Ready for test · commit cb54a72
+- 2026-11-13 · tester · Ready for test → In test · testing started
+- 2026-11-13 · tester · In test → Passed · report 1, all checks and criteria verified, no failures
+- 2026-11-13 · finisher · Passed → Done · report 1 (commit cb54a72) Passed; CHANGELOG updated, documentation complete
+
+### KB-035 · Stabilise the flaky members and move-cards E2E tests
+
+- **MVP phase:** Quality and delivery
+- **Priority:** Medium
+- **Depends on:** KB-009, KB-015
+- **Estimate:** S
+
+**Goal:** Remove two known E2E flakes before more two-browser tests are added. A flake that passes on retry hides real regressions and makes every tester's G1 check less reliable.
+
+**Acceptance criteria:**
+- [ ] `e2e/members.spec.ts` ("the last owner cannot step down…", currently line 108): the `getByText(/at least one owner/)` assertion is scoped so it matches only the form or row error, and not the assertive live region that shows the same text. Use a role or `aria-describedby`-based locator, or a locator inside the members region. If the test wants to check the announcement, it asserts it separately through `getByTestId('live-assertive')`.
+- [ ] `e2e/move-cards.spec.ts` ("Space on the card itself picks it up and ArrowDown reorders in the column", currently line 105): the root cause is found and written in the development entry. Planner hypothesis to check first: the test reloads right after the optimistic reorder, before `POST /api/cards/:id/move` has answered, so the reload can show the old order. A second candidate is the next-tick attachment of the dnd-kit key listeners after pick-up. The fix waits on an observable signal (the move response, e.g. `page.waitForResponse`, or a state that only appears after the server confirms), never a fixed sleep.
+- [ ] `e2e/members.spec.ts` (the revoked-invite-link test, line 98 at commit acab99f; flaky in the KB-018 test run and passed on retry): the root cause is found and written in the development entry, and fixed the same way (an observable signal, never a fixed sleep). Candidate to check first: the revoke request is still in flight when the second context opens the link.
+- [ ] Every other spec in `e2e/` is checked for the same two patterns: a reload or navigation right after an optimistic assertion without waiting for the server, and an unscoped `getByText` that can also match a live region. Each place found is fixed and listed in the development entry. This includes the reload in the keyboard-move test of `move-cards.spec.ts`.
+- [ ] If the root cause is an application bug and not a test bug, it is fixed in the application with a unit test that reproduces it.
+- [ ] `pnpm test:e2e -- e2e/members.spec.ts e2e/move-cards.spec.ts --repeat-each=20 --retries=0` passes with zero failures; the command and its result are recorded in the development entry. The full `pnpm test:e2e` also passes.
+- [ ] Common criteria: G1.
+
+**Required tests:**
+- Unit: only if an application bug is found (see above).
+- API: n/a.
+- E2E: the two specs above (three tests), repeated 20 times with retries disabled.
+- Accessibility: the scoped locators keep asserting the same user-visible error and announcement text.
+
+**Out of scope:** the full journey suite and its flakiness check (KB-029), Playwright configuration changes beyond what the fix needs, Firefox/WebKit.
+
+**History:**
+- 2026-11-06 · planner · created as Proposed · follow-up from the KB-012 and KB-015 development notes, the KB-012 and KB-016 test reports and the daily log of 2026-11-05
+- 2026-11-10 · planner · spec revised: added the revoked-invite flake (`members.spec.ts:98`) from the KB-018 test report 1; estimate stays S · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
+
+### KB-036 · Card actions menu on the board tile (D9)
+
+- **MVP phase:** Board
+- **Priority:** Low
+- **Depends on:** KB-015; D9 answered with option B (approve this task only then; under option A it is rejected)
+- **Estimate:** S
+
+**Goal:** Let keyboard and pointer users move a card from the board without opening its dialog or dragging, through a per-card actions menu. This is option B of D9.
+
+**Acceptance criteria:**
+- [ ] Each tile has a menu button with the accessible name "Actions for card KB-n" (icon-only, U4), placed after the move handle in Tab order. Its menu has "Open" and "Move to…". Viewers do not see "Move to…" (U7).
+- [ ] "Move to…" opens a small dialog with the same column select and Top/Bottom choice as the card dialog. It reuses the KB-015 form component and `useMoveCard` (optimistic, with rollback, same announcements); no second implementation.
+- [ ] Enter on the tile link still opens the card dialog, and Space/handle pick-up is unchanged (D9).
+- [ ] The menu follows the KB-011 column-menu pattern: opens with Enter, Space or ArrowDown; arrows move between items; Escape closes it and returns focus to the button. After a move, focus goes to the moved card's tile.
+- [ ] Common criteria: G1, U1, U3–U7, U9, U10.
+
+**Required tests:**
+- Unit: the menu hides "Move to…" for viewers; the dialog submits the same request body as the card-dialog form.
+- API: n/a (uses `POST /api/cards/:id/move`).
+- E2E: keyboard only: Tab to "Actions for card MV-2", Enter, choose "Move to…", select Done and Top, confirm → the tile is in Done after reload, and focus is on it; axe on the board with the menu open.
+- Accessibility: the key sequence above; the move is announced as in KB-015; Escape returns focus to the menu button.
+
+**Out of scope:** other menu actions (delete, assign), multi-select, changes to drag and drop.
+
+**History:**
+- 2026-11-06 · planner · created as Proposed · from the KB-015 developer and tester notes; depends on João's answer to D9 (recommendation: option A, which rejects this task)
+- 2026-11-13 · planner · Proposed → Rejected · rejected by João (approvals.md, 2026-11-13): "Not needed with D9 = A"; specification kept for the record
+
+### KB-037 · Keep unsaved collaborative edits when the final flush fails
+
+- **MVP phase:** Real time
+- **Priority:** Medium
+- **Depends on:** KB-017
+- **Estimate:** M
+- **ADR required:** amend `docs/adr/0004-real-time-architecture.md` section 9
+
+**Goal:** A database failure while a room is unloaded or the server shuts down must not lose collaborative edits silently. Today, in `apps/api/src/modules/realtime/persistence.ts`, `store()` re-throws when the final `appendUpdate` fails. `RoomManager.leave()` (`rooms.ts`) swallows the error and drops the room, and the doc's `destroy` handler clears the retry timer. The batch of the last window (up to 500 ms of edits, or more if earlier retries were failing) is lost once no client holds it. This breaks R7.
+
+**Acceptance criteria:**
+- [ ] When the last client leaves and appending the pending updates fails, the room is **not** dropped. The `Y.Doc` and its pending batch stay in memory, and the write is retried with backoff (start at 1 s, double each time, cap at 30 s). After a successful write, compaction runs and the room is dropped as before.
+- [ ] A client that joins a room whose store is being retried gets the in-memory document (with the unsaved edits), not a fresh load from PostgreSQL. The room then behaves as a live room: the pending batch is written by the normal batching path, and the room is unloaded again when the last client leaves.
+- [ ] The KB-019 description projection (`apps/api/src/modules/realtime/description.ts`, which wraps this persistence) follows the same rule. If writing `Card.description` fails on unload or shutdown, the room is retained and the projection is retried with the same backoff, even when the Yjs append succeeded. Otherwise REST reads would keep the old text until someone edits the description again. A card deleted meanwhile ends the retry (nothing to project).
+- [ ] A failure in compaction alone, after the append succeeded, does not keep the room: the updates are already in `y_document_updates`. It is logged, and the next load merges the rows as usual.
+- [ ] Each failed attempt logs an error with the document name and attempt number (never the content). A room retained for more than 5 minutes logs one warning, `collaborative document retained after failed stores`, with the document name.
+- [ ] Graceful shutdown (KB-017): flushing and storing are retried within a shutdown deadline (default 10 s; set through a `PersistenceOptions`/shutdown option in tests, not an environment variable). If every document is stored in time, the process exits with code 0 as before. If not, the process logs an error naming each document whose edits could not be saved and exits with code 1. The documented SIGTERM behaviour changes only in this failure case.
+- [ ] No retry loop keeps the process alive: timers stay `unref()`ed, and the retained rooms are listed by a test-visible accessor (e.g. `RoomManager.retainedRooms()`), so tests can assert on them without reaching into private state.
+- [ ] ADR 0004 section 9 is amended (not rewritten): failure semantics of unload and shutdown, the backoff, the memory implication of retained rooms, and the exit code 1 on an unsaved shutdown.
+- [ ] Common criteria: G1, G4, G7, G8, R7.
+
+**Required tests:**
+- Unit (fake `DocumentStore` and fake timers): the final append fails twice and then succeeds → the room and doc are not destroyed in between, the third attempt writes the merged batch, compaction runs, then the room is dropped; the backoff follows 1 s, 2 s, 4 s … capped at 30 s; a compaction failure after a successful append drops the room; the 5-minute retention warning is logged once; a projection that fails once on unload is retried and then `Card.description` equals the `Y.Text`; a projection retry for a card deleted meanwhile stops and drops the room.
+- API (integration with real `ws` clients and a store wrapper that fails on demand over the real PostgreSQL store): a client edits a description and disconnects while appends fail → a second client joins during the retries and sees the edit; then the store recovers → after the room is unloaded and the app is rebuilt on the same database, a new client gets the edit. Shutdown with a store that never recovers → the shutdown function resolves to exit code 1 within the deadline and logs the document name; with a store that recovers inside the deadline → exit code 0 and the edit is in the database.
+- E2E: n/a.
+- Accessibility: n/a.
+
+**Out of scope:** persisting pending edits anywhere other than PostgreSQL (local disk spool), client-side handling (KB-021), a health signal for retained rooms (`/health/ready` already reports the database), purging documents of deleted cards.
+
+**History:**
+- 2026-11-09 · planner · created as Proposed · follow-up from the KB-017 test report 1 observation, confirmed by reading `persistence.ts` (`store()`, the doc `destroy` handler) and `rooms.ts` (`leave()`, `drop()`); added as a KB-031 dependency so it is fixed before the first deploy
+- 2026-11-10 · planner · spec revised after KB-019 (Done): its done record repeats the lost-last-window risk, and KB-019 added a second write on unload and shutdown (the projection into `Card.description`). Both writes are now covered by the retain-and-retry rule; estimate stays M · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
+
+### KB-038 · Unassign a member's cards when they are demoted to viewer (D10)
+
+- **MVP phase:** Authentication and workspaces
+- **Priority:** Medium
+- **Depends on:** KB-009, KB-013 (D10 answered with option A on 2026-11-13)
+- **Estimate:** S
+
+**Goal:** Keep the invariant "a card's assignee is always an owner or member of the card's workspace". A role change to viewer unassigns that person's cards, as removal and leaving already do (KB-013).
+
+**Acceptance criteria:**
+- [ ] `PATCH /api/workspaces/:wid/members/:userId` with `{ role: "viewer" }` for a current owner or member unassigns every non-deleted card of that workspace assigned to them. This happens in the same transaction as the role change, with the boards locked in the same order as the removal path. Each card gets `version` + 1 and an `assignee_changed { from: userId, to: null }` event, with the owner who made the change as actor (G5).
+- [ ] The removal/leave path and this path use one shared unassign helper in the members service (no second implementation). The KB-018 board events (`card_updated` per unassigned card, published after the commit) are emitted for both paths in the same way, and a refused or rolled-back demotion publishes nothing (R6).
+- [ ] Other role changes (member → owner, owner → member, viewer → member or owner) and a no-op change (viewer → viewer) unassign nothing and write no card events.
+- [ ] A refused change (`409 LAST_OWNER`, `403 FORBIDDEN`, `404 NOT_FOUND`) leaves every assignment and `version` untouched. Cards in other workspaces are never touched.
+- [ ] UI (Members page): choosing "Viewer" for an owner or member asks for confirmation: "<name> will become a viewer and their cards in this workspace will be unassigned." Cancel restores the previous value in the select and returns focus to it. After the change, the board and card queries of that workspace are invalidated, and the result is announced politely.
+- [ ] `docs/api.md` documents the side effect on the members endpoint, and `CHANGELOG.md` has an entry.
+- [ ] Common criteria: G1, G4, G5, G8, A1, A4, A5, A7, U1, U3–U7, U9, R6.
+
+**Required tests:**
+- Unit: n/a, unless the developer extracts pure logic.
+- API: demoting a member with two assigned cards (one deleted) → `200`, only the live card is unassigned with `version` + 1 and one event with the owner as actor; demoting an owner (with another owner left) unassigns the same way; promoting a viewer and member → owner unassign nothing; viewer → viewer writes nothing; last-owner demotion `409` keeps the assignment; a member (not owner) trying the change → `403` and nothing changes; cards assigned to the same person in another workspace keep their assignee; an injected failure after the role update leaves both the role and the assignments unchanged; a board-room `ws` client receives one `card_updated` per unassigned card after a demotion, and nothing after a `409` or a rollback.
+- E2E: an owner demotes a member who has an assigned card → confirmation → the board tile no longer shows the assignee after navigating to the board; cancelling the confirmation keeps the role; axe on the Members page with the confirmation open.
+- Accessibility: the confirmation is reachable and operable with the keyboard alone; Escape cancels and returns focus to the role select; the result is announced.
+
+**Out of scope:** repairing assignments already held by viewers in existing local databases (nothing is deployed yet; local databases can be reset), option B of D10 (keep the assignment and show "(viewer)"), notifications to the demoted person.
+
+**History:**
+- 2026-11-09 · planner · created as Proposed · follow-up from the KB-013 developer, tester and finisher notes; approve only together with `Answer | D10 | A` (recommended)
+- 2026-11-10 · planner · spec revised after KB-018 (Done): board events now exist, so the demotion path must publish them like the removal path (criterion, test and R6 added); estimate stays S · stays Proposed
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13) together with `Answer | D10 | A`; the dependency line now records the answer; KB-029 now depends on this task
+
+### KB-039 · Card and column tombstones in the live board cache
+
+- **MVP phase:** Real time
+- **Priority:** Medium
+- **Depends on:** KB-018
+- **Estimate:** S
+
+**Goal:** A card or column deleted on the server never comes back on a client because of a late event or a refetch that started before the deletion ("delete wins", ADR 0001). Today the cache reducers in `apps/web/src/features/board/board-events.ts` do not remember deletions. A `card_updated` or `card_moved` that arrives after `card_deleted` re-adds the card until the next refetch. Column events have `version: null` and are always applied, so the same happens to columns. The same happens when a board refetch that started before the deletion resolves after it. This was found in the KB-018 development note, test report 1 and done record, and becomes more likely once KB-021 adds reconnects and offline replay.
+
+**Acceptance criteria:**
+- [ ] `useBoardEvents` keeps a tombstone set per board page for card ids and column ids. An id is added when a `card_deleted` or `column_deleted` event arrives, and when this tab's own `DELETE` succeeds (204). The set is bounded (the 1,000 most recent ids; deleted cards and columns cannot be restored in v1.0).
+- [ ] Events for a tombstoned id (`card_created`, `card_updated`, `card_moved`, `column_created`, `column_updated`) are ignored, and the reducer returns the same object (no re-render). The KB-018 version filter and own-echo suppression are unchanged.
+- [ ] Board data written to the cache by a refetch is filtered: tombstoned cards and columns are removed before they reach the cache, so a refetch that started before the deletion cannot bring them back. The open card query for a tombstoned card keeps the KB-018 "This card was deleted by <name>" state instead of loading the card again.
+- [ ] A `404` from a card read or mutation for a card that is in the board cache adds the card to the tombstones and removes its tile. The existing U6 rollback message is announced; no second message is added.
+- [ ] The reducers stay pure: the tombstone set is passed in, not module state, so they stay unit-testable.
+- [ ] Common criteria: G1, G8, U5, U6, R6.
+
+**Required tests:**
+- Unit: `card_deleted` then `card_updated`, `card_moved` or `card_created` with the same id → the card is absent and the same object is returned; the same for `column_deleted` then `column_updated`; board data containing a tombstoned card or column is filtered; the bound drops the oldest id; ids not in the set are unaffected.
+- Web (integration, fake WebSocket as in `board-live.test.tsx`): a `card_deleted` event, then a delayed board refetch response that still contains the card → the tile does not reappear; a late `card_updated` after the delete → no tile; a move that gets `404` → the tile is removed and the failure is announced once.
+- API: n/a (client-only change).
+- E2E: n/a. The race cannot be reproduced deterministically in a browser; the integration tests cover it.
+- Accessibility: no announcement for ignored events; focus behaviour of the KB-018 deleted-card dialog unchanged.
+
+**Out of scope:** server-side tombstones or event sequence numbers with replay, restoring deleted cards, column versioning, the offline replay queue (KB-021).
+
+**History:**
+- 2026-11-10 · planner · created as Proposed · follow-up from the KB-018 development note ("no tombstone"), test report 1 observations and done record lessons; columns included because their events are never filtered by version
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
+
+### KB-040 · Enforce the description length limit in the shared document
+
+- **MVP phase:** Real time
+- **Priority:** Medium
+- **Depends on:** KB-019
+- **Estimate:** M
+- **ADR required:** amend `docs/adr/0004-real-time-architecture.md` section 12
+
+**Goal:** Make the 20,000-character limit hold in the live document, not only in the stored copy. Today the textarea stops input at 20,000, but two concurrent merges can go past it. Any client with a member session that bypasses the textarea can also grow the `Y.Text` without bound (each message is only limited to 1 MB, KB-016). The projection then cuts the copy in `Card.description`, so what people see and what REST returns differ silently. This breaks R4 ("converge … in the database") and leaves the document size unbounded. Found in the KB-019 development note, test report 1 and done record.
+
+**Acceptance criteria:**
+- [ ] After the server applies a member's update in a `card:<id>:description` room, it checks the length of the description `Y.Text`. If it is above 20,000, the server deletes the excess from the end in one transaction with a server origin. That transaction is broadcast to every client in the room and persisted like any other update (KB-017), so all clients, the stored document and `Card.description` end up identical.
+- [ ] The trim is deterministic and idempotent: nothing happens at ≤ 20,000 characters, and the trim does not run again on its own update. It does not run for viewer updates, which are already discarded (R3). It writes no activity event of its own; KB-019 coalescing is unchanged.
+- [ ] The projection cut from KB-019 stays as a backstop. If it ever has to cut, it logs a warning with the document name and length (never the content), because that means the trim did not run.
+- [ ] Editor: from 19,000 characters a visible counter "N characters left" appears, linked to the editor with `aria-describedby` (not a live region). At the limit the text "Description limit reached (20,000 characters)" is visible. When a server trim removes text that this client inserted, it is announced once, politely: "The description reached the 20,000 character limit; the end was removed."
+- [ ] Shared constant: the limit is read from one constant in `packages/shared`, used by the server trim, the projection backstop, the textarea `maxLength` and the counter.
+- [ ] ADR 0004 section 12 is amended (not rewritten). It explains why the server trims the end: this converges, while dropping an update would leave the sender diverged. It records the trade-off that the trimmed text may belong to someone else, and the backstop.
+- [ ] Common criteria: G1, G7, G8, R1, R3, R4, R7, U4, U5.
+
+**Required tests:**
+- Unit: pure trim planner (`excessToTrim(length, limit)`: below, at and above the limit); counter text thresholds (18,999, 19,000, 20,000).
+- API (integration, real `ws` clients): starting from an empty description, two clients each insert 15,000 characters concurrently → after sync both documents and `Card.description` have exactly 20,000 identical characters, and there is no backstop warning. A raw client sends one update inserting 50,000 characters → every client sees 20,000, and after the room unloads and the app is rebuilt on the same database a new client gets 20,000. A text of exactly 20,000 → no trim. A viewer's oversized update → discarded, no trim.
+- Web: the counter appears at 19,000 and is linked with `aria-describedby`; a remote trim of locally inserted text is announced once; a remote trim that touches only other people's text is not announced.
+- E2E: n/a (covered by the integration tests; the textarea already stops input at the limit).
+- Accessibility: counter and limit message are visible text; one polite announcement per trim that affects the user; nothing announced while typing below the limit.
+
+**Out of scope:** limits on other shared types inside the document, per-user quotas, rejecting updates on the server, the 5 MB document warning (KB-017, unchanged).
+
+**History:**
+- 2026-11-10 · planner · created as Proposed · follow-up from the KB-019 development note, test report 1 observations and done record lessons (concurrent merges can exceed 20,000 characters; the projection cuts the copy silently)
+- 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")

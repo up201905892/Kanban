@@ -107,6 +107,96 @@ Entry template:
 - **Documentation:** `docs/api.md` (invite and member endpoints); ADR 0003 item 9; no new environment variables (`WEB_ORIGIN` already in `.env.example`)
 - **Lessons:** the loser of a concurrent mutual demotion gets 403 instead of 409 (invariant holds). Closing live sockets on removal stays with KB-016. `prisma migrate reset` was not run (Prisma guard); CI applies migrations to an empty database. No TODO left; no secret found in the task's changes.
 
+### KB-011 · Board and configurable columns — done on 2026-11-05
+
+- **Approving test report:** Report 1 (2026-11-05), commit 60565ef (later commits are the development record and the test report only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** every project has a board with the columns "To do", "In progress" and "Done"; owners and members can add, rename, reorder (also by keyboard), delete columns and choose the Done column; viewers can only read.
+- **CHANGELOG:** "Added: Every project now has a board with the columns "To do", "In progress" and "Done"; owners and members can add, rename, reorder (also from the keyboard), delete columns and choose which one counts as "Done", while viewers can only look (KB-011)."
+- **Documentation:** `docs/api.md` (board and column endpoints); ADR 0001 amended for D5 (hybrid), section 7 now Accepted; no new environment variables
+- **Lessons:** the PATCH move format (`afterColumnId`/`beforeColumnId`) is the one KB-015 will reuse. The delete dialog says there are no cards yet; KB-012 must revise deletion rules and wording. `prisma migrate reset` and a fresh database were not run (sandbox/Prisma guard); CI applies migrations to an empty database. No TODO found in source. The finisher's secret-pattern search was denied by the sandbox; the check rests on the developer and tester records (no new dependencies, no new environment variables).
+
+### KB-012 · Cards: create, view, edit and delete — done on 2026-11-05
+
+- **Approving test report:** Report 1 (2026-11-05), commit 512a5e9 (later commits are the development record and the test report only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** boards now hold cards: owners and members add, open (by deep link), edit (title and Markdown description) and delete cards, viewers read them; deleting a column with cards asks where to move them; every card change is recorded as an activity event.
+- **CHANGELOG:** "Added: Boards now hold cards: owners and members can add cards at the bottom of a column (several in a row with just the keyboard), open a card at its own link, edit its title and its Markdown description (with a preview) and delete it after confirming; viewers can read cards. Every change to a card is recorded for the history to come (KB-012)." and "Changed: Deleting a column that still has cards now asks where the cards should go and moves them to the end of that column instead of losing them (KB-012)."
+- **Documentation:** `docs/api.md` (card endpoints and `moveCardsTo` on column delete); no new environment variables; no ADR requested by the task
+- **Lessons:** the board response has a flat `cards` list instead of nesting per column. Deleting a column cascades to its earlier soft-deleted cards and their events, so that history is lost (flag for KB-024). The `members.spec.ts` "at least one owner" locator is flaky and should be scoped. Web bundle is about 620 kB (candidate for KB-028). `prisma migrate reset` was not run (sandbox); CI applies migrations to an empty database. No TODO found in the task's code. The finisher's secret-pattern search was denied by the sandbox (`This command requires approval`); the check rests on the developer and tester records (one new dependency, `react-markdown`; no new environment variables). Milestone "Board" not yet reached (KB-013, KB-015 are Planned, KB-014 is Proposed).
+
+### KB-015 · Drag and drop and keyboard moving of cards — done on 2026-11-06
+
+- **Approving test report:** Report 1 (2026-11-06), commit 4cf8b44 (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** cards can be moved between columns and reordered by mouse or entirely by keyboard (Space to pick up, arrows, Space to drop, Escape to cancel) with screen-reader announcements; the card dialog has a "Move to..." option; viewers cannot move cards; a refused move is rolled back.
+- **CHANGELOG:** "Added: Cards can now be moved between columns and reordered by dragging with the mouse or entirely from the keyboard (Space to pick up, arrow keys to move, Space to drop, Escape to cancel), with spoken announcements for screen readers; the card dialog also has a "Move to..." option for choosing a column and the top or bottom. Viewers cannot move cards, and a move the server refuses is undone (KB-015)."
+- **Documentation:** `docs/api.md` (`POST /api/cards/:id/move`); no new environment variables; no migration; no ADR requested (ADR 0001 section 3 implemented)
+- **Lessons:** "Move to..." lives in the card dialog (no per-card menu) and Enter on the card link still opens the card, so keyboard pick-up uses Space or the move handle; the planner may confirm both choices. Rapid arrow presses overwrite each other in the live region. Touch not tested on real devices. The create-card rebalance does not bump sibling `version` (out of scope). Three dnd-kit dependencies added. No TODO found in the task's code; no secret found (no new environment variables). Milestone "Board" not yet reached (KB-013 is Planned, KB-014 is Proposed).
+
+### KB-016 · WebSocket server with the y-websocket protocol and room authorization — done on 2026-11-06
+
+- **Approving test report:** Report 1 (2026-11-06), commit cc55adb (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** an authenticated WebSocket endpoint `/ws/:room` speaking the y-websocket protocol, with Origin and session-cookie checks, room authorization through the authz resolvers, one Yjs document per room, read-only viewers, heartbeat, a 1 MiB message limit and immediate socket closing when a member is removed or their role changes.
+- **CHANGELOG:** "Added: The server now has a live-connection channel that only signed-in members of a workspace can join; it keeps people's edits in sync, lets read-only viewers watch without changing anything, and disconnects people at once when they are removed from the workspace (KB-016)."
+- **Documentation:** `docs/api.md` (`GET /ws/:room`); ADR 0004 real-time architecture (Accepted); no new environment variables (the heartbeat interval is a code constant); no migration
+- **Lessons:** sockets are not closed on session expiry, logout, or deletion of a workspace, project, board or card, and a removal between authorization and room join is missed; the planner should consider a follow-up task. `move-cards.spec.ts:105` (KB-015) was flaky once in E2E. New dependencies in apps/api: `@fastify/websocket`, `ws`, `yjs`, `y-protocols`, `lib0`. No TODO found in the task's code; no secret found (no new environment variables). Milestone "Real time" not yet reached (KB-017 and others not Done).
+
+### KB-013 · Card fields: assignee, priority and estimate — done on 2026-11-09
+
+- **Approving test report:** Report 1 (2026-11-09), commit 13fd332 (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** cards carry an assignee (workspace owner or member), a priority (none to urgent) and an estimate (0 to 100 story points); tiles show initials, priority as icon plus text and the estimate; the card dialog edits them with validation; removing a member or leaving unassigns their cards in the same transaction, with activity events.
+- **CHANGELOG:** "Added: Cards can now be assigned to a workspace owner or member, given a priority (none, low, medium, high or urgent) and an estimate in story points (0 to 100); these show on the card tile and are edited in the card dialog, and when someone is removed from a workspace or leaves it, their cards become unassigned (KB-013)."
+- **Documentation:** `docs/api.md` (`PATCH /api/cards/:id` fields, `INVALID_ASSIGNEE`, new activity events); migration `20261109195755_add_card_assignee_priority_estimate`; no new environment variables; no ADR requested
+- **Lessons:** the planner should decide whether demoting a member to viewer should unassign their cards (currently it does not). `prisma migrate reset` was blocked in the sandbox; CI applies migrations to an empty database. No new dependencies. No TODO found in the task's code; no secret found. Milestone "Board" not yet reached (KB-014 is Proposed).
+
+### KB-017 · Yjs document persistence in PostgreSQL — done on 2026-11-09
+
+- **Approving test report:** Report 1 (2026-11-09), commit ff62944 (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** collaborative documents are stored in PostgreSQL (snapshot plus batched updates, compacted after 100 updates or on unload) and survive restarts; on SIGTERM/SIGINT the server flushes pending batches, closes sockets with 1012 and exits with code 0; documents above 5 MB log a warning.
+- **CHANGELOG:** "Added: Collaborative documents are now saved in the database, so they are still there after the server restarts or is redeployed; when the server is told to stop it saves what is pending and asks connected clients to reconnect (KB-017)."
+- **Documentation:** `docs/api.md` (`GET /ws/:room` persistence and 1012 close); ADR 0004 section 9 (persistence design and backup implication); migration `20261109201533_add_yjs_document_persistence`; no new environment variables
+- **Lessons:** note for the planner (tester's follow-up): in `store()` in `apps/api/src/modules/realtime/persistence.ts`, if the final flush fails (database failure at unload), the awaited chain throws and the document is destroyed with the retry timer cleared, so edits of that last window could be lost; consider a follow-up task. Real SIGTERM delivery to a spawned `node dist/server.js` was not run (handler-level tests only). `prisma migrate reset` was not run (sandbox); CI applies migrations to an empty database. No TODO found in the task's code; no secret found. Milestone "Real time" not yet reached (KB-018, KB-019 are Planned; KB-020, KB-021 are Proposed).
+
+### KB-018 · Live board updates — done on 2026-11-10
+
+- **Approving test report:** Report 1 (2026-11-10), commit acab99f (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** after each committed mutation of columns, cards, card fields and moves (and card unassignment on member removal) the server publishes a `BoardEvent` to the `board:<id>` room, viewers included; the web client applies events to the TanStack Query cache with a version filter, skips its own echoes, and refetches on connect and reconnect; the open card dialog updates in place without overwriting a field being edited and reports remote deletion; a remote move of the focused card is announced and keeps focus.
+- **CHANGELOG:** "Added: Boards now update live: when someone else adds, edits, moves or deletes a card or changes a column, everyone looking at the board sees it without reloading, viewers included. An open card updates in place without overwriting a field you are typing in, says who deleted it if it disappears, and a card you are focused on that someone else moves is announced to screen readers while keeping your focus on it (KB-018)."
+- **Documentation:** `docs/api.md` (board events section); ADR 0004 updated; no migrations; no new environment variables; no new dependencies
+- **Lessons:** until KB-034 is done, respaced siblings on card creation and column deletion keep their `version`, so clients drop those `card_moved` events and may show a different order until the next refetch; the planner should consider KB-034 as a dependency. There is no tombstone, so a `card_updated` after `card_deleted` (reconnect race) would re-add the card until a refetch. `members.spec.ts:98` was flaky once in E2E. `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. Milestone "Real time" not yet reached (KB-019 is Planned; KB-020, KB-021 are Proposed).
+
+### KB-019 · Collaborative card description with Yjs — done on 2026-11-10
+
+- **Approving test report:** Report 1 (2026-11-10), commit 4edff2c (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** the card description is edited live by several people through a Yjs `Y.Text` in `card:<id>:description` with automatic saving and a "Saved" / "Syncing…" status; the server seeds the text once from `Card.description`, projects it back within about 1 s and on unload, and coalesces `description_changed` activity per person over 10 minutes; `PATCH /api/cards/:id` refuses `description`; viewers see the live text read-only.
+- **CHANGELOG:** "Added: Several people can now edit a card description at the same time without overwriting each other: changes appear live, saving is automatic (the status shows "Saved" or "Syncing…"), viewers see the text update but cannot type, and the description can no longer be changed through the card update request (KB-019)."
+- **Documentation:** `docs/api.md` (PATCH fields, `GET /ws/:room` description room); ADR 0004 section 12; no migrations; no new environment variables; new web dependencies `yjs`, `y-protocols`, `lib0`
+- **Lessons:** a textarea binding is used instead of CodeMirror (allowed equivalent, in the ADR); if the final flush fails at unload the last edit window could be lost; concurrent merges can exceed 20,000 characters in the live document (the projection is cut); real SIGTERM delivery is only covered by handler-level tests; `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. Milestone "Real time" not yet reached (KB-020, KB-021 are Proposed).
+
+### KB-034 · Bump card versions when positions are respaced — done on 2026-11-13
+
+- **Approving test report:** Report 1 (2026-11-13), commit cb54a72 (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** every card whose position is rewritten by a create rebalance or by a column delete with `moveCardsTo` now gets `version` incremented in the same transaction, so the sibling `card_moved` events carry newer versions and clients apply them instead of dropping them; responses are unchanged.
+- **CHANGELOG:** "Fixed: Cards that are pushed to a new position when someone adds a card or deletes a column now update live for everyone on the board, so all people see the same card order without reloading (KB-034)."
+- **Documentation:** ADR 0004 ordering note updated (gap closed); `docs/api.md` did not mention the risk; no migrations; no new environment variables
+- **Lessons:** the spec's "320-insert" loop does not force a rebalance on create; tests write keys directly into the database to trigger it. `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. No milestone reached (the Board phase still has other tasks that are not Done).
+
+### KB-020 · Presence: who is on the board and who is editing a card — done on 2026-11-13
+
+- **Approving test report:** Report 1 (2026-11-13), commit 1846f99 (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** awareness over the existing board and card-description sockets, with the server overwriting `userId`, `name` and `color` from the session and ignoring updates for other clients' IDs; the board shows up to 5 avatars plus "+N" with an accessible list; tiles show "Ana is editing", the card dialog shows "Also here", and the description shows remote carets with visible names drawn from Yjs relative positions in an `aria-hidden` overlay; presence is removed at once on a clean close.
+- **CHANGELOG:** "Added: The board now shows who is there: avatars with initials (up to five, then "+N") above the board, "Ana is editing" on a card while someone types in its description, a "Also here" line in the open card, and other people's cursors in the description with their names. People disappear as soon as they leave or lose their connection, and nobody can pretend to be someone else (KB-020)."
+- **Documentation:** `docs/api.md` (awareness state); ADR 0004 section 13; no migrations; no new environment variables; no new dependencies
+- **Lessons:** the 30 s removal after a lost connection relies on the heartbeat and library timeout and is not covered by a test; every tile re-renders on presence changes (relevant to KB-028); `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. Milestone "Real time" not yet reached (KB-021 and others are not Done).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->

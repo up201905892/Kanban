@@ -32,7 +32,13 @@ export const routes: RouteObject[] = [
           { path: 'workspaces/:id', element: <WorkspacePage /> },
           { path: 'workspaces/:id/settings', element: <WorkspaceSettingsPage /> },
           { path: 'workspaces/:id/members', element: <MembersPage /> },
-          { path: 'projects/:pid', element: <ProjectPage /> },
+          {
+            path: 'projects/:pid',
+            element: <ProjectPage />,
+            // The card dialog is part of ProjectPage; this child only contributes the address, so
+            // opening and closing a card never remounts the board.
+            children: [{ path: 'cards/:number', element: null }],
+          },
           { path: 'projects/:pid/settings', element: <ProjectSettingsPage /> },
         ],
       },

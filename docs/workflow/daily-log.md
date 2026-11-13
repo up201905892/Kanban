@@ -16,6 +16,104 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-13
+
+- **Decisions for João:** none. Your approvals of 2026-11-13 were applied (20 tasks `Planned`, KB-036 `Rejected`; D9, D10 and D11 answered as A).
+  - Note: `prisma migrate reset --force` is blocked by the environment guard in autonomous mode; the tester skipped it on both reports (no pending migrations were reported, and neither task has a migration).
+- **Done:** KB-034 (card versions bumped on respace), KB-020 (presence)
+- **Tested:** KB-034 (Passed), KB-020 (Passed)
+- **Developed:** KB-034, KB-020 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` to be published on npm)
+- **Rule violations found:** none
+- **Next step:** KB-021, KB-022, KB-033, KB-035, KB-037, KB-038, KB-039, KB-040 and KB-024 are the next `Planned` tasks (KB-014 is Low priority).
+
+## 2026-11-12
+
+- **Decisions for João:**
+  - **Still blocked: nothing is `Planned`, so there is nothing to develop, test or close.** No new lines in `approvals.md` since 2026-11-04. Suggested: `Approve | KB-034, KB-022, KB-037, KB-021, KB-024`.
+  - Then, in order: KB-039, KB-033, KB-035, KB-040, KB-020, KB-028, KB-014 (Low).
+  - Open questions, unchanged: D11 (`Answer | D11 | A`), D10 (`Answer | D10 | A` and `Approve | KB-038`), D9 (`Answer | D9 | A` and `Reject | KB-036`).
+- **Done:** none
+- **Tested:** none (nothing `Ready for test`)
+- **Developed:** none
+- **Proposals awaiting approval:** KB-014, KB-020 to KB-040 (no new proposals: the backlog already has more `Proposed` tasks than can be approved at once)
+- **Rule violations found:** none
+- **Next step:** wait for approvals; then develop KB-034 and the next approved task.
+
+## 2026-11-11
+
+- **Decisions for João:**
+  - **Still blocked: nothing is `Planned`, so there is nothing to develop.** No new lines in `approvals.md` since 2026-11-04. Suggested: `Approve | KB-034, KB-022, KB-037, KB-021, KB-024`.
+  - Then, in order: KB-039, KB-033, KB-035, KB-040, KB-020, KB-028, KB-014 (Low).
+  - Open questions, unchanged from 2026-11-10: D11 (`Answer | D11 | A`), D10 (`Answer | D10 | A` and `Approve | KB-038`), D9 (`Answer | D9 | A` and `Reject | KB-036`).
+- **Done:** none
+- **Tested:** none (nothing `Ready for test`)
+- **Developed:** none
+- **Proposals awaiting approval:** KB-014, KB-020 to KB-040 (no new proposals: the backlog already has more `Proposed` tasks than can be approved at once)
+- **Rule violations found:** none
+- **Next step:** wait for approvals; then develop KB-034 and the next approved task.
+
+## 2026-11-10
+
+- **Decisions for João:**
+  - **Nothing is `Planned` now, so the cycle has nothing to develop until you approve.** Suggested: `Approve | KB-034, KB-022, KB-037, KB-021, KB-024` (all dependencies Done; KB-034 fixes sibling order differing between clients).
+  - Then, in order: KB-039, KB-033, KB-035, KB-040, KB-020, KB-028, KB-014 (Low).
+  - **D11 (new):** deleting a column also hard-deletes its older soft-deleted cards and their history. Recommended A (accept and document for v1.0): `Answer | D11 | A`.
+  - **D10 (open):** recommended `Answer | D10 | A` and `Approve | KB-038`.
+  - **D9 (open):** recommended `Answer | D9 | A` and `Reject | KB-036`.
+  - The earlier `Change | KB-018 | add dependency KB-034` suggestion no longer applies (KB-018 is Done).
+  - FYI, sandbox: `prisma migrate reset --force` was blocked in autonomous mode again (testers confirmed no pending migrations instead).
+- **Done:** KB-018 (live board updates), KB-019 (collaborative card description with Yjs)
+- **Tested:** KB-018 (Passed; flaky `members.spec.ts:98` passed on retry), KB-019 (Passed)
+- **Developed:** KB-018, KB-019 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-014, KB-020 to KB-040 (new: KB-039 tombstones in the live board cache, KB-040 enforce the description length limit in the shared document; several existing proposals amended with lessons from KB-018/KB-019)
+- **Rule violations found:** none
+- **Next step:** wait for approvals; then develop KB-034 and the next approved task.
+
+## 2026-11-09
+
+- **Decisions for João:**
+  - **D10 (new):** should demoting a member to viewer unassign their cards? Recommended A (yes): `Answer | D10 | A` and `Approve | KB-038`. For B: `Answer | D10 | B` and `Change | KB-038 | option B`.
+  - **D9 (still open):** `Answer | D9 | A` and `Reject | KB-036` (recommended), or `Answer | D9 | B` and `Approve | KB-036`.
+  - **KB-018:** it can start without KB-034, but then cards whose position is respaced keep the same `version` and clients can disagree on order. Recommended: `Change | KB-018 | add dependency KB-034`.
+  - Suggested approval (dependencies Done): `Approve | KB-034, KB-037, KB-033, KB-035, KB-024`.
+  - FYI, sandbox: `prisma migrate reset` was blocked in autonomous mode (testers used `pnpm db:migrate` instead); a real SIGTERM against the server was not tested for KB-017.
+- **Done:** KB-013 (card fields), KB-017 (Yjs persistence in PostgreSQL)
+- **Tested:** KB-013 (Passed), KB-017 (Passed)
+- **Developed:** KB-013, KB-017 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-014, KB-020 to KB-038 (new: KB-037 keep unsaved collaborative edits when the final flush fails, KB-038 unassign cards on demotion to viewer; KB-031 now also depends on KB-037)
+- **Rule violations found:** none
+- **Next step:** KB-018 and KB-019 are `Planned` with dependencies Done and will be developed next.
+
+## 2026-11-06
+
+- **Decisions for João:**
+  - **D9:** which key picks up a card, and where "Move to…" lives. Recommended A (keep KB-015 as built): `Answer | D9 | A` and `Reject | KB-036`. For B: `Answer | D9 | B` and `Approve | KB-036`.
+  - **KB-018:** the planner recommends adding KB-034 as a dependency: `Change | KB-018 | add dependency KB-034`.
+  - Suggested approval: `Approve | KB-033 to KB-035` (dependencies are Done).
+  - Open question: deleting a column also deletes its older soft-deleted cards and their history. Must that history be kept (matters for KB-024)?
+  - FYI, sandbox: the finisher's secret-pattern scan was denied again (KB-015, KB-016), as were compound shell commands, `sed -i`, Python heredocs and `prisma migrate reset`. The planner had no shell, so I committed its changes.
+  - FYI, flaky E2E: `move-cards.spec.ts:105` (KB-015) and the `members.spec.ts` owner locator; KB-035 covers both.
+- **Done:** KB-015 (drag and drop and keyboard moving), KB-016 (WebSocket server with room authorization)
+- **Tested:** KB-015 (Passed), KB-016 (Passed)
+- **Developed:** KB-015, KB-016 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-014, KB-020 to KB-036 (new: KB-033 close sockets on logout/expiry/deletion, KB-034 bump card versions on respacing, KB-035 stabilise flaky E2E, KB-036 card actions menu, which waits for D9)
+- **Rule violations found:** none
+- **Next step:** KB-013 and KB-017 are `Planned` with dependencies Done and will be developed next.
+
+## 2026-11-05
+
+- **Decisions for João:**
+  - Suggested next approval: `KB-014, KB-020 to KB-022` (the planner's recommendation). KB-027 also needs approval, but it is blocked until `@up201905892/ui` is published on npm.
+  - FYI, sandbox: the finisher's secret-pattern scan was denied again (KB-011 and KB-012), as were compound shell commands, `sed -i`, `python3` heredocs and `prisma migrate reset`. The scans were replaced by the developer and tester records; both tasks added no env variables.
+  - FYI, follow-ups: deleting a column also deletes its older soft-deleted cards and their events (matters for KB-024); the web bundle is about 620 kB (candidate for KB-028); the `e2e/members.spec.ts` "at least one owner" locator is flaky and should be scoped.
+- **Done:** KB-011 (board and configurable columns), KB-012 (cards: create, view, edit, delete)
+- **Tested:** KB-011 (Passed), KB-012 (Passed)
+- **Developed:** KB-011 and KB-012 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-014, KB-020 to KB-032
+- **Rule violations found:** none. João's 2026-11-04 approvals (KB-011 to KB-013, KB-015 to KB-019) and the answers on KB-007 and KB-008 were applied (decisions D7 and D8).
+- **Next step:** KB-013, KB-015 and KB-016 are `Planned` with their dependencies Done; the daily limit of 2 tasks was reached, so they are next.
+
 ## 2026-11-04
 
 - **Decisions for João:**

@@ -1,9 +1,9 @@
 # 0001 · Ordering and conflict handling
 
-- **Status:** Accepted for ordering, concurrent-edit rules and idempotent creates. **Provisional** for the Yjs/PostgreSQL authority split (section 7): it depends on decision D5, which is still pending from João.
+- **Status:** Accepted for ordering, concurrent-edit rules, idempotent creates and the Yjs/PostgreSQL authority split (section 7). Section 7 was provisional until D5 was answered; João decided the hybrid option (approvals.md, 2026-10-28) and KB-011 marked it Accepted on 2026-11-05.
 - **Date:** 2026-10-28
 - **Task:** KB-010
-- **Technical decisions:** D1 (real time with Yjs), D2 (Fastify), D5 (scope of Yjs authority, pending) in `docs/workflow/01-planning.md`.
+- **Technical decisions:** D1 (real time with Yjs), D2 (Fastify), D5 (scope of Yjs authority, decided: hybrid) in `docs/workflow/01-planning.md`.
 
 ## Context
 
@@ -42,14 +42,16 @@ If a computed key is longer than `MAX_KEY_LENGTH` (50 characters), the server re
 
 Columns and cards accept a client-generated UUID as their id. Repeating a create with the same id returns `200` with the existing resource and never makes a duplicate, so retries after a network failure are safe. A create for an id that exists but belongs to another board or project is rejected (`409`/`403` as the route defines); the check is part of the route's authorization.
 
-### 7. Yjs / PostgreSQL authority split — PROVISIONAL, pending D5
+### 7. Yjs / PostgreSQL authority split — ACCEPTED (D5, hybrid, 2026-11-05)
 
-D5 has not been answered. **Assumption used here (the working assumption recommended in D5, not a decision):**
+**Decision (2026-11-05, KB-011):** João answered D5 on 2026-10-28 (approvals.md) and chose the hybrid option below, which is the assumption this section was originally written for. The original assumption text is kept as written:
+
+**Assumption used here (the working assumption recommended in D5, at the time not yet a decision):**
 
 - Collaborative text (card descriptions) and presence live in Yjs. The Yjs document is the authority for them; the server projects the text into PostgreSQL.
 - Structured data (columns, cards, fields, positions, sprints) is written through the REST API with server-side validation and authorization. PostgreSQL is the authority, and changes are broadcast to other clients as board events over the WebSocket.
 
-Sections 1-6 of this ADR are written for that assumption: the server computes keys in a transaction and the `version` column orders events. **If João chooses the alternative (the whole board in one Yjs document per board), sections 3, 5 and 6 must be revisited** and this ADR superseded or amended: concurrent moves would then be resolved by the CRDT (for example with a Yjs-friendly fractional position per item) and the server would have to validate and project updates after the fact. Section 1, 2 and 4 (the key utility) would stay useful in either case. The same pending status carries to the real-time ADR (KB-016) and to KB-012, KB-013, KB-014, KB-015, KB-018, KB-021, KB-022, KB-024.
+Sections 1-6 of this ADR are written for that assumption: the server computes keys in a transaction and the `version` column orders events. (Historical note, kept from the provisional text and no longer pending: **if João chooses the alternative (the whole board in one Yjs document per board), sections 3, 5 and 6 must be revisited** and this ADR superseded or amended: concurrent moves would then be resolved by the CRDT (for example with a Yjs-friendly fractional position per item) and the server would have to validate and project updates after the fact. Section 1, 2 and 4 (the key utility) would stay useful in either case. The same pending status carried to the real-time ADR (KB-016) and to KB-012, KB-013, KB-014, KB-015, KB-018, KB-021, KB-022, KB-024; with the decision made, they proceed on the hybrid split.)
 
 ## Alternatives considered
 

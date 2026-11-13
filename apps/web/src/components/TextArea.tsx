@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import type { TextareaHTMLAttributes } from 'react';
+import type { Ref, TextareaHTMLAttributes } from 'react';
 import { fieldIds } from './field';
 
 export interface TextAreaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'id'> {
@@ -7,6 +7,8 @@ export interface TextAreaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaE
   hint?: string;
   error?: string;
   id?: string;
+  /** Forwarded to the textarea (React 19 passes `ref` as a regular prop). */
+  ref?: Ref<HTMLTextAreaElement>;
 }
 
 export function TextArea({ label, hint, error, id, ...props }: TextAreaProps) {
