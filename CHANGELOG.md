@@ -31,3 +31,5 @@ All notable changes to this project are recorded here, in the format of [Keep a 
 - Deleting a column that still has cards now asks where the cards should go and moves them to the end of that column instead of losing them (KB-012).
 
 ### Fixed
+
+- Cards that are pushed to a new position when someone adds a card or deletes a column now update live for everyone on the board, so all people see the same card order without reloading (KB-034).

@@ -179,6 +179,15 @@ Entry template:
 - **Documentation:** `docs/api.md` (PATCH fields, `GET /ws/:room` description room); ADR 0004 section 12; no migrations; no new environment variables; new web dependencies `yjs`, `y-protocols`, `lib0`
 - **Lessons:** a textarea binding is used instead of CodeMirror (allowed equivalent, in the ADR); if the final flush fails at unload the last edit window could be lost; concurrent merges can exceed 20,000 characters in the live document (the projection is cut); real SIGTERM delivery is only covered by handler-level tests; `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. Milestone "Real time" not yet reached (KB-020, KB-021 are Proposed).
 
+### KB-034 · Bump card versions when positions are respaced — done on 2026-11-13
+
+- **Approving test report:** Report 1 (2026-11-13), commit cb54a72 (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** every card whose position is rewritten by a create rebalance or by a column delete with `moveCardsTo` now gets `version` incremented in the same transaction, so the sibling `card_moved` events carry newer versions and clients apply them instead of dropping them; responses are unchanged.
+- **CHANGELOG:** "Fixed: Cards that are pushed to a new position when someone adds a card or deletes a column now update live for everyone on the board, so all people see the same card order without reloading (KB-034)."
+- **Documentation:** ADR 0004 ordering note updated (gap closed); `docs/api.md` did not mention the risk; no migrations; no new environment variables
+- **Lessons:** the spec's "320-insert" loop does not force a rebalance on create; tests write keys directly into the database to trigger it. `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. No milestone reached (the Board phase still has other tasks that are not Done).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->

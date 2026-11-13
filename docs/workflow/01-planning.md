@@ -41,7 +41,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017, KB-037 | Planned |
 | KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Planned |
 | KB-033 | Close real-time sockets on logout, session expiry and resource deletion | Real time | Medium | KB-016 | Planned |
-| KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Passed |
+| KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Done |
 | KB-035 | Stabilise the flaky members and move-cards E2E tests | Quality and delivery | Medium | KB-009, KB-015 | Planned |
 | KB-036 | Card actions menu on the board tile (D9) | Board | Low | KB-015, D9 answered | Rejected |
 | KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Planned |
@@ -1423,6 +1423,7 @@ Task template (copy for each new task):
 - 2026-11-13 · developer · In development → Ready for test · commit cb54a72
 - 2026-11-13 · tester · Ready for test → In test · testing started
 - 2026-11-13 · tester · In test → Passed · report 1, all checks and criteria verified, no failures
+- 2026-11-13 · finisher · Passed → Done · report 1 (commit cb54a72) Passed; CHANGELOG updated, documentation complete
 
 ### KB-035 · Stabilise the flaky members and move-cards E2E tests
 
