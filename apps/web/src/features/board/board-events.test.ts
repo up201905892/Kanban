@@ -1,4 +1,4 @@
-import type { BoardEvent, BoardResponse, Card, CardSummary, Column } from '@kanban/shared';
+import type { BoardEvent, BoardResponse, Card, CardSummary, Column, Sprint } from '@kanban/shared';
 import { forgetMutationIds, isOwnMutation, newMutationId } from '../../lib/api/mutation-ids';
 import { parseBoardMessage } from '../../lib/realtime/board-socket';
 import { encodeBoardEvent } from '../../test-utils/websocket';
@@ -27,6 +27,7 @@ const card = (n: number, columnId = id(101), extra: Partial<CardSummary> = {}): 
   assigneeId: null,
   priority: 'none',
   estimate: null,
+  sprintId: null,
   ...extra,
 });
 
@@ -34,6 +35,7 @@ const board = (): BoardResponse => ({
   board: { id: BOARD, projectId: id(3) },
   columns: [column(1), column(2), column(3, { isDone: true })],
   cards: [card(1), card(2, id(102))],
+  sprints: [],
 });
 
 const base = { boardId: BOARD, actorId: ACTOR, at: '2026-11-10T10:00:00.000Z' };
@@ -219,6 +221,50 @@ describe('own mutation ids', () => {
     const first = newMutationId();
     for (let i = 0; i < 250; i += 1) newMutationId();
     expect(isOwnMutation(first)).toBe(false);
+  });
+});
+
+describe('applyBoardEvent: sprints', () => {
+  const sprint = (n: number, status: Sprint['status'], startDate = '2026-11-16'): Sprint => ({
+    id: id(300 + n),
+    projectId: id(3),
+    name: `Sprint ${n}`,
+    goal: '',
+    startDate,
+    endDate: '2026-12-31',
+    status,
+    committedPoints: null,
+    completedPoints: null,
+    closedAt: status === 'closed' ? '2026-12-31T00:00:00.000Z' : null,
+    createdAt: '2026-11-01T00:00:00.000Z',
+  });
+  const sprintEvent = (entity: Sprint): BoardEvent => ({
+    type: 'sprint_updated',
+    ...base,
+    entity,
+    version: null,
+  });
+
+  it('adds a new sprint in start-date order and replaces a known one', () => {
+    let b = applyBoardEvent(board(), sprintEvent(sprint(2, 'planned', '2026-12-01')));
+    b = applyBoardEvent(b, sprintEvent(sprint(1, 'planned')));
+    expect(b.sprints.map((s) => s.name)).toEqual(['Sprint 1', 'Sprint 2']);
+    b = applyBoardEvent(b, sprintEvent({ ...sprint(1, 'active'), committedPoints: 5 }));
+    expect(b.sprints).toHaveLength(2);
+    expect(b.sprints[0]).toMatchObject({ status: 'active', committedPoints: 5 });
+  });
+
+  it('drops a sprint that closed, and keeps the cards', () => {
+    const b = applyBoardEvent(board(), sprintEvent(sprint(1, 'active')));
+    const closed = applyBoardEvent(b, sprintEvent(sprint(1, 'closed')));
+    expect(closed.sprints).toEqual([]);
+    expect(closed.cards).toEqual(b.cards);
+  });
+
+  it('carries the sprint of a card event into the cache', () => {
+    const inSprint = card(1, id(101), { version: 2, sprintId: id(301) });
+    const b = applyBoardEvent(board(), cardEvent('card_updated', inSprint));
+    expect(b.cards.find((c) => c.id === inSprint.id)?.sprintId).toBe(id(301));
   });
 });
 

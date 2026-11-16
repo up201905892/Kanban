@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { cardSummarySchema } from './cards.js';
+import { sprintSchema } from './sprints.js';
 
 export const COLUMN_NAME_MIN_LENGTH = 1;
 export const COLUMN_NAME_MAX_LENGTH = 50;
@@ -43,6 +44,8 @@ export const boardResponseSchema = z.object({
   columns: z.array(columnSchema),
   /** Live (not deleted) cards, ordered by column and then (position, id). */
   cards: z.array(cardSummarySchema),
+  /** Planned and active sprints of the project (the sprints endpoint also lists closed ones). */
+  sprints: z.array(sprintSchema),
 });
 export type BoardResponse = z.infer<typeof boardResponseSchema>;
 

@@ -37,6 +37,7 @@ export function ProjectPage() {
       <h1>{project.name}</h1>
       <p>Key: {project.key}</p>
       <p>
+        <Link to={`/projects/${project.id}/backlog`}>Backlog and sprints</Link>{' '}
         <Link to={`/projects/${project.id}/settings`}>Project settings</Link>
       </p>
       {workspace ? (

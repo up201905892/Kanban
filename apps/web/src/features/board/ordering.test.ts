@@ -28,11 +28,13 @@ const card = (id: string, columnId: string, position: string, number: number): C
   assigneeId: null,
   priority: 'none',
   estimate: null,
+  sprintId: null,
 });
 const board = (): BoardResponse => ({
   board: { id: 'b', projectId: 'p' },
   columns: [col('a', 'a0'), col('b', 'a1'), col('c', 'a2', true)],
   cards: [card('x', 'a', 'a0', 1), card('y', 'a', 'a1', 2), card('z', 'b', 'a0', 3)],
+  sprints: [],
 });
 const ids = (columns: Column[]) => sortColumns(columns).map((c) => c.id);
 

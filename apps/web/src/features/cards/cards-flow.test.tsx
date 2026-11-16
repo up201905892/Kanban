@@ -24,6 +24,7 @@ interface Cd {
   assigneeId: string | null;
   priority: string;
   estimate: number | null;
+  sprintId: string | null;
   description: string;
 }
 
@@ -43,6 +44,7 @@ const card = (n: number, columnId = cid(1), extra: Partial<Cd> = {}): Cd => ({
   assigneeId: null,
   priority: 'none',
   estimate: null,
+  sprintId: null,
   description: '',
   ...extra,
 });
@@ -57,6 +59,7 @@ const summary = (c: Cd) => ({
   assigneeId: c.assigneeId,
   priority: c.priority,
   estimate: c.estimate,
+  sprintId: c.sprintId,
 });
 const full = (c: Cd) => ({
   ...summary(c),
@@ -97,6 +100,7 @@ function server(role: string, cards: Cd[]) {
         board: { id: BID, projectId: PID },
         columns,
         cards: cards.map(summary).sort(compareByPosition),
+        sprints: [],
       }),
     ...Object.fromEntries(
       [1, 2, 3, 4].map((n) => [

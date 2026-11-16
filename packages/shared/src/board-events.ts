@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { columnSchema } from './board.js';
 import { cardSummarySchema } from './cards.js';
+import { sprintSchema } from './sprints.js';
 
 /** Request header a client sets on every mutation so it can recognise the echo of its own change. */
 export const CLIENT_MUTATION_HEADER = 'x-client-mutation-id';
@@ -51,6 +52,13 @@ export const boardEventSchema = z.discriminatedUnion('type', [
   cardEvent('card_updated'),
   /** Column and/or position changed (also respaced siblings and cards of a deleted column). */
   cardEvent('card_moved'),
+  /** A sprint was created, edited, started or closed. Sprints are not versioned (always applied). */
+  z.strictObject({
+    type: z.literal('sprint_updated'),
+    ...baseFields,
+    entity: sprintSchema,
+    version: z.null(),
+  }),
   z.strictObject({
     type: z.literal('card_deleted'),
     ...baseFields,

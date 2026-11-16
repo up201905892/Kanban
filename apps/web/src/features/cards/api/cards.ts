@@ -59,6 +59,7 @@ export function useCreateCard(projectId: string) {
             assigneeId: null,
             priority: 'none' as const,
             estimate: null,
+            sprintId: null,
           },
         ],
       };

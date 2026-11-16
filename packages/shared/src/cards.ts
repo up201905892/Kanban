@@ -53,6 +53,8 @@ export const cardSummarySchema = z.object({
   priority: cardPrioritySchema,
   /** Story points, or null when not estimated. */
   estimate: z.number().int().nullable(),
+  /** The planned, active or (finished work) closed sprint of the card; null for the backlog. */
+  sprintId: z.uuid().nullable(),
 });
 export type CardSummary = z.infer<typeof cardSummarySchema>;
 
@@ -129,6 +131,8 @@ export const ACTIVITY_TYPES = [
   'assignee_changed',
   'priority_changed',
   'estimate_changed',
+  'sprint_added',
+  'sprint_removed',
 ] as const;
 
 /**
@@ -169,6 +173,19 @@ export const activityEventDataSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('estimate_changed'),
     data: z.object({ from: z.number().int().nullable(), to: z.number().int().nullable() }),
+  }),
+  z.object({
+    type: z.literal('sprint_added'),
+    data: z.object({ sprintId: z.uuid(), sprintName: z.string() }),
+  }),
+  z.object({
+    type: z.literal('sprint_removed'),
+    data: z.object({
+      sprintId: z.uuid(),
+      sprintName: z.string(),
+      /** Set when the system removed the card (KB-023 closes the sprint). */
+      reason: z.literal('sprint_closed').optional(),
+    }),
   }),
 ]);
 export type ActivityEventData = z.infer<typeof activityEventDataSchema>;

@@ -79,6 +79,8 @@ export const apiClient = {
     request<S>(path, { method: 'POST', body, ...(schema && { schema }) }),
   patch: <S extends ZodType | undefined>(path: string, body?: unknown, schema?: S) =>
     request<S>(path, { method: 'PATCH', body, ...(schema && { schema }) }),
+  put: <S extends ZodType | undefined>(path: string, body?: unknown, schema?: S) =>
+    request<S>(path, { method: 'PUT', body, ...(schema && { schema }) }),
   delete: <S extends ZodType | undefined>(path: string, schema?: S) =>
     request<S>(path, { method: 'DELETE', ...(schema && { schema }) }),
 };

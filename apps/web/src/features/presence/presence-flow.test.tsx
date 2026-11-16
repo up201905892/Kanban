@@ -26,6 +26,7 @@ const card = {
   assigneeId: null,
   priority: 'none',
   estimate: null,
+  sprintId: null,
 };
 
 function server() {
@@ -44,6 +45,7 @@ function server() {
         board: { id: BID, projectId: PID },
         columns: [{ id: COLUMN, boardId: BID, name: 'To do', position: 'a0', isDone: false }],
         cards: [card].sort(compareByPosition),
+        sprints: [],
       }),
     [`GET /api/cards/${CARD1}`]: () =>
       jsonResponse(200, {

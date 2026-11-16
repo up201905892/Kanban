@@ -1,4 +1,5 @@
 import type { BoardEvent, BoardResponse, Card, CardSummary, Column } from '@kanban/shared';
+import { sortSprints } from '../sprints/planning';
 
 const upsertColumn = (columns: Column[], column: Column): Column[] =>
   columns.some((c) => c.id === column.id)
@@ -43,6 +44,13 @@ export function applyBoardEvent(board: BoardResponse, event: BoardEvent): BoardR
       if (!cached || event.version <= cached.version) return board;
       return { ...board, cards: board.cards.filter((c) => c.id !== event.entity.id) };
     }
+    case 'sprint_updated': {
+      // The board only holds planned and active sprints; a closed one leaves it.
+      const others = board.sprints.filter((s) => s.id !== event.entity.id);
+      const sprints =
+        event.entity.status === 'closed' ? others : sortSprints([...others, event.entity]);
+      return { ...board, sprints };
+    }
   }
 }
 
@@ -54,6 +62,7 @@ const summaryFields = (card: CardSummary) => ({
   assigneeId: card.assigneeId,
   priority: card.priority,
   estimate: card.estimate,
+  sprintId: card.sprintId,
 });
 
 /**

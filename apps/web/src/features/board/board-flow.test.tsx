@@ -34,6 +34,7 @@ interface Cd {
   assigneeId: string | null;
   priority: string;
   estimate: number | null;
+  sprintId: string | null;
 }
 
 function server(role: string, columns: Col[] = initialColumns(), cards: Cd[] = []) {
@@ -59,6 +60,7 @@ function server(role: string, columns: Col[] = initialColumns(), cards: Cd[] = [
         board: { id: BID, projectId: PID },
         columns: [...columns].sort(compareByPosition),
         cards: [...cards].sort(compareByPosition),
+        sprints: [],
       }),
   };
   return { handlers, columns, cards };
@@ -348,6 +350,7 @@ describe('board page', () => {
       assigneeId: null,
       priority: 'none',
       estimate: null,
+      sprintId: null,
     });
     const cards = [card(1, cid(2), 'a0'), card(2, cid(2), 'a1'), card(3, cid(3), 'a0')];
     const { handlers, columns } = server('owner', initialColumns(), cards);
@@ -406,6 +409,7 @@ describe('board page', () => {
         assigneeId: null,
         priority: 'none',
         estimate: null,
+        sprintId: null,
       },
     ];
     const { handlers } = server('owner', initialColumns(), cards);

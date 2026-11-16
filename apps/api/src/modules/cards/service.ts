@@ -6,6 +6,7 @@ import {
   type CardSummary,
   type CreateCardRequest,
   type MoveCardRequest,
+  type SetCardSprintRequest,
   type UpdateCardRequest,
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
@@ -33,6 +34,7 @@ interface CardRow {
   assigneeId: string | null;
   priority: CardPriority;
   estimate: number | null;
+  sprintId: string | null;
   createdById: string;
   createdAt: Date;
   updatedAt: Date;
@@ -48,6 +50,7 @@ export const toCardSummary = (row: {
   assigneeId: string | null;
   priority: CardPriority;
   estimate: number | null;
+  sprintId: string | null;
 }): CardSummary => ({
   id: row.id,
   columnId: row.columnId,
@@ -58,6 +61,7 @@ export const toCardSummary = (row: {
   assigneeId: row.assigneeId,
   priority: row.priority,
   estimate: row.estimate,
+  sprintId: row.sprintId,
 });
 
 export const toCard = (row: CardRow): Card => ({
@@ -384,6 +388,83 @@ export async function moveCard(
     }
     events.push(...(await respacedEvents(tx, card.boardId, respaced, user.id, meta)));
     events.push(cardEvent('card_moved', card.boardId, toCardSummary(row), user.id, meta));
+    return toCard(row);
+  });
+  publishBoardEvents(events);
+  return result;
+}
+
+/**
+ * Puts a card in a planned or active sprint of its project, or back in the backlog (KB-022).
+ * Under the board lock so it cannot interleave with a sprint start or close. A sprint of another
+ * project (or one that does not exist: same answer, nothing leaks) is `400 INVALID_SPRINT`; a closed
+ * one, or a card that already finished in a closed sprint, is `409 SPRINT_CLOSED`.
+ */
+export async function setCardSprint(
+  prisma: PrismaClient,
+  user: { id: string },
+  id: string,
+  input: SetCardSprintRequest,
+  meta: MutationMeta = {},
+): Promise<Card> {
+  await authorize(prisma, user, { type: 'card', id }, 'card:edit');
+  const events: BoardEvent[] = [];
+  const result = await prisma.$transaction(async (tx) => {
+    const first = await tx.card.findFirst({
+      where: { id, deletedAt: null },
+      select: { boardId: true },
+    });
+    if (!first || !(await lockBoard(tx, first.boardId))) throw notFound();
+    const card = await tx.card.findFirst({ where: { id, deletedAt: null } });
+    if (!card) throw notFound();
+    if (card.sprintId === input.sprintId) return toCard(card);
+
+    const board = await tx.board.findUniqueOrThrow({
+      where: { id: card.boardId },
+      select: { projectId: true },
+    });
+    const current = card.sprintId
+      ? await tx.sprint.findUniqueOrThrow({ where: { id: card.sprintId } })
+      : null;
+    if (current?.status === 'closed') {
+      throw new AppError(
+        409,
+        ErrorCode.SPRINT_CLOSED,
+        'This card finished in a closed sprint and stays there',
+      );
+    }
+    let target = null;
+    if (input.sprintId) {
+      target = await tx.sprint.findUnique({ where: { id: input.sprintId } });
+      if (!target || target.projectId !== board.projectId) {
+        throw new AppError(
+          400,
+          ErrorCode.INVALID_SPRINT,
+          'The sprint must belong to the same project as the card',
+        );
+      }
+      if (target.status === 'closed') {
+        throw new AppError(409, ErrorCode.SPRINT_CLOSED, 'This sprint is closed');
+      }
+    }
+
+    const row = await tx.card.update({
+      where: { id },
+      data: { sprintId: input.sprintId, version: { increment: 1 } },
+    });
+    if (current) {
+      await recordActivity(tx, id, user.id, {
+        type: 'sprint_removed',
+        data: { sprintId: current.id, sprintName: current.name },
+      });
+    }
+    if (target) {
+      await recordActivity(tx, id, user.id, {
+        type: 'sprint_added',
+        data: { sprintId: target.id, sprintName: target.name },
+      });
+    }
+    events.push(cardEvent('card_updated', row.boardId, toCardSummary(row), user.id, meta));
     return toCard(row);
   });
   publishBoardEvents(events);

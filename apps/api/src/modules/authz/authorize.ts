@@ -12,9 +12,13 @@ export type ResourceRef =
   | { type: 'invite'; id: string }
   | { type: 'board'; id: string }
   | { type: 'column'; id: string }
-  | { type: 'card'; id: string };
+  | { type: 'card'; id: string }
+  | { type: 'sprint'; id: string };
 
-type Db = Pick<PrismaClient, 'membership' | 'project' | 'invite' | 'board' | 'column' | 'card'>;
+type Db = Pick<
+  PrismaClient,
+  'membership' | 'project' | 'invite' | 'board' | 'column' | 'card' | 'sprint'
+>;
 type Resolver<T extends ResourceRef['type']> = (
   db: Db,
   id: Extract<ResourceRef, { type: T }>['id'],
@@ -56,6 +60,14 @@ const RESOLVERS: { [T in ResourceRef['type']]: Resolver<T> } = {
         select: { board: { select: { project: { select: { workspaceId: true } } } } },
       })
     )?.board.project.workspaceId ?? null,
+  // A sprint resolves through its project.
+  sprint: async (db, id) =>
+    (
+      await db.sprint.findUnique({
+        where: { id },
+        select: { project: { select: { workspaceId: true } } },
+      })
+    )?.project.workspaceId ?? null,
 };
 
 export interface AuthzContext {

@@ -79,6 +79,7 @@ describe('cardSchema', () => {
       assigneeId: null,
       priority: 'none',
       estimate: null,
+      sprintId: null,
       description: '',
       createdById: id,
       createdAt: '2026-11-05T10:00:00.000Z',
@@ -153,6 +154,12 @@ describe('activityEventDataSchema', () => {
       { type: 'assignee_changed', data: { from: null, to: id } },
       { type: 'priority_changed', data: { from: 'none', to: 'urgent' } },
       { type: 'estimate_changed', data: { from: null, to: 5 } },
+      { type: 'sprint_added', data: { sprintId: id, sprintName: 'Sprint 1' } },
+      { type: 'sprint_removed', data: { sprintId: id, sprintName: 'Sprint 1' } },
+      {
+        type: 'sprint_removed',
+        data: { sprintId: id, sprintName: 'Sprint 1', reason: 'sprint_closed' },
+      },
     ]) {
       expect(activityEventDataSchema.safeParse(event).success).toBe(true);
     }

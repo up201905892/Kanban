@@ -19,6 +19,7 @@ import {
 import { authorize } from '../authz/index.js';
 import { recordActivity } from '../cards/activity.js';
 import { respacedEvents, toCardSummary } from '../cards/service.js';
+import { toSprint } from '../sprints/mapper.js';
 import { lockBoard, type Tx } from './lock.js';
 import { placeWithRebalance } from './position.js';
 
@@ -99,10 +100,15 @@ export async function getBoard(
     },
   });
   if (!board) throw notFound();
+  const sprints = await prisma.sprint.findMany({
+    where: { projectId, status: { in: ['planned', 'active'] } },
+    orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+  });
   return {
     board: { id: board.id, projectId: board.projectId },
     columns: board.columns.map(toColumn),
     cards: board.cards.map(toCardSummary),
+    sprints: sprints.map(toSprint),
   };
 }
 

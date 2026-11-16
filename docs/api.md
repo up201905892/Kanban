@@ -72,7 +72,7 @@ Owner only. No body. Response `204`; everything below the project is removed by 
 
 ### GET /api/projects/:pid/board
 
-Any role. Response `200 { board: { id, projectId }, columns, cards }`, columns ordered by `(position, id)` (code-unit order; the `position` column uses the `"C"` collation); `cards` is a flat list of the non-deleted cards as summaries `{ id, columnId, number, title, position, version }`, ordered by column and then `(position, id)` (no description: fetch `GET /api/cards/:id`). Every project has exactly one board, created with the project together with the columns "To do", "In progress" and "Done" (flagged). Errors: `400`, `401`, `404`.
+Any role. Response `200 { board: { id, projectId }, columns, cards, sprints }`, columns ordered by `(position, id)` (code-unit order; the `position` column uses the `"C"` collation); `sprints` are the project's planned and active sprints ordered by `(startDate, id)` (closed ones only come from the sprints list); `cards` is a flat list of the non-deleted cards as summaries `{ id, columnId, number, title, position, version, assigneeId, priority, estimate, sprintId }` (`sprintId` is `null` for the backlog), ordered by column and then `(position, id)` (no description: fetch `GET /api/cards/:id`). Every project has exactly one board, created with the project together with the columns "To do", "In progress" and "Done" (flagged). Errors: `400`, `401`, `404`.
 
 ### POST /api/boards/:bid/columns
 
@@ -101,6 +101,26 @@ Owner or member. Body with at least one of `title`, `assigneeId` (uuid or `null`
 ### POST /api/cards/:id/move
 
 Owner or member. Body `{ columnId, afterCardId?, beforeCardId? }` (`null` or missing means no neighbour on that side; with neither, the card goes to the end of the column). The destination column must belong to the same board and be visible to the caller (another board or workspace is `404`); a neighbour on another board is `404`. Inside one transaction under the board lock the server computes the key from the current neighbours (ADR 0001 section 3: a neighbour that vanished or moved elsewhere is stale and the remaining one is used), rebalances the column's keys when the key would outgrow 50 characters (siblings get a new `version`, the order is unchanged), increments the card's `version` and writes a `moved` event `{ fromColumnId, toColumnId }` only when the column changes. Response `200 { card }` with the final `position` and `version`. Errors: `400`, `401`, `403`, `404`.
+
+### PUT /api/cards/:id/sprint
+
+Owner or member. Body `{ sprintId }`: the id of a planned or active sprint of the card's project, or `null` to return the card to the backlog. In one transaction under the board lock the card's `version` is incremented and `sprint_removed` (`{ sprintId, sprintName }` of the old sprint) and/or `sprint_added` (`{ sprintId, sprintName }`) are written; moving between sprints writes both. Asking for the sprint the card already has changes nothing (no version, no event, no board event). A sprint of another project, of another workspace, or one that does not exist is `400 INVALID_SPRINT` (the same answer for all three, so nothing leaks); a closed sprint as the target, or a card that finished in a closed sprint (it stays there), is `409 SPRINT_CLOSED`. Publishes `card_updated`. Response `200 { card }`. Errors: `400`, `401`, `403`, `404`, `409`.
+
+### POST /api/projects/:pid/sprints
+
+Owner or member. Body `{ id?, name, goal?, startDate, endDate }`: `name` 1-80 characters, `goal` up to 500, dates are calendar dates `YYYY-MM-DD` (real dates only) and `endDate` must not be before `startDate` (`400 VALIDATION_ERROR`, also enforced by a database `CHECK`). `id` is an optional client UUID: repeating the same create returns `200` with the existing sprint (an id used by another project is `409 CONFLICT`). The sprint starts as `planned`. Response `201 { sprint }` with `{ id, projectId, name, goal, startDate, endDate, status, committedPoints, completedPoints, closedAt, createdAt }`. Publishes `sprint_updated`. Errors: `400`, `401`, `403`, `404`, `409`.
+
+### GET /api/projects/:pid/sprints
+
+Any role. Query `limit` (1-100, default 50), `cursor` (the `nextCursor` of the previous page; an invalid one is `400`) and `status` (comma-separated `planned`, `active`, `closed`; all when missing). Ordered by `(startDate, id)`. Response `200 { sprints, nextCursor }` (`nextCursor` is `null` on the last page). Errors: `400`, `401`, `404`.
+
+### PATCH /api/sprints/:id
+
+Owner or member. Body with at least one of `name`, `goal`, `startDate`, `endDate` (the merged dates must keep `endDate >= startDate`, otherwise `400`). A closed sprint cannot be changed: `409 SPRINT_CLOSED`. Publishes `sprint_updated`. Response `200 { sprint }`. Errors: `400`, `401`, `403`, `404`, `409`.
+
+### POST /api/sprints/:id/start
+
+Owner or member. No body. Only a `planned` sprint can start (otherwise `409 SPRINT_NOT_PLANNED`) and only one sprint per project can be active (`409 SPRINT_ALREADY_ACTIVE`, guaranteed by a partial unique index, so two parallel starts give exactly one `200`). In one transaction the sprint becomes `active`, `committedPoints` is set to the sum of the estimates of its live cards (cards without an estimate count as 0) and a `sprint_started` row is added to `sprint_events` with a snapshot `{ committedPoints, cards: [{ cardId, columnId, estimate }] }` for the burndown (KB-025). Publishes `sprint_updated`. Response `200 { sprint }`. Errors: `401`, `403`, `404`, `409`.
 
 ### DELETE /api/cards/:id
 
@@ -180,9 +200,10 @@ Schema: `boardEventSchema` in `packages/shared/src/board-events.ts`. After the t
 | `type` | `entity` | `version` | Published after |
 | --- | --- | --- | --- |
 | `card_created` | card summary | card version | `POST /api/columns/:cid/cards` (not for a repeated create) |
-| `card_updated` | card summary | card version | `PATCH /api/cards/:id` (title, assignee, priority, estimate); removing or leaving a workspace unassigns cards (actor = the remover) |
+| `card_updated` | card summary | card version | `PATCH /api/cards/:id` (title, assignee, priority, estimate), `PUT /api/cards/:id/sprint`; removing or leaving a workspace unassigns cards (actor = the remover) |
 | `card_moved` | card summary | card version | `POST /api/cards/:id/move`; siblings whose key was respaced; cards moved by deleting a column |
 | `card_deleted` | `{ id, columnId, number, title }` | version after the delete | `DELETE /api/cards/:id` |
+| `sprint_updated` | sprint | `null` (sprints are not versioned) | sprint create, edit and start; clients keep planned and active sprints and drop a closed one |
 | `column_created`, `column_updated` | column | `null` (columns are not versioned) | column create and update (also the siblings respaced and the old Done column) |
 | `column_deleted` | `{ id, name }` | `null` | `DELETE /api/columns/:id` (after the `card_moved` events of its cards) |
 

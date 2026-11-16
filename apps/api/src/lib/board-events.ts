@@ -5,6 +5,7 @@ import {
   type BoardEvent,
   type CardSummary,
   type Column,
+  type Sprint,
 } from '@kanban/shared';
 
 /** Who made a change and which client request it came from (the echo filter of that client). */
@@ -79,6 +80,20 @@ export function columnEvent(
   meta: MutationMeta,
 ): BoardEvent {
   return { type, ...common(column.boardId, actorId, meta), entity: column, version: null };
+}
+
+export function sprintEvent(
+  boardId: string,
+  sprint: Sprint,
+  actorId: string,
+  meta: MutationMeta,
+): BoardEvent {
+  return {
+    type: 'sprint_updated',
+    ...common(boardId, actorId, meta),
+    entity: sprint,
+    version: null,
+  };
 }
 
 export function columnDeletedEvent(

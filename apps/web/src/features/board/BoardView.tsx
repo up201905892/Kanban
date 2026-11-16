@@ -3,6 +3,7 @@ import type { FormEvent, KeyboardEvent } from 'react';
 import {
   cardReference,
   columnNameSchema,
+  daysRemainingLabel,
   moveNeighbours,
   type BoardResponse,
   type CardSummary,
@@ -38,6 +39,7 @@ import { AddCard, addCardButtonId } from '../cards/AddCard';
 import { CardDialog } from '../cards/CardDialog';
 import { useCreateCard, useDeleteCard, useMoveCard } from '../cards/api';
 import { useCurrentUser } from '../auth/api/auth';
+import { dateRangeLabel, localToday } from '../sprints/planning';
 import { useMembers } from '../members/api';
 import { ConnectionStatus } from '../connection/ConnectionStatus';
 import { isOffline, replayFailureMessage } from '../connection/messages';
@@ -346,6 +348,8 @@ export function BoardView({
   });
 
   const [deletedBy, setDeletedBy] = useState<{ number: number; name: string } | null>(null);
+  // "Active sprint only" (KB-022): null follows the default (on while a sprint is active).
+  const [sprintFilter, setSprintFilter] = useState<boolean | null>(null);
 
   // Other people's moves and deletions (KB-018): announced only where they matter to this user.
   const user = useCurrentUser().data ?? null;
@@ -516,7 +520,13 @@ export function BoardView({
     }
   }
 
-  const data = board.data;
+  const activeSprint = board.data.sprints.find((s) => s.status === 'active');
+  const filtering = activeSprint !== undefined && (sprintFilter ?? true);
+  // What the board shows (and drags over): only the active sprint's cards while the filter is on.
+  // The dialog, the column delete and the cache keep working with the whole board.
+  const data: BoardResponse = filtering
+    ? { ...board.data, cards: board.data.cards.filter((c) => c.sprintId === activeSprint.id) }
+    : board.data;
   const cardById = (id: string) => data.cards.find((c) => c.id === id);
   const label = (card: CardSummary) =>
     `Card ${cardReference(project.key, card.number)} '${card.title}'`;
@@ -711,6 +721,23 @@ export function BoardView({
           <ConnectionStatus />
           <PresenceList people={presence.people} />
         </div>
+        {activeSprint && (
+          <section className="sprint-banner" aria-label="Active sprint">
+            <p>
+              <strong>{activeSprint.name}</strong> ·{' '}
+              {dateRangeLabel(activeSprint.startDate, activeSprint.endDate)} ·{' '}
+              {daysRemainingLabel(activeSprint.startDate, activeSprint.endDate, localToday())}
+            </p>
+            <label>
+              <input
+                type="checkbox"
+                checked={filtering}
+                onChange={(e) => setSprintFilter(e.target.checked)}
+              />{' '}
+              Active sprint only
+            </label>
+          </section>
+        )}
         {columns.length === 0 && (
           <EmptyState
             title="No columns yet"

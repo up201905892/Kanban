@@ -1,6 +1,7 @@
 import { createBrowserRouter, createMemoryRouter } from 'react-router';
 import type { RouteObject } from 'react-router';
 import { RequireAuth } from './features/auth/RequireAuth';
+import { BacklogPage } from './routes/BacklogPage';
 import { HomePage } from './routes/HomePage';
 import { InvitePage } from './routes/InvitePage';
 import { LoginPage } from './routes/LoginPage';
@@ -39,6 +40,7 @@ export const routes: RouteObject[] = [
             // opening and closing a card never remounts the board.
             children: [{ path: 'cards/:number', element: null }],
           },
+          { path: 'projects/:pid/backlog', element: <BacklogPage /> },
           { path: 'projects/:pid/settings', element: <ProjectSettingsPage /> },
         ],
       },

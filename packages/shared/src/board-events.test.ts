@@ -13,6 +13,20 @@ const card = {
   assigneeId: null,
   priority: 'none',
   estimate: null,
+  sprintId: null,
+};
+const sprint = {
+  id: id(30),
+  projectId: id(3),
+  name: 'Sprint 1',
+  goal: '',
+  startDate: '2026-11-16',
+  endDate: '2026-11-27',
+  status: 'active',
+  committedPoints: 8,
+  completedPoints: null,
+  closedAt: null,
+  createdAt: '2026-11-10T10:00:00.000Z',
 };
 const column = { id: id(20), boardId: id(1), name: 'To do', position: 'a0', isDone: false };
 
@@ -25,6 +39,7 @@ describe('boardEventSchema', () => {
       { type: 'card_created', ...base, entity: card, version: 3 },
       { type: 'card_updated', ...base, entity: card, version: 3, clientMutationId: id(99) },
       { type: 'card_moved', ...base, entity: card, version: 3 },
+      { type: 'sprint_updated', ...base, entity: sprint, version: null },
       {
         type: 'card_deleted',
         ...base,

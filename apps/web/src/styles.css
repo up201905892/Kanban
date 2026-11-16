@@ -370,3 +370,52 @@ main,
   font-size: 0.7rem;
   white-space: nowrap;
 }
+
+/* Backlog and sprints (KB-022) */
+.backlog-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sprint-section {
+  margin-bottom: 1.5rem;
+}
+
+.backlog-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.backlog-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #ccc;
+}
+
+.add-to-sprint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.add-to-sprint .field {
+  margin-bottom: 0;
+}
+
+.sprint-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}

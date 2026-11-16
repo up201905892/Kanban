@@ -21,6 +21,7 @@ model User {
   cards        Card[]    @relation("CardCreator")
   assignedCards Card[]   @relation("CardAssignee")
   activity    ActivityEvent[]
+  sprintEvents SprintEvent[]
 
   @@map("users")
 }
@@ -88,6 +89,7 @@ model Project {
   createdAt      DateTime  @default(now()) @map("created_at")
   workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   board          Board?
+  sprints        Sprint[]
 
   @@unique([workspaceId, key])
   @@map("projects")
@@ -154,16 +156,69 @@ model Card {
   updatedAt   DateTime        @updatedAt @map("updated_at")
   /// Soft delete: set instead of removing the row, so history keeps its card.
   deletedAt   DateTime?       @map("deleted_at")
+  /// The sprint the card is planned in (null = backlog). A closed sprint keeps its finished cards.
+  sprintId    String?         @map("sprint_id") @db.Uuid
   board       Board           @relation(fields: [boardId], references: [id], onDelete: Cascade)
   column      Column          @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  createdBy   User            @relation("CardCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  sprint      Sprint?         @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  createdBy  User            @relation("CardCreator", fields: [createdById], references: [id], onDelete: Restrict)
   assignee    User?           @relation("CardAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   activity    ActivityEvent[]
 
   @@unique([boardId, number])
   @@index([assigneeId])
   @@index([columnId, position, id])
+  @@index([sprintId])
   @@map("cards")
+}
+
+enum SprintStatus {
+  planned
+  active
+  closed
+
+  @@map("sprint_status")
+}
+
+/// A time-boxed batch of cards. The migration adds `CHECK (end_date >= start_date)` and a partial
+/// unique index that allows at most one `active` sprint per project; Prisma cannot express either.
+model Sprint {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  projectId       String       @map("project_id") @db.Uuid
+  name            String
+  goal            String       @default("")
+  /// Calendar dates (no time, no zone).
+  startDate       DateTime     @map("start_date") @db.Date
+  endDate         DateTime     @map("end_date") @db.Date
+  status          SprintStatus @default(planned)
+  /// Points of the cards in the sprint when it started (KB-022); null while planned.
+  committedPoints Int?         @map("committed_points")
+  /// Points of the cards in Done when it was closed (KB-023).
+  completedPoints Int?         @map("completed_points")
+  closedAt        DateTime?    @map("closed_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cards           Card[]
+  events          SprintEvent[]
+
+  @@index([projectId, startDate, id])
+  @@map("sprints")
+}
+
+/// Append-only sprint history (snapshots the burndown needs). `sprint_started` stores the cards and
+/// points the sprint began with.
+model SprintEvent {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  sprintId  String   @map("sprint_id") @db.Uuid
+  actorId   String   @map("actor_id") @db.Uuid
+  type      String
+  data      Json
+  createdAt DateTime @default(now()) @map("created_at")
+  sprint    Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  actor     User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([sprintId, createdAt])
+  @@map("sprint_events")
 }
 
 /// Append-only history of card mutations, written in the same transaction as the change (G5).
