@@ -843,3 +843,40 @@ Report template:
 - `prisma migrate reset --force` was not run (blocked by the environment safety guard in autonomous mode; for Decisions for João); no migration in this task, and CI starts from an empty database.
 - The e2e run logged vite ws proxy ECONNRESET noise on teardown; no test failed.
 - Developer-noted limits: card dialog opened while already offline is read-only until first sync; non-move/delete/create offline edits use generic failure messages.
+
+### KB-022 · Backlog and sprint planning — Report 1 — 2026-11-16
+
+- **Commit tested:** 1e2a12e (in `develop` history; working tree clean before testing apart from the tester's own Planning status change)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 167, web 285, api 399; 404 with the tester's new file) | ✔ |
+| E2E | `pnpm test:e2e` (52 passed) | ✔ |
+| API / authorization | `sprints.test.ts`: 400 reversed/impossible dates, 401, 403 viewer, 404 non-member identical to a missing id, CSRF, 409 `SPRINT_ALREADY_ACTIVE` (two parallel starts: exactly one 200), 409 `SPRINT_CLOSED`, other project and unknown sprint the same 400, other workspace's sprint never linked, events published after commit | ✔ |
+| Database | `prisma migrate status` on the test database: 10 migrations, schema up to date (`add_sprints` applied). `migrate reset --force` not run (blocked in autonomous mode) and creating a scratch database was refused, so no empty-database replay here. Hand-written constraints verified in the catalog and by behaviour with the new `sprints-db.test.ts` | ✔ (see observations) |
+| Real time | `sprints.spec.ts` two browsers: B sees the card join and leave the active sprint within 2 s; API test for `sprint_updated` and `card_updated` events | ✔ |
+| Accessibility | axe on backlog and board in E2E; labelled `<section>` with `<h2>` per sprint and for the backlog; labelled date fields; labelled add/remove buttons; keyboard add with announcement and focus moved to the heading; `role="alert"` for errors | ✔ |
+
+**Acceptance criteria:**
+- [x] Migration: read `20261116200437_add_sprints/migration.sql`; `sprints_dates_check`, `sprints_closed_check`, partial unique index `sprints_one_active_per_project_idx` (`WHERE status = 'active'`) and the `SET NULL` FK on nullable `cards.sprint_id` confirmed in `pg_constraint`/`pg_indexes` by `sprints-db.test.ts`; end equal to start accepted; end before start refused by name; one active per project enforced, many closed allowed.
+- [x] Sprint endpoints, start 200 with `committedPoints` and `sprint_started` snapshot, 409 for a second active sprint also in parallel: `sprints.test.ts`.
+- [x] `PUT /api/cards/:id/sprint`: closed 409 `SPRINT_CLOSED`, other project 400, `sprint_added`/`sprint_removed` activity, board events: `sprints.test.ts`.
+- [x] UI: Backlog page, sections with totals, add/remove, dialog with dates, start confirmation: `sprints-flow.test.tsx`, E2E, read `BacklogView.tsx`.
+- [x] Board filter "Active sprint only" default on with an active sprint, banner with name, dates, days left: board flow tests and E2E (board shows only the three cards).
+- [x] Common criteria G1-G5, G8, A1-A8, U1-U10, R1, R6: automated checks green; list pagination without gaps or duplicates tested.
+
+**Required tests:** unit (date validation, days remaining on start/middle/last day/after end, totals ignoring unestimated), API (all listed cases), E2E (keyboard add of three cards, start, filter, two browsers, axe) and accessibility checks exist and assert the specified behaviour; not trivial.
+
+**Tests added by the tester:** `apps/api/src/modules/sprints/sprints-db.test.ts` (5 tests: catalog check of both CHECKs and the partial unique index; end equal to start accepted and end before start refused by constraint name; closed/closedAt consistency CHECK, previously untested; many closed vs one active; FK `ON DELETE SET NULL`).
+
+**Failures:** none.
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was not run (blocked in autonomous mode) and a scratch database could not be created. For Decisions for João: the empty-database replay relies on CI. The migration SQL was read in full and matches `schema.prisma`; `migrate status` reports up to date.
+- Existing database-level tests used a bare `rejects.toThrow()`; the new file asserts constraint names.
+- The e2e run logged vite ws proxy ECONNRESET noise on teardown; no test failed.
+- A card finished in a closed sprint keeps its `sprintId` and appears in neither the backlog nor a section until KB-023 (developer-noted).
