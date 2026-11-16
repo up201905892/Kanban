@@ -29,7 +29,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Done |
 | KB-020 | Presence: who is on the board and who is editing a card | Real time | Medium | KB-019 | Done |
 | KB-021 | Reconnection, offline edits and connection status | Real time | Medium | KB-018, KB-019 | Done |
-| KB-022 | Backlog and sprint planning | Sprints | Medium | KB-013, KB-018 | Passed |
+| KB-022 | Backlog and sprint planning | Sprints | Medium | KB-013, KB-018 | Done |
 | KB-023 | Close a sprint | Sprints | Medium | KB-022 | Planned |
 | KB-024 | Card activity history | Reports and history | Medium | KB-013, KB-015 | Planned |
 | KB-025 | Sprint burndown | Reports and history | Medium | KB-022 | Planned |
@@ -1073,6 +1073,7 @@ Task template (copy for each new task):
 - 2026-11-16 · developer · In development → Ready for test · commit 1e2a12e
 - 2026-11-16 · tester · Ready for test → In test · testing started
 - 2026-11-16 · tester · In test → Passed · report 1, zero failures
+- 2026-11-16 · finisher · Passed → Done · CHANGELOG, api.md and checks verified; no production code after tested commit 1e2a12e
 
 ### KB-023 · Close a sprint
 

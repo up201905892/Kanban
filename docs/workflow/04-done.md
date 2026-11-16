@@ -206,6 +206,15 @@ Entry template:
 - **Documentation:** ADR 0004 section 14; `docs/api.md` unchanged (no API change); no migrations; no new environment variables; no new dependencies
 - **Lessons:** a card dialog opened while already offline is read-only until its first sync; offline edits other than move, delete and create use generic failure messages; offline work does not survive a page reload (IndexedDB out of scope); `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. No milestone reached (the Real time phase still has open tasks such as KB-033, KB-037, KB-039, KB-040).
 
+### KB-022 · Backlog and sprint planning — done on 2026-11-16
+
+- **Approving test report:** Report 1 (2026-11-16), commit 1e2a12e (later commits are a test file and workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** migration `add_sprints` (sprints, `sprint_events`, nullable `cards.sprint_id`, date CHECK, closed/closedAt CHECK and a partial unique index for one active sprint per project); sprint create, list, edit and start endpoints with `409 SPRINT_ALREADY_ACTIVE` also under parallel starts; `PUT /api/cards/:id/sprint` with activity and live board events; a Backlog page per project with a labelled section per sprint, point totals and keyboard add/remove; a sprint dialog with date fields and a start confirmation; a board banner and "Active sprint only" filter.
+- **CHANGELOG:** "Added: Work can now be planned in sprints: each project has a Backlog page that lists the cards in no sprint and one section per planned or active sprint with its dates and total story points; owners and members create and edit sprints, add cards to a sprint or send them back to the backlog (all with the keyboard), and start a sprint after a confirmation (only one sprint can be active at a time). While a sprint is active the board shows its name, dates and days left and, by default, only its cards, with an "Active sprint only" switch; other people see these changes live (KB-022)."
+- **Documentation:** `docs/api.md` (sprint endpoints, `PUT /api/cards/:id/sprint`, `sprint_updated` event, board `sprints`); no ADR required by the specification; no new environment variables; no new dependencies
+- **Lessons:** `prisma migrate reset` was not run (sandbox), so the empty-database replay relies on CI; a card finished in a closed sprint keeps its `sprintId` and is in neither the backlog nor a section until KB-023; suggestions for the planner: KB-023 should set `Card.sprintId = null` with `sprint_removed {reason: "sprint_closed"}`, and KB-025 can read the start snapshot from `sprint_events`. No TODO found in the task's code; no secret found. No milestone reached (KB-023 and KB-025 in Sprints are not Done).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
