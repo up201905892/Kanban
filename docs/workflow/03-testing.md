@@ -805,3 +805,41 @@ Report template:
 - `prisma migrate reset --force` was not run (blocked by the environment safety guard in autonomous mode); CI starts from an empty database.
 - The 30 s lost-connection removal is not exercised by a test (developer-noted); only the clean close is.
 - The e2e run logged vite ws proxy ECONNRESET noise on teardown; no test failed.
+
+### KB-021 · Reconnection, offline edits and connection status — Report 1 — 2026-11-16
+
+- **Commit tested:** 4752b5a (in `develop` history; the only uncommitted change before testing was the tester's own status line in Planning)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 152, web 261, api 364) | ✔ |
+| E2E | `pnpm test:e2e` (50 passed) | ✔ |
+| API / authorization | no API change; 4401/4403/4400 close codes stop retries (`FATAL_CLOSE_CODES`), 401 on replay goes to the session-expired path | ✔ |
+| Database | no migration | n/a |
+| Real time | `offline.spec.ts` two browsers with `setOffline`; API integration test of a client reconnecting after an app restart on the same database | ✔ |
+| Accessibility | status text visible, polite announcements, no assertive duplicate, pending count as visible text (`pending-changes`) | ✔ |
+
+**Acceptance criteria:**
+- [x] Header status Connected / Reconnecting… / Offline, polite announcement, backoff 1 s to 30 s with jitter, `online` retry, 1012 as reconnect: read `connection.ts` (`backoffDelay`, clamped to 30 s), `connection.test.ts`, `board-live.test.tsx`.
+- [x] One connection-state module for both clients, one announcement, no third reconnect implementation: `board-socket.ts` and `card-description.ts` use `createManagedSocket`; the description's own offline announcement is removed (flow test checks no assertive message).
+- [x] Offline description edits sync on reconnect: `card-description.test.ts` and E2E (`A offline. Shared text B meanwhile.` on both).
+- [x] Offline mutations paused, replayed in order (shared scope), create retried safely, deleted target gives the named message, "N changes pending": `messages.test.ts`, `board-live.test.tsx`, E2E ("3 changes pending", exactly one new card).
+- [x] Refetch after reconnect and Yjs resync, final state equals server: E2E checks the server state; flow test checks the refetch.
+- [x] `beforeunload` warning while unsynced or paused, none when idle: `board-live.test.tsx`.
+- [x] Session expired (4401): message "Your session expired; N pending changes were not saved" and redirect to log in: flow test and second E2E test.
+- [x] Common criteria G1, G8, U5, U6, R4, R5, R7: automated checks green.
+
+**Required tests:** backoff schedule and replay/conflict mapping (unit), API restart reconnect, two-browser offline E2E, and accessibility checks all exist and assert the specified behaviour; not trivial.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- `prisma migrate reset --force` was not run (blocked by the environment safety guard in autonomous mode; for Decisions for João); no migration in this task, and CI starts from an empty database.
+- The e2e run logged vite ws proxy ECONNRESET noise on teardown; no test failed.
+- Developer-noted limits: card dialog opened while already offline is read-only until first sync; non-move/delete/create offline edits use generic failure messages.
