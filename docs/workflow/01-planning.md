@@ -28,7 +28,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-018 | Live board updates | Real time | High | KB-013, KB-015, KB-016 | Done |
 | KB-019 | Collaborative card description with Yjs | Real time | Medium | KB-012, KB-017 | Done |
 | KB-020 | Presence: who is on the board and who is editing a card | Real time | Medium | KB-019 | Done |
-| KB-021 | Reconnection, offline edits and connection status | Real time | Medium | KB-018, KB-019 | Ready for test |
+| KB-021 | Reconnection, offline edits and connection status | Real time | Medium | KB-018, KB-019 | Done |
 | KB-022 | Backlog and sprint planning | Sprints | Medium | KB-013, KB-018 | Planned |
 | KB-023 | Close a sprint | Sprints | Medium | KB-022 | Planned |
 | KB-024 | Card activity history | Reports and history | Medium | KB-013, KB-015 | Planned |
@@ -1036,6 +1036,9 @@ Task template (copy for each new task):
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 - 2026-11-16 · developer · Planned → In development · started
 - 2026-11-16 · developer · In development → Ready for test · commit 4752b5a
+- 2026-11-16 · tester · Ready for test → In test · testing started
+- 2026-11-16 · tester · In test → Passed · report 1: all checks green, every criterion verified
+- 2026-11-16 · finisher · Passed → Done · definition of done met; CHANGELOG and ADR 0004 section 14 already updated, no API or env changes; Real time phase not complete (other tasks open), no milestone
 
 ### KB-022 · Backlog and sprint planning
 

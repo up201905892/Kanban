@@ -197,6 +197,15 @@ Entry template:
 - **Documentation:** `docs/api.md` (awareness state); ADR 0004 section 13; no migrations; no new environment variables; no new dependencies
 - **Lessons:** the 30 s removal after a lost connection relies on the heartbeat and library timeout and is not covered by a test; every tile re-renders on presence changes (relevant to KB-028); `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. Milestone "Real time" not yet reached (KB-021 and others are not Done).
 
+### KB-021 · Reconnection, offline edits and connection status — done on 2026-11-16
+
+- **Approving test report:** Report 1 (2026-11-16), commit 4752b5a (later commit 8699b85 is a workflow record only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** one connection-state module (`lib/realtime/connection.ts`) drives both the board socket and the card description client, with backoff from 1 s to 30 s with jitter, an immediate retry on the browser `online` event and 1012 treated as a reconnect; the board header shows Connected / Reconnecting… / Offline (polite announcement) and "N changes pending"; offline description edits sync on reconnect; offline mutations are paused and replayed in order, with a named message when the target was deleted meanwhile; the board is refetched after reconnect; the browser warns before closing with unsynced changes; an expired session shows "Your session expired; N pending changes were not saved" and redirects to log in.
+- **CHANGELOG:** "Added: The board header now shows the connection ("Connected", "Reconnecting…" or "Offline") and how many changes are waiting. If the connection drops, you can keep working and your changes are sent in order when it returns, and the log-in page says how many changes were not saved if your session expired meanwhile (KB-021)."
+- **Documentation:** ADR 0004 section 14; `docs/api.md` unchanged (no API change); no migrations; no new environment variables; no new dependencies
+- **Lessons:** a card dialog opened while already offline is read-only until its first sync; offline edits other than move, delete and create use generic failure messages; offline work does not survive a page reload (IndexedDB out of scope); `prisma migrate reset` was not run (sandbox). No TODO found in the task's code; no secret found. No milestone reached (the Real time phase still has open tasks such as KB-033, KB-037, KB-039, KB-040).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
