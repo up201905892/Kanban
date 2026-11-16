@@ -16,6 +16,17 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-16
+
+- **Decisions for João:**
+  - Please check the first CI run on `develop`: `prisma migrate reset --force` and creating scratch databases are blocked in autonomous mode, so the migration `add_sprints` (KB-022, with hand-written CHECKs and a partial unique index) was never replayed on an empty database here. CI starts from an empty database and will confirm it.
+- **Done:** KB-021 (reconnection, offline edits, connection status), KB-022 (backlog and sprint planning)
+- **Tested:** KB-021 (Passed), KB-022 (Passed; the tester added `sprints-db.test.ts` for the migration constraints)
+- **Developed:** KB-021, KB-022 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` to be published on npm)
+- **Rule violations found:** none. One housekeeping slip: the KB-021 test report was left staged and uncommitted by the tester; I committed it.
+- **Next step:** KB-023 (close a sprint; should clear `sprintId` with `sprint_removed {reason: "sprint_closed"}`), KB-024, KB-033, KB-035, KB-037, KB-038, KB-039, KB-040 and KB-028 are the next `Planned` tasks.
+
 ## 2026-11-13
 
 - **Decisions for João:** none. Your approvals of 2026-11-13 were applied (20 tasks `Planned`, KB-036 `Rejected`; D9, D10 and D11 answered as A).
