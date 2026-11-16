@@ -8,7 +8,7 @@ import {
 } from '@kanban/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, request } from '../../../lib/api';
-import { boardKey, useBoardMutation } from '../../board/api';
+import { boardKey, boardScope, useBoardMutation } from '../../board/api';
 import { cardsOf, placeCard } from '../../board/ordering';
 
 export const cardKey = (id: string) => ['cards', id] as const;
@@ -83,6 +83,7 @@ interface UpdateContext {
 export function useUpdateCard(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation<CardResponse, Error, UpdateCardVars, UpdateContext>({
+    scope: { id: boardScope(projectId) },
     mutationFn: ({ id, patch }) => apiClient.patch(`/api/cards/${id}`, patch, cardResponseSchema),
     onMutate: async ({ id, patch }) => {
       await queryClient.cancelQueries({ queryKey: boardKey(projectId) });

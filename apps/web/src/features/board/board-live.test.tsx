@@ -392,3 +392,148 @@ describe('live updates and accessibility', () => {
     expect(screen.queryByRole('link', { name: /KB-1/ })).toBeNull();
   });
 });
+
+describe('connection status and offline changes (KB-021)', () => {
+  const status = () => screen.getByTestId('connection-status');
+  const goOffline = () => act(() => void window.dispatchEvent(new Event('offline')));
+  const goOnline = () => act(() => void window.dispatchEvent(new Event('online')));
+  const unload = () => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+
+  /** A server that also accepts card creation, remembering what it received. */
+  function serverWithCreate(cards: Cd[]) {
+    const s = server('owner', cards);
+    const created: { id: string; title: string }[] = [];
+    stubFetch({
+      ...s.handlers,
+      [`POST /api/columns/${cid(1)}/cards`]: (body) => {
+        const { id, title } = body as { id: string; title: string };
+        created.push({ id, title });
+        const made = card(created.length + 50, { id, title });
+        cards.push(made);
+        return jsonResponse(201, {
+          card: {
+            ...made,
+            boardId: BID,
+            description: '',
+            createdById: USER.id,
+            createdAt: NOW,
+            updatedAt: NOW,
+          },
+        });
+      },
+    });
+    return { s, created };
+  }
+
+  afterEach(() => {
+    goOnline();
+  });
+
+  it('shows Connected, then Reconnecting after a drop, announcing each change politely', async () => {
+    stubFetch(server('owner', [card(1)]).handlers);
+    open();
+    const socket = await connected();
+    await waitFor(() => expect(status()).toHaveTextContent('Connected'));
+    // The first connection is not news.
+    expect(polite()).toBeEmptyDOMElement();
+
+    act(() => socket.close(1012));
+    await waitFor(() => expect(status()).toHaveTextContent('Reconnecting…'));
+    await waitFor(() => expect(polite()).toHaveTextContent('Reconnecting…'));
+    // The board announces the loss once; the description editor stays silent about it.
+    expect(screen.getByTestId('live-assertive')).toBeEmptyDOMElement();
+
+    await waitFor(() => expect(FakeWebSocket.boards).toHaveLength(2), { timeout: 3000 });
+    act(() => FakeWebSocket.boards[1]?.open());
+    await waitFor(() => expect(status()).toHaveTextContent('Connected'));
+    await waitFor(() => expect(polite()).toHaveTextContent('Connected'));
+  });
+
+  it('retries at once when the browser comes back online', async () => {
+    stubFetch(server('owner', [card(1)]).handlers);
+    open();
+    const socket = await connected();
+    act(() => socket.close(1006));
+    expect(FakeWebSocket.boards).toHaveLength(1);
+    goOffline();
+    await waitFor(() => expect(status()).toHaveTextContent('Offline'));
+
+    goOnline();
+    // No backoff wait: the new socket exists right away.
+    expect(FakeWebSocket.boards).toHaveLength(2);
+    expect(status()).toHaveTextContent('Reconnecting…');
+  });
+
+  it('replaces a socket that looked open while the browser was offline', async () => {
+    stubFetch(server('owner', [card(1)]).handlers);
+    open();
+    await connected();
+    goOffline();
+    expect(FakeWebSocket.boards).toHaveLength(1);
+    goOnline();
+    expect(FakeWebSocket.boards).toHaveLength(2);
+  });
+
+  it('pauses a card created offline, shows it as pending and sends it once when back online', async () => {
+    const { created } = serverWithCreate([card(1)]);
+    const user = open();
+    await connected();
+    goOffline();
+    await waitFor(() => expect(status()).toHaveTextContent('Offline'));
+
+    await user.click(await screen.findByRole('button', { name: 'Add card to To do' }));
+    await user.type(screen.getByLabelText('Card title'), 'Written offline{Enter}');
+    // Shown at once (optimistic) but not sent.
+    expect(await screen.findByText('Written offline')).toBeVisible();
+    expect(screen.getByTestId('pending-changes')).toHaveTextContent('1 change pending');
+    expect(created).toHaveLength(0);
+    // Closing the tab now would lose it: the browser is asked to confirm.
+    expect(unload()).toBe(true);
+
+    goOnline();
+    await waitFor(() => expect(created).toHaveLength(1));
+    expect(created[0]?.title).toBe('Written offline');
+    await waitFor(() => expect(screen.queryByTestId('pending-changes')).toBeNull());
+    expect(unload()).toBe(false);
+  });
+
+  it('does not ask for confirmation when nothing is waiting', async () => {
+    stubFetch(server('owner', [card(1)]).handlers);
+    open();
+    await connected();
+    expect(unload()).toBe(false);
+  });
+
+  it('refetches the board after a reconnect so the final state equals the server', async () => {
+    const s = server('owner', [card(1)]);
+    stubFetch(s.handlers);
+    open();
+    const socket = await connected();
+    s.cards.push(card(2, { title: 'Made meanwhile' }));
+    act(() => socket.close(1006));
+    goOffline();
+    goOnline();
+    act(() => FakeWebSocket.boards[1]?.open());
+    expect(await screen.findByRole('link', { name: 'KB-2 Made meanwhile' })).toBeVisible();
+  });
+
+  it('says how much was not saved and goes to the log-in page when the session expired', async () => {
+    serverWithCreate([card(1)]);
+    const user = open();
+    const socket = await connected();
+    goOffline();
+    await user.click(await screen.findByRole('button', { name: 'Add card to To do' }));
+    await user.type(screen.getByLabelText('Card title'), 'Lost?{Enter}');
+    await screen.findByText('Lost?');
+
+    act(() => socket.close(4401));
+    const message = 'Your session expired; 1 pending change was not saved';
+    await waitFor(() => expect(screen.getByTestId('live-assertive')).toHaveTextContent(message));
+    expect(await screen.findByTestId('login-notice')).toHaveTextContent(message);
+    expect(screen.getByRole('heading', { name: 'Log in' })).toBeVisible();
+  });
+});

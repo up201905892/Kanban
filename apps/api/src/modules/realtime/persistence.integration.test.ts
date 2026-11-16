@@ -47,11 +47,13 @@ afterAll(() => prisma.$disconnect());
 
 /** A minimal y-websocket client. */
 class Client {
-  readonly doc = new Y.Doc();
   closeCode: number | null = null;
   readonly closed: Promise<number>;
 
-  constructor(readonly ws: WebSocket) {
+  constructor(
+    readonly ws: WebSocket,
+    readonly doc = new Y.Doc(),
+  ) {
     this.closed = new Promise((resolve) => {
       ws.on('close', (code) => {
         this.closeCode = code;
@@ -89,11 +91,12 @@ class Client {
   }
 }
 
-async function open(room: string, who: TestUser): Promise<Client> {
+/** Opens a client; pass `doc` to reconnect with a document that already holds (offline) edits. */
+async function open(room: string, who: TestUser, doc?: Y.Doc): Promise<Client> {
   const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/${room}`, {
     headers: { origin: TEST_ORIGIN, cookie: who.cookie },
   });
-  const client = new Client(ws);
+  const client = new Client(ws, doc);
   clients.push(client);
   await new Promise<void>((resolve, reject) => {
     ws.once('open', () => resolve());
@@ -162,6 +165,43 @@ describe('documents survive a restart', () => {
     const second = await open(s.cardRoom, s.owner);
     await waitFor(() => second.text.length > 0);
     expect(second.text).toBe('Written before the restart. Second batch.');
+  });
+
+  it('lets a client reconnect after a restart on the same database and keep every edit (KB-021)', async () => {
+    await start();
+    const s = await setup();
+    const first = await open(s.cardRoom, s.owner);
+    await waitFor(() => first.ws.readyState === WebSocket.OPEN);
+    first.type('Before. ');
+    await new Promise((r) => setTimeout(r, 100));
+    // Another person's edit, stored before the restart.
+    const other = await open(s.cardRoom, s.owner);
+    await waitFor(() => other.text === 'Before. ');
+    other.type('Other. ');
+    await waitFor(() => first.text === 'Before. Other. ');
+    await new Promise((r) => setTimeout(r, 700));
+
+    await app.close();
+    await first.closed;
+    await other.closed;
+    // Edits made while the server was away stay in the local document.
+    first.type('Offline. ');
+    expect(first.text).toBe('Before. Other. Offline. ');
+
+    await start();
+    const again = await open(s.cardRoom, s.owner, first.doc);
+    await waitFor(async () =>
+      (await storedState(s.cardRoom)).getText('t').toString().includes('Offline.'),
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    expect(again.text).toBe('Before. Other. Offline. ');
+    const stored = (await storedState(s.cardRoom)).getText('t').toString();
+    expect(stored).toBe('Before. Other. Offline. ');
+
+    // A brand-new client sees the merged state, with nothing duplicated.
+    const fresh = await open(s.cardRoom, s.owner);
+    await waitFor(() => fresh.text.length > 0);
+    expect(fresh.text).toBe('Before. Other. Offline. ');
   });
 
   it('persists edits that are still inside the batching window when the last client leaves', async () => {

@@ -277,7 +277,21 @@ main,
 .board-header {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
   margin-bottom: 0.5rem;
+}
+
+/* Connection status (KB-021): text first, colour only as a second cue. */
+.connection-status {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.connection-status[data-status='reconnecting'],
+.connection-status[data-status='offline'] {
+  font-weight: 600;
 }
 
 .presence-list {

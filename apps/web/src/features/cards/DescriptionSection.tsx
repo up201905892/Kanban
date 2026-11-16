@@ -5,6 +5,7 @@ import { Button, TextArea, useAnnounce } from '../../components';
 import type { AwarenessSync } from '../../lib/realtime/awareness-sync';
 import type { DescriptionStatus } from '../../lib/realtime/card-description';
 import { caretToJSON } from '../../lib/realtime/caret';
+import { connectionStore } from '../../lib/realtime/connection';
 import { useCurrentUser } from '../auth/api/auth';
 import { usePresence } from '../presence/PresenceContext';
 import { RemoteCarets } from '../presence/RemoteCarets';
@@ -16,7 +17,7 @@ const STATUS_TEXT: Record<DescriptionStatus, string> = {
   connecting: 'Connecting…',
   saved: 'Saved',
   syncing: 'Syncing…',
-  reconnecting: 'Offline: changes are kept and sync when the connection returns',
+  reconnecting: 'Not connected: changes are kept and sync when the connection returns',
   unavailable: 'Description unavailable',
 };
 
@@ -42,19 +43,16 @@ export function DescriptionSection({ card, canEdit }: DescriptionSectionProps) {
   const headingId = useId();
   const text = connection?.text ?? null;
 
-  // Sync problems are announced once each, assertively.
+  // A refused connection is announced once, assertively. A lost connection is not announced here:
+  // the board header announces it for every socket at once (KB-021), and an expired session has
+  // its own message.
   const announced = useRef<DescriptionStatus | null>(null);
   useEffect(() => {
     if (announced.current === status) return;
     announced.current = status;
-    if (status === 'unavailable') {
+    if (status === 'unavailable' && !connectionStore.getSnapshot().sessionExpired) {
       announce(
         'Could not sync the description: you no longer have access to this card',
-        'assertive',
-      );
-    } else if (status === 'reconnecting') {
-      announce(
-        'Connection lost. Description changes are kept and will sync when it returns',
         'assertive',
       );
     }

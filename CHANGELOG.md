@@ -26,6 +26,8 @@ All notable changes to this project are recorded here, in the format of [Keep a 
 
 - Boards now update live: when someone else adds, edits, moves or deletes a card or changes a column, everyone looking at the board sees it without reloading, viewers included. An open card updates in place without overwriting a field you are typing in, says who deleted it if it disappears, and a card you are focused on that someone else moves is announced to screen readers while keeping your focus on it (KB-018).
 
+- The board header now shows the connection ("Connected", "Reconnecting…" or "Offline", announced to screen readers when it changes) and how many changes are waiting. If the connection drops, you can keep working: description edits, card moves, creates and other changes are kept and sent in order when it returns (a card deleted meanwhile is reported), connection attempts back off from 1 to 30 seconds and retry at once when the browser is back online, the browser asks before you close the tab with unsaved changes, and if your session expired meanwhile the log-in page says how many changes were not saved (KB-021).
+
 - The board now shows who is there: avatars with initials (up to five, then "+N") above the board, "Ana is editing" on a card while someone types in its description, a "Also here" line in the open card, and other people's cursors in the description with their names. People disappear as soon as they leave or lose their connection, and nobody can pretend to be someone else (KB-020).
 
 ### Changed

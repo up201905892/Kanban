@@ -21,6 +21,9 @@ export function useBoard(projectId: string) {
   });
 }
 
+/** Mutations of one project's board run one at a time, in order (also when replayed). */
+export const boardScope = (projectId: string) => `project:${projectId}:board`;
+
 interface Context {
   previous: BoardResponse | undefined;
 }
@@ -38,6 +41,9 @@ export function useBoardMutation<TVars, TResult>(
   const key = boardKey(projectId);
   return useMutation<TResult, Error, TVars, Context>({
     mutationFn,
+    // Offline (KB-021) mutations pause (network mode "online") and replay in the order they were
+    // made: a shared scope runs the mutations of one project one after another.
+    scope: { id: boardScope(projectId) },
     onMutate: async (vars) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<BoardResponse>(key);

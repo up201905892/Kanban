@@ -3,8 +3,9 @@ import * as encoding from 'lib0/encoding';
 import * as syncProtocol from 'y-protocols/sync';
 import { Awareness } from 'y-protocols/awareness';
 import * as Y from 'yjs';
-import { DESCRIPTION_TEXT_NAME, WS_CLOSE, WS_MESSAGE } from '@kanban/shared';
+import { DESCRIPTION_TEXT_NAME, WS_MESSAGE } from '@kanban/shared';
 import { awarenessPayload, createAwarenessSync, type AwarenessSync } from './awareness-sync';
+import { createManagedSocket, type ManagedSocket } from './connection';
 
 export type DescriptionStatus =
   /** Not connected yet, or connected but the first sync has not arrived. */
@@ -32,14 +33,6 @@ export interface DescriptionConnection {
   destroy(): void;
 }
 
-const FATAL_CLOSE_CODES: number[] = [
-  WS_CLOSE.unauthenticated,
-  WS_CLOSE.forbidden,
-  WS_CLOSE.invalidRoom,
-];
-const RETRY_MIN_MS = 500;
-const RETRY_MAX_MS = 10_000;
-
 /** Origin of changes that came from the server, so they are never sent back. */
 const REMOTE = Symbol('remote');
 
@@ -64,12 +57,12 @@ export function connectCardDescription(
   const presence = self ? createAwarenessSync(new Awareness(doc), self) : null;
   presence?.setLocal({ activeCardId: cardId });
   const listeners = new Set<() => void>();
-  let socket: WebSocket | null = null;
-  let timer: number | undefined;
-  let attempt = 0;
   let stopped = false;
+  /** Destroyed by the view while changes were still unconfirmed: it finishes in the background. */
+  let retired = false;
   let fatal = false;
   let open = false;
+  let lost = false;
   let synced = false;
   let dirty = false;
   let ackInFlight = false;
@@ -77,12 +70,25 @@ export function connectCardDescription(
 
   const statusNow = (): DescriptionStatus => {
     if (fatal) return 'unavailable';
-    if (!open) return synced || attempt > 0 ? 'reconnecting' : 'connecting';
+    if (!open) return synced || lost ? 'reconnecting' : 'connecting';
     if (!synced) return 'connecting';
     return dirty ? 'syncing' : 'saved';
   };
   let status = statusNow();
+  /** Closes the socket for good and drops the document. */
+  const finish = () => {
+    if (stopped) return;
+    stopped = true;
+    managed.close();
+    doc.destroy();
+  };
   const refresh = () => {
+    if (retired && (!dirty || fatal)) {
+      finish();
+      return;
+    }
+    // Unconfirmed changes count as "pending" in the board header while the socket is down.
+    managed.source.setUnsynced(dirty && !fatal);
     const next = statusNow();
     if (next === status) return;
     status = next;
@@ -93,6 +99,7 @@ export function connectCardDescription(
   };
 
   const send = (message: Uint8Array) => {
+    const socket = managed.current();
     if (socket && open) socket.send(message as Uint8Array<ArrayBuffer>);
   };
 
@@ -159,46 +166,39 @@ export function connectCardDescription(
     refresh();
   };
 
-  const connect = () => {
-    if (stopped) return;
-    const ws = new WebSocket(socketUrl(cardId));
-    ws.binaryType = 'arraybuffer';
-    socket = ws;
-    ws.addEventListener('open', () => {
-      attempt = 0;
+  // Reconnecting, the backoff and the `online` retry belong to the shared connection module.
+  const managed: ManagedSocket = createManagedSocket({
+    url: socketUrl(cardId),
+    onOpen: (ws) => {
       open = true;
+      lost = false;
       ackInFlight = false;
       ackAgain = false;
       requestAck();
-      presence?.attach((message) => {
-        if (ws.readyState === WebSocket.OPEN) ws.send(message as Uint8Array<ArrayBuffer>);
-      });
+      if (!retired) {
+        presence?.attach((message) => {
+          if (ws.readyState === WebSocket.OPEN) ws.send(message as Uint8Array<ArrayBuffer>);
+        });
+      }
       refresh();
-    });
-    ws.addEventListener('message', (message: MessageEvent) => {
-      if (typeof message.data === 'string') return;
+    },
+    onMessage: (_ws, data) => {
       try {
-        handle(message.data as ArrayBuffer);
+        handle(data);
       } catch {
         // A malformed message is skipped; the server closes the socket when it is ours that is bad.
       }
-    });
-    ws.addEventListener('close', (closed: CloseEvent) => {
-      if (socket === ws) socket = null;
+    },
+    onClose: (_ws, closed) => {
       open = false;
       presence?.detach();
       if (stopped) return;
-      if (FATAL_CLOSE_CODES.includes(closed.code)) {
-        fatal = true;
-      } else {
-        const delay = Math.min(RETRY_MAX_MS, RETRY_MIN_MS * 2 ** attempt);
-        attempt += 1;
-        timer = window.setTimeout(connect, delay);
-      }
+      if (closed.fatal) fatal = true;
+      else lost = true;
       refresh();
-    });
-  };
-  connect();
+    },
+  });
+  refresh();
 
   return {
     doc,
@@ -217,12 +217,15 @@ export function connectCardDescription(
     },
     presence,
     destroy() {
-      stopped = true;
       presence?.destroy();
-      window.clearTimeout(timer);
-      socket?.close();
       listeners.clear();
-      doc.destroy();
+      if (dirty && !fatal && !stopped) {
+        // Closing the card while changes are still on their way (for example offline) must not
+        // lose them: the connection stays in the background until the server confirmed them.
+        retired = true;
+        return;
+      }
+      finish();
     },
   };
 }

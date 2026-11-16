@@ -39,6 +39,8 @@ import { CardDialog } from '../cards/CardDialog';
 import { useCreateCard, useDeleteCard, useMoveCard } from '../cards/api';
 import { useCurrentUser } from '../auth/api/auth';
 import { useMembers } from '../members/api';
+import { ConnectionStatus } from '../connection/ConnectionStatus';
+import { isOffline, replayFailureMessage } from '../connection/messages';
 import { PresenceContext } from '../presence/PresenceContext';
 import { PresenceList } from '../presence/PresenceList';
 import { CardOverlay, ColumnCards, cardHandleId, cardTileId } from './CardList';
@@ -465,22 +467,40 @@ export function BoardView({
   }
 
   function addCard(column: Column, title: string) {
+    const queuedOffline = isOffline();
     createCard.mutate(
       { id: crypto.randomUUID(), columnId: column.id, title },
       {
         onSuccess: ({ card }) =>
           announce(`Card ${cardReference(project.key, card.number)} created in ${column.name}`),
-        onError: failed('Could not create the card'),
+        onError: (error) =>
+          announce(
+            replayFailureMessage(error, {
+              queuedOffline,
+              reference: `Column ${column.name}`,
+              fallback: `Could not create the card: ${error.message}`,
+            }),
+            'assertive',
+          ),
       },
     );
   }
 
   function removeCard(card: CardSummary) {
     const reference = cardReference(project.key, card.number);
+    const queuedOffline = isOffline();
     onCloseCard();
     deleteCard.mutate(card.id, {
       onSuccess: () => announce(`Card ${reference} deleted`),
-      onError: failed(`Could not delete card ${reference}`),
+      onError: (error) =>
+        announce(
+          replayFailureMessage(error, {
+            queuedOffline,
+            reference: `Card ${reference}`,
+            fallback: `Could not delete card ${reference}: ${error.message}`,
+          }),
+          'assertive',
+        ),
     });
     // The tile is gone and the dialog unmounts (restoring focus to that tile first); the column's
     // "Add card" button is the next sensible stop, so move there once both have settled.
@@ -625,12 +645,17 @@ export function BoardView({
     index: number,
     start: { columnId: string; index: number },
   ) {
+    const queuedOffline = isOffline();
     moveCard.mutate(
       { id: card.id, columnId, ...neighboursAt(ids, index) },
       {
         onError: (error) => {
           announce(
-            `Could not move ${label(card)}: ${error.message}. It is back in ${columnName(start.columnId)}.`,
+            replayFailureMessage(error, {
+              queuedOffline,
+              reference: `Card ${cardReference(project.key, card.number)}`,
+              fallback: `Could not move ${label(card)}: ${error.message}. It is back in ${columnName(start.columnId)}.`,
+            }),
             'assertive',
           );
           focusAfterRender.current = cardHandleId(card.id);
@@ -683,6 +708,7 @@ export function BoardView({
     <PresenceContext.Provider value={presence}>
       <section aria-label="Board">
         <div className="board-header">
+          <ConnectionStatus />
           <PresenceList people={presence.people} />
         </div>
         {columns.length === 0 && (

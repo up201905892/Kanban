@@ -1,5 +1,6 @@
 export {
   boardKey,
+  boardScope,
   useBoard,
   useBoardMutation,
   useCreateColumn,
