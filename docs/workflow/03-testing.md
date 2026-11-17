@@ -880,3 +880,36 @@ Report template:
 - Existing database-level tests used a bare `rejects.toThrow()`; the new file asserts constraint names.
 - The e2e run logged vite ws proxy ECONNRESET noise on teardown; no test failed.
 - A card finished in a closed sprint keeps its `sprintId` and appears in neither the backlog nor a section until KB-023 (developer-noted).
+
+### KB-023 · Close a sprint — Report 1 — 2026-11-17
+
+- **Commit tested:** 941e7a4
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 170, web 290, api 413) | ✔ |
+| E2E | `pnpm test:e2e` (53 passed) | ✔ |
+| Authorization | `sprints-close.test.ts`: 403 viewer, 404 non-member identical to a missing id, 401, 400 bad id, nothing changed; route uses `board:manage` | ✔ |
+| Database | no migration in this task; `migrate status` up to date (10 migrations) | ✔ |
+| Real time | board events published after commit (`card_updated` per returned card, then `sprint_updated`), tested in API; read `closeSprint` in `service.ts` | ✔ |
+| Accessibility | dialog focus, `role="status"` summary and polite announcement in `sprints-close-flow.test.tsx`; axe on both dialogs in E2E | ✔ |
+
+**Acceptance criteria:**
+- [x] `POST /api/sprints/:id/close` returns `{completedCards, completedPoints, returnedCards}`; one transaction under the board lock; non-Done cards get `sprintId = null` with `sprint_removed {reason: "sprint_closed"}`; Done cards keep the sprint; `closed`, `closedAt`, `completedPoints` set; board events: read `service.ts` and `sprints-close.test.ts`.
+- [x] 409 `SPRINT_NOT_ACTIVE` for planned and closed sprints; two parallel closes give `[200, 409]`: API test.
+- [x] UI: confirmation with preview, summary, backlog and board update, optimistic with rollback: `sprints-close-flow.test.tsx`, E2E.
+- [x] Common criteria G1-G5, A1-A5, A7, U1-U10, R6: automated checks green; `docs/api.md` and CHANGELOG updated.
+
+**Required tests:** unit `summarizeClose`, API (200, 409, 403, 404, parallel, injected failure via DB trigger leaves everything untouched), E2E (2 done + 1 unfinished, no board filter, axe on dialogs) and accessibility tests exist, assert the specified behaviour and are not trivial.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- `prisma migrate reset --force` not applicable (no migration) and not run.
+- E2E logs vite ws proxy ECONNRESET noise on teardown; no test failed.
