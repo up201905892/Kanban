@@ -215,9 +215,19 @@ Entry template:
 - **Documentation:** `docs/api.md` (sprint endpoints, `PUT /api/cards/:id/sprint`, `sprint_updated` event, board `sprints`); no ADR required by the specification; no new environment variables; no new dependencies
 - **Lessons:** `prisma migrate reset` was not run (sandbox), so the empty-database replay relies on CI; a card finished in a closed sprint keeps its `sprintId` and is in neither the backlog nor a section until KB-023; suggestions for the planner: KB-023 should set `Card.sprintId = null` with `sprint_removed {reason: "sprint_closed"}`, and KB-025 can read the start snapshot from `sprint_events`. No TODO found in the task's code; no secret found. No milestone reached (KB-023 and KB-025 in Sprints are not Done).
 
+### KB-023 · Close a sprint — done on 2026-11-17
+
+- **Approving test report:** Report 2 (2026-11-17), commit 02b0ff0 (later commits are workflow records only; no production code changed after it). Report 1 (commit 941e7a4) was invalidated by KB-024 production changes and the task was retested.
+- **Development iterations:** 1
+- **Delivered:** `POST /api/sprints/:id/close` in one transaction under the board lock: unfinished cards return to the backlog with `sprint_removed {reason: "sprint_closed"}`, Done cards keep the sprint, `closedAt` and `completedPoints` are stored, a `sprint_closed` row goes to `sprint_events`, board events are published after commit; `409 SPRINT_NOT_ACTIVE` also for parallel closes; "Complete sprint" button with a confirmation preview and a polite summary on the Backlog page, optimistic with rollback.
+- **CHANGELOG:** "Added: Owners and members can now complete the active sprint from the Backlog page: a confirmation says what will happen ("4 done, 2 will return to the backlog"), cards in the Done column stay in the sprint, unfinished cards go back to the backlog, and a summary is shown afterwards; the points finished are recorded for the velocity report and everyone sees the change live (KB-023)."
+- **Documentation:** `docs/api.md` (close endpoint, `card_updated` source); no ADR required by the specification; no migrations; no new environment variables; no new dependencies
+- **Lessons:** a finished card keeps the closed sprint's `sprintId` and appears in neither the backlog nor a section (by design, KB-022 behaviour); `committedPoints` is left as at start. The only `TODO` found is a test constant name, not a leftover; no secret found.
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
 
 - Foundations done — 2026-10-27 (KB-001, KB-002, KB-003, KB-004)
 - Authentication and workspaces done — 2026-11-02 (KB-005, KB-006, KB-007, KB-008, KB-009)
+- Sprints done — 2026-11-17 (KB-022, KB-023)
