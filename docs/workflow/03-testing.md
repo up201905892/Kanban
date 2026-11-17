@@ -950,3 +950,34 @@ Report template:
 **Observations (not failures):**
 - `migrate reset` not applicable (no migration).
 - The developer's "test ok" predated the last two test files; the full run now passes.
+
+### KB-023 · Close a sprint — Report 2 — 2026-11-17
+
+- **Commit tested:** 02b0ff0 (HEAD; includes KB-023 code 941e7a4 and KB-024 b637114; no uncommitted changes besides the status update)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 170, web 314, api 419) | ✔ |
+| E2E | `pnpm test:e2e` (54 passed, includes the KB-023 close-sprint spec with axe) | ✔ |
+| Authorization | `sprints-close.test.ts` still green (403 viewer, 404 non-member, 401, 400); sprint module unchanged since 941e7a4 | ✔ |
+| Database | no migration in either task | n.a. |
+| Real time | `git diff 941e7a4 HEAD` of `useBoardEvents.ts`: only adds an `activityKey` invalidation for `card_created/updated/moved`; sprint and card cache handling untouched. `packages/shared/src/index.ts`: only adds activity exports | ✔ |
+| Accessibility | dialog focus, polite summary and axe on both dialogs still green | ✔ |
+
+**Regression review of KB-024 changes:** no file of `apps/api/src/modules/sprints`, `apps/web/src/features/sprints` or `e2e/sprints.spec.ts` changed after 941e7a4. The extra invalidation for the `card_updated` events that close publishes only refetches mounted activity lists, so it does not alter the board or backlog data.
+
+**Acceptance criteria (re-verified by the automated suites on HEAD and the diff review):**
+- [x] `POST /api/sprints/:id/close` response, single transaction, non-Done cards returned with `sprint_removed {reason: "sprint_closed"}`, Done cards kept, `closed`/`closedAt`/`completedPoints`, board events: `sprints-close.test.ts`.
+- [x] `409 SPRINT_NOT_ACTIVE`; parallel closes give exactly one 200: API test.
+- [x] UI confirmation with preview, summary, backlog and board update: `sprints-close-flow.test.tsx`, E2E.
+- [x] Common criteria G1-G5, A1-A5, A7, U1-U10, R6: all checks green.
+
+**Required tests:** unchanged from report 1; all exist, pass and assert the specified behaviour.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
