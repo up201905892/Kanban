@@ -224,6 +224,15 @@ Entry template:
 - **Documentation:** `docs/api.md` (close endpoint, `card_updated` source); no ADR required by the specification; no migrations; no new environment variables; no new dependencies
 - **Lessons:** a finished card keeps the closed sprint's `sprintId` and appears in neither the backlog nor a section (by design, KB-022 behaviour); `committedPoints` is left as at start. The only `TODO` found is a test constant name, not a leftover; no secret found.
 
+### KB-024 · Card activity history — done on 2026-11-17
+
+- **Approving test report:** Report 1 (2026-11-17), commit b637114 (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** `GET /api/cards/:id/activity` (newest first, cursor on `(createdAt, id)`, limit up to 100, actor `{id, name}`, 404 for non-members and soft-deleted cards); an "Activity" section in the card dialog with readable lines, `<time>` elements and a "Load more" button that moves focus to the first new item; an exhaustive switch over the shared event union; live refresh through board events (not for `description_changed`, by design); `description_changed` shows lengths only.
+- **CHANGELOG:** "Added: Every card now has an Activity section that shows what happened to it, newest first, in plain sentences such as "Ana moved this card from To do to In progress · 2 h ago", with the exact date on hover and a "Load more" button; new changes appear live while the card is open, and description edits show only how many characters changed, never the text. Deleting a column permanently removes cards that were deleted from it earlier, together with their history (KB-024)."
+- **Documentation:** `docs/api.md` (activity endpoint; D11 option A in the column-delete and card-activity sections); no ADR required by the specification; no migrations; no new environment variables; no new dependencies
+- **Lessons:** names for `moved` and `assignee_changed` events come from the current board and members, so deleted columns and former members show generic text; the developer's local test run predated the last two test files (the tester's full run passed). No TODO found in the task's code; no secret found. Milestone "Reports and history" not reached (KB-025 and KB-026 are Planned).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
