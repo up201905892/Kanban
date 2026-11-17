@@ -1,6 +1,12 @@
 import { useId, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { cardReference, type CardSummary, type Project, type Sprint } from '@kanban/shared';
+import {
+  cardReference,
+  type CardSummary,
+  type CloseSprintSummary,
+  type Project,
+  type Sprint,
+} from '@kanban/shared';
 import {
   Button,
   Dialog,
@@ -13,9 +19,12 @@ import {
 import { useBoard } from '../board/api';
 import { useBoardEvents } from '../board/useBoardEvents';
 import { SprintDialog } from './SprintDialog';
-import { useSetCardSprint, useStartSprint } from './api';
+import { useCloseSprint, useSetCardSprint, useStartSprint } from './api';
 import {
   backlogCards,
+  closeConfirmText,
+  closePreview,
+  closeResultText,
   dateRangeLabel,
   defaultTargetSprint,
   pointsLabel,
@@ -45,10 +54,14 @@ export function BacklogView({ project, canManage, canEditCards }: BacklogViewPro
   useBoardEvents(project.id, boardId);
   const setSprint = useSetCardSprint(project.id);
   const startSprint = useStartSprint(project.id);
+  const closeSprint = useCloseSprint(project.id);
   const backlogHeadingId = useId();
   const [editing, setEditing] = useState<Sprint | 'new' | null>(null);
   const [starting, setStarting] = useState<Sprint | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
+  const [closing, setClosing] = useState<Sprint | null>(null);
+  const [closeError, setCloseError] = useState<string | null>(null);
+  const [closeResult, setCloseResult] = useState<CloseSprintSummary | null>(null);
 
   const data = board.data;
   const cards = useMemo(() => data?.cards ?? [], [data]);
@@ -125,6 +138,35 @@ export function BacklogView({ project, canManage, canEditCards }: BacklogViewPro
     );
   }
 
+  function confirmClose() {
+    const sprint = closing;
+    if (!sprint) return;
+    setCloseError(null);
+    closeSprint.mutate(
+      { id: sprint.id },
+      {
+        onSuccess: (summary) => {
+          setCloseResult(summary);
+          announce(`Sprint ${sprint.name} completed: ${closeResultText(summary)}`);
+        },
+        onError: (error) => {
+          setCloseError(error.message);
+          announce(`Could not complete the sprint: ${error.message}`, 'assertive');
+        },
+      },
+    );
+  }
+
+  function dismissClose() {
+    // The button that opened the dialog is gone once the sprint is closed: park focus on the backlog.
+    if (closeResult) focusHeading(backlogHeadingId);
+    setClosing(null);
+    setCloseResult(null);
+    setCloseError(null);
+  }
+
+  const doneColumnIds = new Set((data?.columns ?? []).filter((c) => c.isDone).map((c) => c.id));
+
   return (
     <>
       <p>
@@ -165,6 +207,17 @@ export function BacklogView({ project, canManage, canEditCards }: BacklogViewPro
               {canManage && (
                 <div className="dialog-actions">
                   <Button onClick={() => setEditing(sprint)}>Edit sprint {sprint.name}</Button>
+                  {sprint.status === 'active' && (
+                    <Button
+                      onClick={() => {
+                        setCloseError(null);
+                        setCloseResult(null);
+                        setClosing(sprint);
+                      }}
+                    >
+                      Complete sprint {sprint.name}
+                    </Button>
+                  )}
                   {sprint.status === 'planned' && (
                     <Button
                       disabled={active !== undefined}
@@ -258,6 +311,70 @@ export function BacklogView({ project, canManage, canEditCards }: BacklogViewPro
           />
         )}
       </Dialog>
+      <Dialog
+        open={closing !== null}
+        onClose={dismissClose}
+        title={
+          closeResult
+            ? `${closing?.name ?? 'Sprint'} completed`
+            : `Complete ${closing?.name ?? 'sprint'}?`
+        }
+      >
+        {closing && (
+          <CloseBody
+            preview={closePreview(cards, doneColumnIds, closing.id)}
+            result={closeResult}
+            error={closeError}
+            pending={closeSprint.isPending}
+            onConfirm={confirmClose}
+            onCancel={dismissClose}
+          />
+        )}
+      </Dialog>
+    </>
+  );
+}
+
+function CloseBody({
+  preview,
+  result,
+  error,
+  pending,
+  onConfirm,
+  onCancel,
+}: {
+  preview: CloseSprintSummary;
+  result: CloseSprintSummary | null;
+  error: string | null;
+  pending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (result) {
+    return (
+      <>
+        <p role="status">{closeResultText(result)}</p>
+        <div className="dialog-actions">
+          <Button onClick={onCancel}>Close</Button>
+        </div>
+      </>
+    );
+  }
+  return (
+    <>
+      <p>{closeConfirmText(preview)}</p>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="dialog-actions">
+        <Button onClick={onConfirm} disabled={pending}>
+          Complete sprint
+        </Button>
+        <Button onClick={onCancel}>Cancel</Button>
+      </div>
+      {pending && <Spinner label="Completing the sprint" />}
     </>
   );
 }

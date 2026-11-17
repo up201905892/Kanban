@@ -382,7 +382,7 @@ describe('POST /api/sprints/:id/start', () => {
     const events = await prisma.sprintEvent.findMany({ where: { sprintId: sprint.id } });
     expect(events).toHaveLength(1);
     const snapshot = sprintEventDataSchema.parse({ type: events[0]?.type, data: events[0]?.data });
-    expect(snapshot.type).toBe('sprint_started');
+    if (snapshot.type !== 'sprint_started') throw new Error('expected a sprint_started snapshot');
     expect(snapshot.data.committedPoints).toBe(8);
     expect(snapshot.data.cards.map((x) => x.cardId).sort()).toEqual([a.id, b.id, c.id].sort());
     expect(snapshot.data.cards.map((x) => x.cardId)).not.toContain(outside.id);

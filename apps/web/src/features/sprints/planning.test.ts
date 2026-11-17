@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { CardSummary, Sprint } from '@kanban/shared';
 import {
   backlogCards,
+  closeConfirmText,
+  closePreview,
+  closeResultText,
   dateRangeLabel,
   defaultTargetSprint,
   localToday,
@@ -83,5 +86,26 @@ describe('planning', () => {
   it('formats dates without a time-zone shift', () => {
     expect(dateRangeLabel('2026-11-16', '2026-12-04')).toBe('16 Nov 2026 to 4 Dec 2026');
     expect(localToday(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05');
+  });
+
+  it('previews and words what closing does', () => {
+    const done = '00000000-0000-4000-8000-0000000000d0';
+    const inDone = (n: number, estimate: number | null): CardSummary => ({
+      ...card(n, estimate, 's'),
+      columnId: done,
+    });
+    const cards = [
+      inDone(1, 3),
+      inDone(2, 1),
+      card(3, 5, 's'),
+      card(4, null, 's'),
+      card(5, 8, null),
+    ];
+    const preview = closePreview(cards, new Set([done]), 's');
+    expect(preview).toEqual({ completedCards: 2, completedPoints: 4, returnedCards: 2 });
+    expect(closeConfirmText(preview)).toBe('2 done (4 points), 2 will return to the backlog.');
+    expect(closeResultText({ completedCards: 1, completedPoints: 1, returnedCards: 0 })).toBe(
+      '1 done (1 point), 0 returned to the backlog.',
+    );
   });
 });

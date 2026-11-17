@@ -191,9 +191,50 @@ export const sprintEventDataSchema = z.discriminatedUnion('type', [
       ),
     }),
   }),
+  z.object({
+    type: z.literal('sprint_closed'),
+    data: z.object({
+      completedCards: z.number().int().nonnegative(),
+      completedPoints: z.number().int().nonnegative(),
+      returnedCards: z.number().int().nonnegative(),
+      /** The cards that went back to the backlog. */
+      returnedCardIds: z.array(z.uuid()),
+    }),
+  }),
 ]);
 export type SprintEventData = z.infer<typeof sprintEventDataSchema>;
 
 /** `PUT /api/cards/:id/sprint`: a planned or active sprint of the same project, or null for the backlog. */
 export const setCardSprintRequestSchema = z.strictObject({ sprintId: z.uuid().nullable() });
 export type SetCardSprintRequest = z.infer<typeof setCardSprintRequestSchema>;
+
+/** What closing a sprint does, in cards and points (the dialog and the API agree on it). */
+export const closeSprintSummarySchema = z.object({
+  completedCards: z.number().int().nonnegative(),
+  completedPoints: z.number().int().nonnegative(),
+  returnedCards: z.number().int().nonnegative(),
+});
+export type CloseSprintSummary = z.infer<typeof closeSprintSummarySchema>;
+
+/** `POST /api/sprints/:id/close` response. */
+export const closeSprintResponseSchema = closeSprintSummarySchema;
+export type CloseSprintResponse = CloseSprintSummary;
+
+/**
+ * Splits the cards of a sprint at the moment it closes: those in a Done column stay (and count for
+ * the velocity), the rest return to the backlog. Cards without an estimate add 0 points.
+ */
+export function summarizeClose<T extends { columnId: string; estimate: number | null }>(
+  cards: readonly T[],
+  doneColumnIds: ReadonlySet<string>,
+): CloseSprintSummary & { completed: T[]; returned: T[] } {
+  const completed = cards.filter((c) => doneColumnIds.has(c.columnId));
+  const returned = cards.filter((c) => !doneColumnIds.has(c.columnId));
+  return {
+    completedCards: completed.length,
+    completedPoints: sumPoints(completed),
+    returnedCards: returned.length,
+    completed,
+    returned,
+  };
+}

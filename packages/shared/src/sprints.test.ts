@@ -7,6 +7,7 @@ import {
   isDateRangeValid,
   sprintListQuerySchema,
   sumPoints,
+  summarizeClose,
   toCalendarDate,
   updateSprintRequestSchema,
 } from './sprints.js';
@@ -130,5 +131,43 @@ describe('sumPoints', () => {
   it('is 0 for no cards or only unestimated ones', () => {
     expect(sumPoints([])).toBe(0);
     expect(sumPoints([{ estimate: null }])).toBe(0);
+  });
+});
+
+describe('summarizeClose', () => {
+  const done = new Set(['done']);
+  const card = (columnId: string, estimate: number | null) => ({ columnId, estimate });
+
+  it('keeps the cards in Done and returns the others', () => {
+    const summary = summarizeClose(
+      [card('done', 3), card('done', null), card('todo', 5), card('doing', 2)],
+      done,
+    );
+    expect(summary).toMatchObject({ completedCards: 2, completedPoints: 3, returnedCards: 2 });
+    expect(summary.completed).toHaveLength(2);
+    expect(summary.returned.map((c) => c.estimate)).toEqual([5, 2]);
+  });
+
+  it('handles an empty sprint, all done and none done', () => {
+    expect(summarizeClose([], done)).toMatchObject({
+      completedCards: 0,
+      completedPoints: 0,
+      returnedCards: 0,
+    });
+    expect(summarizeClose([card('done', 8)], done)).toMatchObject({
+      completedCards: 1,
+      completedPoints: 8,
+      returnedCards: 0,
+    });
+    expect(summarizeClose([card('todo', 8)], done)).toMatchObject({
+      completedCards: 0,
+      completedPoints: 0,
+      returnedCards: 1,
+    });
+  });
+
+  it('counts every column flagged as Done', () => {
+    const two = new Set(['a', 'b']);
+    expect(summarizeClose([card('a', 1), card('b', 2), card('c', 4)], two).completedPoints).toBe(3);
   });
 });

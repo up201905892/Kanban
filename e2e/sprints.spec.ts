@@ -148,3 +148,63 @@ test('another person sees a card join the active sprint within 2 seconds', async
   await a.getByRole('button', { name: 'Remove from sprint: PL-1' }).click();
   await expect(column.getByRole('link', { name: /PL-1 Task 1/ })).toHaveCount(0, LIVE);
 });
+
+test('completes a sprint: the unfinished card returns to the backlog and the board filter turns off', async ({
+  userA,
+}) => {
+  const page = userA.page;
+  await signUpViaApi(page, { name: 'Ana Owner' });
+  const { projectId, cardIds } = await createProject(page, 3);
+  const [one, two, three] = cardIds;
+  if (!one || !two || !three) throw new Error('cards missing');
+
+  const created = await post(page, `/api/projects/${projectId}/sprints`, {
+    name: 'Sprint Omega',
+    startDate: '2026-01-01',
+    endDate: '2099-12-31',
+  });
+  const { sprint } = (await created.json()) as { sprint: { id: string } };
+  for (const id of cardIds) {
+    const put = await page.request.put(`/api/cards/${id}/sprint`, {
+      data: { sprintId: sprint.id },
+      headers: { origin: ORIGIN },
+    });
+    expect(put.status()).toBe(200);
+  }
+  expect((await post(page, `/api/sprints/${sprint.id}/start`, {})).status()).toBe(200);
+  const board = (await (await page.request.get(`/api/projects/${projectId}/board`)).json()) as {
+    columns: { id: string; isDone: boolean }[];
+  };
+  const doneColumn = board.columns.find((c) => c.isDone);
+  if (!doneColumn) throw new Error('no Done column');
+  for (const id of [one, two]) {
+    const moved = await post(page, `/api/cards/${id}/move`, { columnId: doneColumn.id });
+    expect(moved.status()).toBe(200);
+  }
+
+  await page.goto(`/projects/${projectId}/backlog`);
+  await page.getByRole('button', { name: 'Complete sprint Sprint Omega' }).click();
+  const confirm = page.getByRole('dialog', { name: 'Complete Sprint Omega?' });
+  await expect(confirm.getByText('2 done (3 points), 1 will return to the backlog.')).toBeVisible();
+  await expectNoBlockingAxeViolations(page);
+
+  await confirm.getByRole('button', { name: 'Complete sprint' }).click();
+  const summary = page.getByRole('dialog', { name: 'Sprint Omega completed' });
+  await expect(summary.getByText('2 done (3 points), 1 returned to the backlog.')).toBeVisible();
+  await expectNoBlockingAxeViolations(page);
+  await summary.getByRole('button', { name: 'Close' }).click();
+  await expect(summary).toBeHidden();
+
+  // The unfinished card is in the backlog; the finished ones are not.
+  const backlog = page.getByRole('region', { name: 'Backlog' });
+  await expect(backlog.getByRole('link', { name: /PL-3 Task 3/ })).toBeVisible();
+  await expect(backlog.getByRole('link', { name: /PL-1 Task 1/ })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Sprint Omega' })).toHaveCount(0);
+
+  // With no active sprint the board shows every card and has no filter.
+  await page.getByRole('link', { name: 'Back to the board' }).click();
+  await expect(page.getByRole('region', { name: 'Active sprint' })).toHaveCount(0);
+  await expect(page.getByRole('checkbox', { name: 'Active sprint only' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /PL-3 Task 3/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /PL-1 Task 1/ })).toBeVisible();
+});

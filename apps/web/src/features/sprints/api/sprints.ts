@@ -1,8 +1,10 @@
 import {
   cardResponseSchema,
+  closeSprintResponseSchema,
   sprintResponseSchema,
   sumPoints,
   type CardResponse,
+  type CloseSprintResponse,
   type CreateSprintRequest,
   type Sprint,
   type SprintResponse,
@@ -86,6 +88,27 @@ export function useStartSprint(projectId: string) {
           : s,
       ),
     }),
+  );
+}
+
+/**
+ * Closes the active sprint. Optimistically the sprint leaves the board and its unfinished cards
+ * return to the backlog; a refusal rolls it back, and the refetch brings the server's numbers.
+ */
+export function useCloseSprint(projectId: string) {
+  return useBoardMutation<{ id: string }, CloseSprintResponse>(
+    projectId,
+    ({ id }) => apiClient.post(`/api/sprints/${id}/close`, {}, closeSprintResponseSchema),
+    (board, { id }) => {
+      const doneIds = new Set(board.columns.filter((c) => c.isDone).map((c) => c.id));
+      return {
+        ...board,
+        sprints: board.sprints.filter((s) => s.id !== id),
+        cards: board.cards.map((c) =>
+          c.sprintId === id && !doneIds.has(c.columnId) ? { ...c, sprintId: null } : c,
+        ),
+      };
+    },
   );
 }
 

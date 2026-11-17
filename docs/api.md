@@ -122,6 +122,10 @@ Owner or member. Body with at least one of `name`, `goal`, `startDate`, `endDate
 
 Owner or member. No body. Only a `planned` sprint can start (otherwise `409 SPRINT_NOT_PLANNED`) and only one sprint per project can be active (`409 SPRINT_ALREADY_ACTIVE`, guaranteed by a partial unique index, so two parallel starts give exactly one `200`). In one transaction the sprint becomes `active`, `committedPoints` is set to the sum of the estimates of its live cards (cards without an estimate count as 0) and a `sprint_started` row is added to `sprint_events` with a snapshot `{ committedPoints, cards: [{ cardId, columnId, estimate }] }` for the burndown (KB-025). Publishes `sprint_updated`. Response `200 { sprint }`. Errors: `401`, `403`, `404`, `409`.
 
+### POST /api/sprints/:id/close
+
+Owner or member. No body. Only an `active` sprint can be closed (otherwise `409 SPRINT_NOT_ACTIVE`); the board lock serialises closes, so two parallel calls give exactly one `200`. In one transaction: live cards of the sprint that are not in a Done column get `sprintId = null`, their `version` is incremented and `sprint_removed` `{ sprintId, sprintName, reason: "sprint_closed" }` is written for each; cards in a Done column keep the sprint; the sprint becomes `closed` with `closedAt` and `completedPoints` (sum of the estimates of the cards that stayed, unestimated count as 0; `committedPoints` is untouched); a `sprint_closed` row `{ completedCards, completedPoints, returnedCards, returnedCardIds }` is added to `sprint_events`. Any failure leaves the sprint and the cards untouched. After the commit it publishes `card_updated` for each returned card and then `sprint_updated`. Response `200 { completedCards, completedPoints, returnedCards }`. Errors: `400`, `401`, `403`, `404`, `409`.
+
 ### DELETE /api/cards/:id
 
 Owner or member. Soft delete (`deletedAt`); writes a `deleted` event. Response `204`; afterwards `GET`, `PATCH` and `DELETE` answer `404` and the card disappears from the board. Errors: `400`, `401`, `403`, `404`.
@@ -200,10 +204,10 @@ Schema: `boardEventSchema` in `packages/shared/src/board-events.ts`. After the t
 | `type` | `entity` | `version` | Published after |
 | --- | --- | --- | --- |
 | `card_created` | card summary | card version | `POST /api/columns/:cid/cards` (not for a repeated create) |
-| `card_updated` | card summary | card version | `PATCH /api/cards/:id` (title, assignee, priority, estimate), `PUT /api/cards/:id/sprint`; removing or leaving a workspace unassigns cards (actor = the remover) |
+| `card_updated` | card summary | card version | `PATCH /api/cards/:id` (title, assignee, priority, estimate), `PUT /api/cards/:id/sprint`, `POST /api/sprints/:id/close` (the cards returned to the backlog); removing or leaving a workspace unassigns cards (actor = the remover) |
 | `card_moved` | card summary | card version | `POST /api/cards/:id/move`; siblings whose key was respaced; cards moved by deleting a column |
 | `card_deleted` | `{ id, columnId, number, title }` | version after the delete | `DELETE /api/cards/:id` |
-| `sprint_updated` | sprint | `null` (sprints are not versioned) | sprint create, edit and start; clients keep planned and active sprints and drop a closed one |
+| `sprint_updated` | sprint | `null` (sprints are not versioned) | sprint create, edit, start and close; clients keep planned and active sprints and drop a closed one |
 | `column_created`, `column_updated` | column | `null` (columns are not versioned) | column create and update (also the siblings respaced and the old Done column) |
 | `column_deleted` | `{ id, name }` | `null` | `DELETE /api/columns/:id` (after the `card_moved` events of its cards) |
 

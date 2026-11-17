@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
   ErrorCode,
+  closeSprintResponseSchema,
   createSprintRequestSchema,
   projectSprintsParamsSchema,
   sprintListQuerySchema,
@@ -13,7 +14,7 @@ import {
 import type { PrismaClient } from '../../db.js';
 import { AppError } from '../../lib/app-error.js';
 import { mutationMetaOf } from '../../lib/board-events.js';
-import { createSprint, listSprints, startSprint, updateSprint } from './service.js';
+import { closeSprint, createSprint, listSprints, startSprint, updateSprint } from './service.js';
 
 export function sprintRoutes({ prisma }: { prisma: PrismaClient }) {
   return async (app: FastifyInstance): Promise<void> => {
@@ -83,6 +84,12 @@ export function sprintRoutes({ prisma }: { prisma: PrismaClient }) {
       async (req) => ({
         sprint: await startSprint(prisma, userOf(req), req.params.id, mutationMetaOf(req)),
       }),
+    );
+
+    r.post(
+      '/api/sprints/:id/close',
+      { schema: { params: sprintParamsSchema, response: { 200: closeSprintResponseSchema } } },
+      async (req) => closeSprint(prisma, userOf(req), req.params.id, mutationMetaOf(req)),
     );
   };
 }

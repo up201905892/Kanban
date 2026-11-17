@@ -3,7 +3,9 @@ import {
   isDateRangeValid,
   sprintEventDataSchema,
   sumPoints,
+  summarizeClose,
   type BoardEvent,
+  type CloseSprintResponse,
   type CreateSprintRequest,
   type Sprint,
   type SprintEventData,
@@ -13,9 +15,16 @@ import {
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
 import { AppError, notFound } from '../../lib/app-error.js';
-import { publishBoardEvents, sprintEvent, type MutationMeta } from '../../lib/board-events.js';
+import {
+  cardEvent,
+  publishBoardEvents,
+  sprintEvent,
+  type MutationMeta,
+} from '../../lib/board-events.js';
 import { authorize } from '../authz/index.js';
 import { lockBoard, type Tx } from '../boards/lock.js';
+import { recordActivity } from '../cards/activity.js';
+import { toCardSummary } from '../cards/service.js';
 import { dateToString, stringToDate, toSprint } from './mapper.js';
 
 const alreadyActive = (): AppError =>
@@ -248,4 +257,82 @@ export async function startSprint(
     if (isActiveIndexViolation(error)) throw alreadyActive();
     throw error;
   }
+}
+
+/**
+ * Closes the active sprint in one transaction under the board lock: cards in a Done column keep the
+ * sprint, the others go back to the backlog (`sprintId = null`, `sprint_removed` with reason
+ * `sprint_closed`), and the sprint stores `closedAt` and `completedPoints` (the velocity of KB-026
+ * reads them). A `sprint_closed` row is added to `sprint_events`. The lock makes two parallel
+ * closes serial: the second one finds a closed sprint and gets `409 SPRINT_NOT_ACTIVE`.
+ */
+export async function closeSprint(
+  prisma: PrismaClient,
+  user: { id: string },
+  id: string,
+  meta: MutationMeta = {},
+): Promise<CloseSprintResponse> {
+  await authorize(prisma, user, { type: 'sprint', id }, 'board:manage');
+  const events: BoardEvent[] = [];
+  const result = await prisma.$transaction(async (tx) => {
+    const first = await tx.sprint.findUnique({ where: { id }, select: { projectId: true } });
+    if (!first) throw notFound();
+    const boardId = await boardOfProject(tx, first.projectId);
+    // Re-read under the lock: another close may have won while we waited.
+    const sprint = await tx.sprint.findUnique({ where: { id } });
+    if (!sprint) throw notFound();
+    if (sprint.status !== 'active') {
+      throw new AppError(409, ErrorCode.SPRINT_NOT_ACTIVE, 'Only an active sprint can be closed');
+    }
+
+    const [cards, doneColumns] = await Promise.all([
+      tx.card.findMany({
+        where: { sprintId: id, deletedAt: null },
+        select: { id: true, columnId: true, estimate: true },
+        orderBy: [{ number: 'asc' }],
+      }),
+      tx.column.findMany({ where: { boardId, isDone: true }, select: { id: true } }),
+    ]);
+    const summary = summarizeClose(cards, new Set(doneColumns.map((c) => c.id)));
+
+    const returnedIds = summary.returned.map((c) => c.id);
+    const returnedRows = [];
+    for (const cardId of returnedIds) {
+      returnedRows.push(
+        await tx.card.update({
+          where: { id: cardId },
+          data: { sprintId: null, version: { increment: 1 } },
+        }),
+      );
+      await recordActivity(tx, cardId, user.id, {
+        type: 'sprint_removed',
+        data: { sprintId: sprint.id, sprintName: sprint.name, reason: 'sprint_closed' },
+      });
+    }
+
+    const row = await tx.sprint.update({
+      where: { id },
+      data: { status: 'closed', closedAt: new Date(), completedPoints: summary.completedPoints },
+    });
+    await recordSprintEvent(tx, id, user.id, {
+      type: 'sprint_closed',
+      data: {
+        completedCards: summary.completedCards,
+        completedPoints: summary.completedPoints,
+        returnedCards: summary.returnedCards,
+        returnedCardIds: returnedIds,
+      },
+    });
+    for (const card of returnedRows) {
+      events.push(cardEvent('card_updated', boardId, toCardSummary(card), user.id, meta));
+    }
+    events.push(sprintEvent(boardId, toSprint(row), user.id, meta));
+    return {
+      completedCards: summary.completedCards,
+      completedPoints: summary.completedPoints,
+      returnedCards: summary.returnedCards,
+    };
+  });
+  publishBoardEvents(events);
+  return result;
 }

@@ -1,4 +1,5 @@
 export {
+  useCloseSprint,
   useCreateSprint,
   useSetCardSprint,
   useStartSprint,

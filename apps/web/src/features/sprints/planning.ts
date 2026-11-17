@@ -1,4 +1,10 @@
-import { sumPoints, type CardSummary, type Sprint } from '@kanban/shared';
+import {
+  sumPoints,
+  summarizeClose,
+  type CardSummary,
+  type CloseSprintSummary,
+  type Sprint,
+} from '@kanban/shared';
 
 /** Sprints in display order: start date, then id (the order the server lists them in). */
 export const sortSprints = (sprints: readonly Sprint[]): Sprint[] =>
@@ -43,6 +49,29 @@ export function localToday(now: Date = new Date()): string {
   const day = String(now.getDate()).padStart(2, '0');
   return `${now.getFullYear()}-${month}-${day}`;
 }
+
+const pointsText = (points: number) => `${points} ${points === 1 ? 'point' : 'points'}`;
+
+/** What closing will do, from the cards the board holds. */
+export function closePreview(
+  cards: readonly CardSummary[],
+  doneColumnIds: ReadonlySet<string>,
+  sprintId: string,
+): CloseSprintSummary {
+  const { completedCards, completedPoints, returnedCards } = summarizeClose(
+    sprintCards(cards, sprintId),
+    doneColumnIds,
+  );
+  return { completedCards, completedPoints, returnedCards };
+}
+
+/** "4 done (11 points), 2 will return to the backlog." */
+export const closeConfirmText = (s: CloseSprintSummary): string =>
+  `${s.completedCards} done (${pointsText(s.completedPoints)}), ${s.returnedCards} will return to the backlog.`;
+
+/** "4 done (11 points), 2 returned to the backlog." */
+export const closeResultText = (s: CloseSprintSummary): string =>
+  `${s.completedCards} done (${pointsText(s.completedPoints)}), ${s.returnedCards} returned to the backlog.`;
 
 /** "16 Nov 2026 to 27 Nov 2026" from two calendar dates (no time-zone shift). */
 export function dateRangeLabel(startDate: string, endDate: string): string {
