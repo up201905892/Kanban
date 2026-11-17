@@ -84,7 +84,7 @@ Owner or member. Body with at least one of `name`, `isDone`, `afterColumnId` / `
 
 ### DELETE /api/columns/:id
 
-Owner or member. Optional query `moveCardsTo=<column id>`: a column of the same board that receives the live cards of the deleted column, appended at its end in their current order in one transaction (each moved card gets a `column_deleted_moved` event and a new `version`). Without it, a column that still has cards answers `409 COLUMN_NOT_EMPTY`; soft-deleted cards do not count and go away with the column. `moveCardsTo` on another board is `404`, equal to the column itself is `400`. The Done column cannot be deleted: `409 DONE_COLUMN_REQUIRED` (checked first). Response `204`. Errors: `400`, `401`, `403`, `404`, `409`.
+Owner or member. Optional query `moveCardsTo=<column id>`: a column of the same board that receives the live cards of the deleted column, appended at its end in their current order in one transaction (each moved card gets a `column_deleted_moved` event and a new `version`). Without it, a column that still has cards answers `409 COLUMN_NOT_EMPTY`; soft-deleted cards do not count and go away with the column. In v1.0, deleting a column permanently removes the cards that were soft-deleted in it earlier, together with their activity (the `cards.column_id` foreign key cascades; decision D11, option A); they cannot be viewed or restored afterwards. `moveCardsTo` on another board is `404`, equal to the column itself is `400`. The Done column cannot be deleted: `409 DONE_COLUMN_REQUIRED` (checked first). Response `204`. Errors: `400`, `401`, `403`, `404`, `409`.
 
 ### POST /api/columns/:cid/cards
 
@@ -93,6 +93,10 @@ Owner or member. Body `{ id?, title, description?, afterCardId?, beforeCardId? }
 ### GET /api/cards/:id
 
 Any role. Response `200 { card }`. A soft-deleted card is `404` for everyone. Errors: `400`, `401`, `404`.
+
+### GET /api/cards/:id/activity
+
+Any role. Query `cursor` (opaque, from the previous page) and `limit` (1 to 100, default 30). Response `200 { events, nextCursor }`: events newest first, ordered by `(createdAt, id)` descending so pages never repeat or skip an event even when timestamps tie; `nextCursor` is `null` on the last page. Each event is `{ id, cardId, actorId, createdAt, type, data, actor: { id, name } }`, where `type` and `data` follow the shared `activityEventDataSchema` union. `description_changed` carries lengths only (`{ from, to }`), never the text, and is coalesced per person in 10-minute windows. Events are written in the same transaction as the change; the description projection writes `description_changed` without a board event, so those entries show up the next time the activity is fetched. A soft-deleted card cannot be viewed or restored in v1.0: this endpoint and `GET /api/cards/:id` answer `404` for it. Deleting a column permanently removes the cards that were soft-deleted in it earlier, together with their activity (D11, option A; see `DELETE /api/columns/:id`). Errors: `400` (bad cursor or limit), `401`, `404` (unknown card, deleted card or non-member).
 
 ### PATCH /api/cards/:id
 

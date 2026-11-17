@@ -3,6 +3,8 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import {
   ErrorCode,
+  activityListQuerySchema,
+  activityListResponseSchema,
   cardParamsSchema,
   cardResponseSchema,
   columnCardsParamsSchema,
@@ -14,6 +16,7 @@ import {
 import type { PrismaClient } from '../../db.js';
 import { AppError } from '../../lib/app-error.js';
 import { mutationMetaOf } from '../../lib/board-events.js';
+import { listCardActivity } from './activity.js';
 import { createCard, deleteCard, getCard, moveCard, setCardSprint, updateCard } from './service.js';
 
 export function cardRoutes({ prisma }: { prisma: PrismaClient }) {
@@ -50,6 +53,18 @@ export function cardRoutes({ prisma }: { prisma: PrismaClient }) {
       '/api/cards/:id',
       { schema: { params: cardParamsSchema, response: { 200: cardResponseSchema } } },
       async (req) => ({ card: await getCard(prisma, userOf(req), req.params.id) }),
+    );
+
+    r.get(
+      '/api/cards/:id/activity',
+      {
+        schema: {
+          params: cardParamsSchema,
+          querystring: activityListQuerySchema,
+          response: { 200: activityListResponseSchema },
+        },
+      },
+      async (req) => listCardActivity(prisma, userOf(req), req.params.id, req.query),
     );
 
     r.patch(

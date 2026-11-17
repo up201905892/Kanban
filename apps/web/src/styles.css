@@ -238,6 +238,14 @@ main,
   margin-top: 1rem;
 }
 
+.activity-section {
+  margin-top: 1rem;
+}
+
+.activity-list {
+  padding-left: 1.25rem;
+}
+
 .card-ref {
   font-weight: 600;
 }

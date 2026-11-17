@@ -200,3 +200,31 @@ export const activityEventSchema = z
   })
   .and(activityEventDataSchema);
 export type ActivityEvent = z.infer<typeof activityEventSchema>;
+
+export const ACTIVITY_LIST_DEFAULT_LIMIT = 30;
+export const ACTIVITY_LIST_MAX_LIMIT = 100;
+
+/** `GET /api/cards/:id/activity`: cursor pagination (A8), newest first. */
+export const activityListQuerySchema = z.strictObject({
+  cursor: z.string().min(1).max(200).optional(),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(ACTIVITY_LIST_MAX_LIMIT)
+    .default(ACTIVITY_LIST_DEFAULT_LIMIT),
+});
+export type ActivityListQuery = z.infer<typeof activityListQuerySchema>;
+
+/** An event with the person who caused it. */
+export const activityEntrySchema = activityEventSchema.and(
+  z.object({ actor: z.object({ id: z.uuid(), name: z.string() }) }),
+);
+export type ActivityEntry = z.infer<typeof activityEntrySchema>;
+
+export const activityListResponseSchema = z.object({
+  events: z.array(activityEntrySchema),
+  /** Pass it as `cursor` to get the next (older) page; null on the last page. */
+  nextCursor: z.string().nullable(),
+});
+export type ActivityListResponse = z.infer<typeof activityListResponseSchema>;

@@ -1,3 +1,4 @@
+export { activityKey, useCardActivity } from './activity';
 export {
   cardKey,
   useCard,

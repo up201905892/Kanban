@@ -12,6 +12,7 @@ import { Button, Dialog, ErrorState, Select, Spinner, useAnnounce } from '../../
 import { usePresence } from '../presence/PresenceContext';
 import { othersOnCard } from '../presence/view-model';
 import { useCard, useUpdateCard } from './api';
+import { ActivitySection } from './ActivitySection';
 import { CardFields } from './CardFields';
 import { DescriptionSection } from './DescriptionSection';
 
@@ -161,6 +162,7 @@ function CardDetail({
         </>
       )}
       {canEdit && <MoveSection summary={summary} columns={columns} onMove={onMove} />}
+      <ActivitySection cardId={summary.id} columns={columns} members={members} />
       <div className="dialog-actions">
         {canEdit && <Button onClick={() => setConfirming(true)}>Delete card</Button>}
         <Button onClick={onClose}>Close</Button>

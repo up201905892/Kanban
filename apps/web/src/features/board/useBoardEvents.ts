@@ -12,7 +12,7 @@ import {
 import { connectBoardSocket } from '../../lib/realtime/board-socket';
 import type { PresenceContextValue } from '../presence/PresenceContext';
 import { toPresentPeople, type PresentPerson } from '../presence/view-model';
-import { cardKey } from '../cards/api';
+import { activityKey, cardKey } from '../cards/api';
 import { boardKey } from './api';
 import { applyBoardEvent, applyCardEvent, remoteChangeOf, type RemoteChange } from './board-events';
 
@@ -90,6 +90,14 @@ export function useBoardEvents(
         queryClient.setQueryData<BoardResponse>(key, after);
         const change = remoteChangeOf(before, event);
         if (change) callback.current?.({ change, before, after });
+      }
+      if (
+        event.type === 'card_created' ||
+        event.type === 'card_updated' ||
+        event.type === 'card_moved'
+      ) {
+        // A new event is in the card's history (KB-024); only mounted activity lists refetch.
+        void queryClient.invalidateQueries({ queryKey: activityKey(event.entity.id) });
       }
       if (event.type === 'card_created' || event.type === 'card_updated') {
         const cached = queryClient.getQueryData<Card>(cardKey(event.entity.id));

@@ -67,6 +67,11 @@ export {
   deleteColumnQuerySchema,
   activityEventDataSchema,
   activityEventSchema,
+  activityListQuerySchema,
+  activityEntrySchema,
+  activityListResponseSchema,
+  ACTIVITY_LIST_DEFAULT_LIMIT,
+  ACTIVITY_LIST_MAX_LIMIT,
   cardReference,
   type CardPriority,
   type CardSummary,
@@ -79,6 +84,9 @@ export {
   type ActivityEventData,
   type ActivityType,
   type ActivityEvent,
+  type ActivityListQuery,
+  type ActivityEntry,
+  type ActivityListResponse,
 } from './cards.js';
 export {
   healthResponseSchema,
