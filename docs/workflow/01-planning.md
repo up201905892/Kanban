@@ -31,7 +31,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-021 | Reconnection, offline edits and connection status | Real time | Medium | KB-018, KB-019 | Done |
 | KB-022 | Backlog and sprint planning | Sprints | Medium | KB-013, KB-018 | Done |
 | KB-023 | Close a sprint | Sprints | Medium | KB-022 | Passed |
-| KB-024 | Card activity history | Reports and history | Medium | KB-013, KB-015 | Ready for test |
+| KB-024 | Card activity history | Reports and history | Medium | KB-013, KB-015 | Passed |
 | KB-025 | Sprint burndown | Reports and history | Medium | KB-022 | Planned |
 | KB-026 | Velocity of recent sprints | Reports and history | Low | KB-023 | Planned |
 | KB-027 | Adopt `@up201905892/ui` and replace local components | Design system | Medium | KB-004, external: `@up201905892/ui` published on npm | Proposed |
@@ -1140,6 +1140,8 @@ Task template (copy for each new task):
 - 2026-11-13 · planner · Planned (no status change) · D11 answered with option A (approvals.md, 2026-11-13): the documentation criterion is made final (both `docs/api.md` sections named, the "if option B" clause removed); no new task
 - 2026-11-17 · developer · Planned → In development · started
 - 2026-11-17 · developer · In development → Ready for test · commit b637114
+- 2026-11-17 · tester · Ready for test → In test · testing started
+- 2026-11-17 · tester · In test → Passed · report 1, all checks and criteria verified
 
 ### KB-025 · Sprint burndown
 

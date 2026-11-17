@@ -913,3 +913,40 @@ Report template:
 **Observations (not failures):**
 - `prisma migrate reset --force` not applicable (no migration) and not run.
 - E2E logs vite ws proxy ECONNRESET noise on teardown; no test failed.
+
+### KB-024 · Card activity history — Report 1 — 2026-11-17
+
+- **Commit tested:** b637114 (HEAD 6c65941 only adds the development record; no uncommitted changes besides the status update)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test`, full run after the last test files (shared 170, web 314, api 419) | ✔ |
+| E2E | `pnpm test:e2e` (54 passed) | ✔ |
+| Authorization | `activity.test.ts`: 401 without session, 404 non-member and unknown id, 404 soft-deleted card; route calls `authorize(... 'workspace:read')` then checks `deletedAt` | ✔ |
+| Input validation | `limit=0`, `limit=101`, bad cursor give 400 (strict query schema, cursor decoded and validated) | ✔ |
+| Database | no migration; existing `(card_id, created_at)` index used; `created_at` is timestamp(3), so the ISO cursor loses no precision | ✔ |
+| Real time | read `useBoardEvents.ts`: `card_created/updated/moved` invalidate `activityKey(card)`; `description_changed` not live by spec | ✔ |
+| Accessibility | `<ul>` list, `<time dateTime>`, Load more moves focus to first new item (unit test), axe on dialog in E2E | ✔ |
+
+**Acceptance criteria:**
+- [x] Endpoint: newest first, cursor on (createdAt, id), limit <= 100, actor {id, name}: `activity.test.ts` (tied timestamps, no duplicates or gaps) and code read.
+- [x] Activity section with readable lines, `<time>` and Load more: `ActivitySection.test.tsx`, `e2e/card-activity.spec.ts`.
+- [x] Exhaustive switch with `never` check; test compares cases with `ACTIVITY_TYPES`.
+- [x] Live updates via board events; `description_changed` exception respected.
+- [x] `description_changed` shows lengths only (renderer unit test, API docs).
+- [x] `docs/api.md` states the D11 behaviour in both the column-delete and card-activity sections, and the 404 for soft-deleted cards.
+- [x] Common criteria: automated checks green.
+
+**Required tests:** unit renderer for every type and relative time, API pagination/401/404/deleted, E2E three entries in order plus axe, accessibility focus test: all exist and assert the specified behaviour.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- `migrate reset` not applicable (no migration).
+- The developer's "test ok" predated the last two test files; the full run now passes.
