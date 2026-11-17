@@ -16,6 +16,18 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-17
+
+- **Decisions for João:**
+  - The first finisher attempt for KB-023 reported that its shell commands were denied. A retry ran git without any denial, so no action is needed. The finisher's secret grep also could not run on `e2e/sprints.spec.ts`, so that one file was not checked.
+  - Still open from 2026-11-16: check the first CI run on `develop` for the `add_sprints` migration on an empty database.
+- **Done:** KB-023 (close a sprint), KB-024 (card activity history). Milestone: Sprints done (KB-022, KB-023).
+- **Tested:** KB-023 (Passed; report 2 after a retest), KB-024 (Passed)
+- **Developed:** KB-023, KB-024
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` on npm)
+- **Rule violations found:** none. KB-023 was retested because KB-024 changed shared files after its first report, which was correct under the finisher's entry check.
+- **Next step:** KB-025 (burndown), KB-026 (velocity), KB-033, KB-035, KB-037, KB-038, KB-039, KB-040, KB-028 and KB-014 are the next `Planned` tasks.
+
 ## 2026-11-16
 
 - **Decisions for João:**
