@@ -30,7 +30,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-020 | Presence: who is on the board and who is editing a card | Real time | Medium | KB-019 | Done |
 | KB-021 | Reconnection, offline edits and connection status | Real time | Medium | KB-018, KB-019 | Done |
 | KB-022 | Backlog and sprint planning | Sprints | Medium | KB-013, KB-018 | Done |
-| KB-023 | Close a sprint | Sprints | Medium | KB-022 | Planned |
+| KB-023 | Close a sprint | Sprints | Medium | KB-022 | Ready for test |
 | KB-024 | Card activity history | Reports and history | Medium | KB-013, KB-015 | Planned |
 | KB-025 | Sprint burndown | Reports and history | Medium | KB-022 | Planned |
 | KB-026 | Velocity of recent sprints | Reports and history | Low | KB-023 | Planned |
@@ -1102,6 +1102,8 @@ Task template (copy for each new task):
 - 2026-10-21 · planner · created as Proposed
 - 2026-10-24 · planner · priority High → Medium · João's decision (2026-10-24): end of the sprint flow, blocks only Medium/Low tasks (KB-026, KB-029)
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
+- 2026-11-17 · developer · Planned → In development · started
+- 2026-11-17 · developer · In development → Ready for test · commit 941e7a4
 
 ### KB-024 · Card activity history
 
