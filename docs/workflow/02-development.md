@@ -547,3 +547,22 @@ Entry template:
   - A finished card keeps the closed sprint's `sprintId`, so it appears in neither the backlog nor a sprint section (KB-022 behaviour); moving it is `409 SPRINT_CLOSED`.
   - The dialog preview is computed from the board data the client holds; the server numbers in the summary are authoritative (they can differ if someone moved a card meanwhile).
   - Suggestions for the planner: none.
+
+### KB-024 · Card activity history
+
+**Iteration 1 — 2026-11-17**
+
+- **Status at the end:** Ready for test
+- **What was done:** Shared Zod contracts for the activity list (query with cursor and `limit` up to 100, entry with actor, response with `nextCursor`). New `GET /api/cards/:id/activity` (any role, newest first, cursor on `(createdAt, id)`, 404 for non-members and soft-deleted cards). "Activity" section in the card dialog (a `<ul>` with `<time>` elements, "Load more" that moves focus to the first newly loaded item). Rendering uses an exhaustive switch over the shared event union (`never` check), with column and member names resolved from the board and member list. Board events for a card (created, updated, moved) invalidate that card's activity query; own mutations already invalidate the card key prefix. `docs/api.md` documents the endpoint and the D11 option A behaviour in both the column-delete and card-activity sections.
+- **Changed files:** `packages/shared/src/cards.ts`, `packages/shared/src/index.ts`, `apps/api/src/modules/cards/activity.ts`, `apps/api/src/modules/cards/routes.ts`, `apps/web/src/features/cards/activity.ts`, `apps/web/src/features/cards/ActivitySection.tsx`, `apps/web/src/features/cards/api/activity.ts`, `apps/web/src/features/cards/api/index.ts`, `apps/web/src/features/cards/CardDialog.tsx`, `apps/web/src/features/board/useBoardEvents.ts`, `apps/web/src/styles.css`, `docs/api.md`
+- **Migrations:** none (the existing `activity_events (card_id, created_at)` index is used)
+- **Commit(s):** `b637114` feat(web): KB-024 card activity history
+- **Acceptance criteria covered:** endpoint and pagination (`apps/api/src/modules/cards/activity.test.ts`); dialog section, `<time>` and "Load more" (`ActivitySection.test.tsx`, `e2e/card-activity.spec.ts`); exhaustive switch (`activity.ts`, and `activity.test.ts` compares the cases with `ACTIVITY_TYPES`); live update through board events (`useBoardEvents.ts`; `description_changed` is not live by design); `description_changed` shows lengths only (renderer unit test); documentation in `docs/api.md`; G1, G2, G8, A1-A4, A7, A8, U1-U10.
+- **Tests written by the developer:** `apps/api/src/modules/cards/activity.test.ts` (order and actor for owner and viewer, stable paging with tied timestamps, 400 bad cursor/limit, 401, 404 non-member and unknown id, 404 deleted card); `apps/web/src/features/cards/activity.test.ts` (renderer for every type, relative and absolute time); `apps/web/src/features/cards/ActivitySection.test.tsx` (list, `<time>`, focus on Load more, error state); `e2e/card-activity.spec.ts` (title change, move, estimate in order, axe).
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (run before the last two test files were added: shared 170, web 312, api 419; the new files pass on their own) · test:e2e ok (54 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - The `moved` and `assignee_changed` events store ids only, so names are looked up from the current board columns and members; a deleted column shows "a deleted column" and a former member "a former member".
+  - Relative time uses "just now", "N min ago", "N h ago", "N days ago", and the UTC date after 30 days; each `<time>` has `dateTime`, a `title` and a screen-reader-only absolute date.
+  - Remote `description_changed` entries do not appear live (ADR 0004 section 12); they show after the dialog is reopened or the list is refetched.
+  - Suggestions for the planner: none.
