@@ -242,6 +242,15 @@ Entry template:
 - **Documentation:** `docs/api.md` (burndown endpoint, UTC rule and the D11 option A known limitation); no ADR required by the specification; no migrations; no new environment variables; new dependency `recharts` in `apps/web`
 - **Lessons:** the burndown reads `activity_events` rather than the `sprint_started` snapshot in `sprint_events`, so the snapshot stays unused by reports. No TODO left by the task (the `TODO` matches are a test constant name for a "To do" column); no secret introduced. Milestone "Reports and history" not reached (KB-026 and others still open).
 
+### KB-033 · Close real-time sockets on logout, session expiry and resource deletion — done on 2026-11-18
+
+- **Approving test report:** Report 1 (2026-11-18), commit e639421 (later commits are workflow records only; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** in-process bus `apps/api/src/lib/access-events.ts` (session ended, resource deleted, `roomsClosedBy`); logout closes that session's sockets with 4401; heartbeat revalidation with one batched query (`findEndedSessions`) catches expiry and direct deletions; workspace, project and card deletion close the affected rooms with 4403 after commit (a card keeps the board room); membership re-check after join closes the join race; ADR 0004 section 7 amended.
+- **CHANGELOG:** "Added: Live connections now end when access ends: logging out disconnects that session's live connections within a second, expired sessions are disconnected within about 30 seconds, and deleting a workspace, project or card disconnects everyone viewing it; removing someone while they are connecting can no longer leave them connected (KB-033)."
+- **Documentation:** `docs/api.md` (logout and WebSocket close codes); ADR 0004 section 7 (done in the task); no migrations; no new environment variables; no new dependencies
+- **Lessons:** a project deleted between room authorization and join is not re-checked (documented in the ADR; possible follow-up for the planner); the "injected failure" rollback has no dedicated test (the 400 path covers it); one unrelated flaky E2E in `members.spec.ts` (KB-035 covers it). No TODO found in the task's code; no secret found. Milestone "Real time" not reached (KB-037, KB-039 and KB-040 are Planned).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->

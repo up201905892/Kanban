@@ -40,7 +40,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-030 | Accessibility audit and fixes | Quality and delivery | Medium | KB-020, KB-021, KB-024, KB-025 | Planned |
 | KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017, KB-037 | Planned |
 | KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Planned |
-| KB-033 | Close real-time sockets on logout, session expiry and resource deletion | Real time | Medium | KB-016 | Passed |
+| KB-033 | Close real-time sockets on logout, session expiry and resource deletion | Real time | Medium | KB-016 | Done |
 | KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Done |
 | KB-035 | Stabilise the flaky members and move-cards E2E tests | Quality and delivery | Medium | KB-009, KB-015 | Planned |
 | KB-036 | Card actions menu on the board tile (D9) | Board | Low | KB-015, D9 answered | Rejected |
@@ -1425,6 +1425,7 @@ Task template (copy for each new task):
 - 2026-11-18 · developer · In development → Ready for test · commit e639421
 - 2026-11-18 · tester · Ready for test → In test · entry check passed
 - 2026-11-18 · tester · In test → Passed · report 1, all checks and criteria verified
+- 2026-11-18 · finisher · Passed → Done · definition of done met; CHANGELOG and docs/api.md updated, ADR 0004 amended by the task; Real time phase not complete (KB-037, KB-039, KB-040 open), no milestone
 
 ### KB-034 · Bump card versions when positions are respaced
 
