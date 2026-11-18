@@ -1,5 +1,6 @@
 import { DEFAULT_COLUMNS, ErrorCode, keysBetween, type Project } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
+import { publishResourceDeleted } from '../../lib/access-events.js';
 import { AppError, notFound } from '../../lib/app-error.js';
 import { authorize } from '../authz/index.js';
 
@@ -112,5 +113,25 @@ export async function deleteProject(
   id: string,
 ): Promise<void> {
   await authorize(prisma, user, { type: 'project', id }, 'project:delete');
-  await prisma.project.deleteMany({ where: { id } });
+  // Read the board and its cards in the same transaction as the delete: the event names the rooms.
+  const deleted = await prisma.$transaction(async (tx) => {
+    const board = await tx.board.findUnique({
+      where: { projectId: id },
+      select: {
+        id: true,
+        project: { select: { workspaceId: true } },
+        cards: { select: { id: true } },
+      },
+    });
+    const { count } = await tx.project.deleteMany({ where: { id } });
+    return count > 0 && board
+      ? ({
+          type: 'project',
+          workspaceId: board.project.workspaceId,
+          boardId: board.id,
+          cardIds: board.cards.map((c) => c.id),
+        } as const)
+      : null;
+  });
+  if (deleted) publishResourceDeleted(deleted);
 }

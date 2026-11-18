@@ -9,13 +9,16 @@ import {
   can,
   parseRoomName,
   type BoardEventMessage,
+  type RoomRef,
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
 import { AppError } from '../../lib/app-error.js';
 import { onBoardEvent } from '../../lib/board-events.js';
+import { onResourceDeleted, onSessionEnded, roomsClosedBy } from '../../lib/access-events.js';
 import { onMembershipChange } from '../../lib/membership-events.js';
 import { getSessionFromCookieHeader } from '../auth/session.js';
 import { authorize, type ResourceRef } from '../authz/index.js';
+import { findEndedSessions } from './sessions.js';
 import { RoomManager, noPersistence, type Connection, type RoomPersistence } from './rooms.js';
 
 export interface RealtimeOptions {
@@ -23,6 +26,8 @@ export interface RealtimeOptions {
   persistence?: RoomPersistence;
   /** Ping interval in milliseconds. Defaults to 30 s; tests shorten it. */
   heartbeatMs?: number;
+  /** Test seam: awaited after the room authorization and before joining (widens the race window). */
+  beforeJoin?: (ref: RoomRef) => Promise<void>;
 }
 
 /** What other modules can do with the real-time layer. */
@@ -93,10 +98,52 @@ export function realtimeRoutes({
       realtime.broadcastBoardEvent(event.boardId, { type: event.type, data: event });
     });
 
+    // Session ids of the open sockets, set as soon as the upgrade is authenticated, so a socket
+    // that is still being authorized is covered too.
+    const sessionOf = new Map<WebSocket, string>();
+
+    // Logout (KB-033): every socket opened with that session closes; other sessions stay open.
+    const unsubscribeSession = onSessionEnded(({ sessionId }) => {
+      for (const [socket, id] of sessionOf) {
+        if (id === sessionId) socket.close(WS_CLOSE.unauthenticated, 'Session ended');
+      }
+    });
+
+    // Deleted workspace, project or card (KB-033): close the sockets of the affected rooms. Closing
+    // runs the normal leave path, which stores and unloads each room after its last client.
+    const unsubscribeDeleted = onResourceDeleted((event) => {
+      const names = roomsClosedBy(event);
+      const conns =
+        names === null
+          ? rooms.connectionsIn(null, event.type === 'workspace' ? event.workspaceId : undefined)
+          : rooms.connectionsIn(names);
+      for (const conn of conns) conn.socket.close(WS_CLOSE.forbidden, 'Resource deleted');
+    });
+
+    // Sessions that end without an in-process event (expiry, the operator CLI) are caught here:
+    // one query per tick for all open sockets.
+    let revalidating = false;
+    const revalidateSessions = async (): Promise<void> => {
+      if (revalidating || sessionOf.size === 0) return;
+      revalidating = true;
+      try {
+        const ended = await findEndedSessions(prisma, sessionOf.values());
+        if (ended.size === 0) return;
+        for (const [socket, id] of sessionOf) {
+          if (ended.has(id)) socket.close(WS_CLOSE.unauthenticated, 'Session ended');
+        }
+      } catch (err) {
+        app.log.error({ err }, 'session revalidation failed');
+      } finally {
+        revalidating = false;
+      }
+    };
+
     // Heartbeat: ping every interval; a socket that did not answer the previous ping is terminated.
     const alive = new WeakMap<WebSocket, boolean>();
     const sockets = new Set<WebSocket>();
     const timer = setInterval(() => {
+      void revalidateSessions();
       for (const socket of sockets) {
         if (alive.get(socket) === false) {
           socket.terminate();
@@ -112,6 +159,8 @@ export function realtimeRoutes({
       clearInterval(timer);
       unsubscribe();
       unsubscribeBoard();
+      unsubscribeSession();
+      unsubscribeDeleted();
       await rooms.shutdown();
     });
 
@@ -163,6 +212,7 @@ export function realtimeRoutes({
 
         socket.on('close', () => {
           sockets.delete(socket);
+          sessionOf.delete(socket);
           if (conn) void rooms.leave(conn);
         });
 
@@ -173,6 +223,7 @@ export function realtimeRoutes({
               socket.close(WS_CLOSE.unauthenticated, 'Authentication required');
               return;
             }
+            sessionOf.set(socket, session.session.id);
             const ref = parseRoomName((req.params as { room: string }).room);
             if (!ref) {
               socket.close(WS_CLOSE.invalidRoom, 'Invalid room');
@@ -195,6 +246,8 @@ export function realtimeRoutes({
               socket.close(WS_CLOSE.forbidden, 'Forbidden');
               return;
             }
+            await options.beforeJoin?.(ref);
+            if (socket.readyState !== socket.OPEN) return;
             const joining: Connection = {
               socket,
               userId: session.user.id,
@@ -206,6 +259,19 @@ export function realtimeRoutes({
             };
             conn = joining;
             if (!(await rooms.join(ref, joining))) return;
+            // Race (ADR 0004 section 7): a membership removed after the authorization above but
+            // before the connection was registered missed the bus. Re-check now that it is registered.
+            const membership = await prisma.membership.findUnique({
+              where: {
+                workspaceId_userId: { workspaceId: ctx.workspaceId, userId: session.user.id },
+              },
+              select: { role: true },
+            });
+            if (!membership) {
+              socket.close(WS_CLOSE.forbidden, 'Membership removed');
+              return;
+            }
+            joining.role = membership.role;
             open = true;
             for (const data of pending.splice(0)) process(data);
           } catch (err) {

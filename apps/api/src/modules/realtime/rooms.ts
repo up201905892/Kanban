@@ -110,6 +110,19 @@ export class RoomManager {
     return found;
   }
 
+  /** Connections of the named rooms (rooms that are not loaded have none), or of every room. */
+  connectionsIn(names: readonly string[] | null, workspaceId?: string): Connection[] {
+    const found: Connection[] = [];
+    const wanted = names ? new Set(names) : null;
+    for (const room of this.rooms.values()) {
+      if (wanted && !wanted.has(room.name)) continue;
+      for (const conn of room.conns) {
+        if (workspaceId === undefined || conn.workspaceId === workspaceId) found.push(conn);
+      }
+    }
+    return found;
+  }
+
   private getOrCreate(ref: RoomRef): Room {
     const name = roomName(ref);
     const existing = this.rooms.get(name);

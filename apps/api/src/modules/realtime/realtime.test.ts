@@ -240,6 +240,7 @@ async function setup() {
     viewer,
     outsider,
     ws,
+    projectId: project.id,
     boardRoom: `board:${board.board.id}`,
     boardId: board.board.id,
     cardRoom: `card:${card.id}:description`,
@@ -672,6 +673,189 @@ describe('persistence hook', () => {
     const s = await setup();
     const c = await open(s.cardRoom, s.owner);
     expect(await c.closed).toBe(1011);
+    await waitFor(() => app.realtime.rooms.size === 0);
+  });
+});
+
+describe('access ends over WebSocket when it ends over REST (KB-033)', () => {
+  type Setup = Awaited<ReturnType<typeof setup>>;
+
+  async function secondSession(who: TestUser): Promise<TestUser> {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { origin: TEST_ORIGIN },
+      payload: { email: who.email, password: who.password },
+    });
+    expect(res.statusCode).toBe(200);
+    const cookie = String(res.headers['set-cookie']).split(';')[0] as string;
+    return { ...who, cookie, headers: { cookie, origin: TEST_ORIGIN } };
+  }
+
+  async function secondCardRoom(s: Setup): Promise<string> {
+    const board = boardResponseSchema.parse(
+      (await call('GET', `/api/projects/${s.projectId}/board`, s.owner)).json(),
+    );
+    const column = board.columns[0];
+    if (!column) throw new Error('no column');
+    const card = cardResponseSchema.parse(
+      (await call('POST', `/api/columns/${column.id}/cards`, s.owner, { title: 'Second' })).json(),
+    ).card;
+    return `card:${card.id}:description`;
+  }
+
+  /** A second workspace with its own board, owned by the outsider. */
+  async function otherWorkspaceBoard(s: Setup): Promise<string> {
+    const ws = workspaceResponseSchema.parse(
+      (await call('POST', '/api/workspaces', s.outsider, { name: 'Other' })).json(),
+    ).workspace;
+    const project = projectResponseSchema.parse(
+      (
+        await call('POST', `/api/workspaces/${ws.id}/projects`, s.outsider, {
+          name: 'Q',
+          key: 'OT',
+        })
+      ).json(),
+    ).project;
+    const board = boardResponseSchema.parse(
+      (await call('GET', `/api/projects/${project.id}/board`, s.outsider)).json(),
+    );
+    return `board:${board.board.id}`;
+  }
+
+  it('logout closes that session sockets with 4401 and keeps the other session open', async () => {
+    const s = await setup();
+    const other = await secondSession(s.owner);
+    const a1 = await open(s.cardRoom, s.owner);
+    const a2 = await open(s.boardRoom, s.owner);
+    const b = await open(s.cardRoom, other);
+    await waitFor(() => b.received.length > 0 && a1.received.length > 0);
+
+    const started = Date.now();
+    expect((await call('POST', '/api/auth/logout', s.owner)).statusCode).toBe(204);
+    expect(await a1.closed).toBe(WS_CLOSE.unauthenticated);
+    expect(await a2.closed).toBe(WS_CLOSE.unauthenticated);
+    expect(Date.now() - started).toBeLessThan(1000);
+    await settle();
+    expect(b.closeCode).toBeNull();
+  });
+
+  it('closes at the next heartbeat tick when the session expired', async () => {
+    await app.close();
+    await start({ heartbeatMs: 80 });
+    const s = await setup();
+    const other = await secondSession(s.owner);
+    const a = await open(s.cardRoom, s.owner);
+    const b = await open(s.cardRoom, other);
+    await waitFor(() => a.received.length > 0 && b.received.length > 0);
+    const rows = await prisma.session.findMany({ where: { userId: s.owner.user.id } });
+    const first = rows.sort((x, y) => x.createdAt.getTime() - y.createdAt.getTime())[0];
+    await prisma.session.update({
+      where: { id: first?.id ?? '' },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+    expect(await a.closed).toBe(WS_CLOSE.unauthenticated);
+    expect(b.closeCode).toBeNull();
+  });
+
+  it('closes at the next tick when the session row is deleted directly (operator CLI)', async () => {
+    await app.close();
+    await start({ heartbeatMs: 80 });
+    const s = await setup();
+    const a = await open(s.boardRoom, s.owner);
+    const m = await open(s.boardRoom, s.member);
+    await waitFor(() => a.received.length > 0 && m.received.length > 0);
+    await prisma.session.deleteMany({ where: { userId: s.owner.user.id } });
+    expect(await a.closed).toBe(WS_CLOSE.unauthenticated);
+    expect(m.closeCode).toBeNull();
+  });
+
+  it('workspace deletion closes its board and card sockets, not another workspace', async () => {
+    const s = await setup();
+    const otherBoard = await otherWorkspaceBoard(s);
+    const board = await open(s.boardRoom, s.member);
+    const card = await open(s.cardRoom, s.owner);
+    const outside = await open(otherBoard, s.outsider);
+    await waitFor(() => board.received.length > 0 && outside.received.length > 0);
+
+    const started = Date.now();
+    const res = await call('DELETE', `/api/workspaces/${s.ws.id}`, s.owner, {
+      confirmName: 'Acme',
+    });
+    expect(res.statusCode).toBe(204);
+    expect(await board.closed).toBe(WS_CLOSE.forbidden);
+    expect(await card.closed).toBe(WS_CLOSE.forbidden);
+    expect(Date.now() - started).toBeLessThan(1000);
+    await waitFor(
+      () => !app.realtime.rooms.has(s.boardRoom) && !app.realtime.rooms.has(s.cardRoom),
+    );
+    expect(outside.closeCode).toBeNull();
+  });
+
+  it('project deletion closes its board room and card rooms', async () => {
+    const s = await setup();
+    const otherBoard = await otherWorkspaceBoard(s);
+    const board = await open(s.boardRoom, s.member);
+    const card = await open(s.cardRoom, s.owner);
+    const outside = await open(otherBoard, s.outsider);
+    await waitFor(() => board.received.length > 0 && outside.received.length > 0);
+
+    const res = await call('DELETE', `/api/projects/${s.projectId}`, s.owner);
+    expect(res.statusCode).toBe(204);
+    expect(await board.closed).toBe(WS_CLOSE.forbidden);
+    expect(await card.closed).toBe(WS_CLOSE.forbidden);
+    await settle();
+    expect(outside.closeCode).toBeNull();
+  });
+
+  it('card deletion closes its description room, not the board room or other cards', async () => {
+    const s = await setup();
+    const otherCardRoom = await secondCardRoom(s);
+    const board = await open(s.boardRoom, s.member);
+    const card = await open(s.cardRoom, s.owner);
+    const other = await open(otherCardRoom, s.owner);
+    await waitFor(() => board.received.length > 0 && other.received.length > 0);
+
+    const res = await call('DELETE', `/api/cards/${s.cardId}`, s.owner);
+    expect(res.statusCode).toBe(204);
+    expect(await card.closed).toBe(WS_CLOSE.forbidden);
+    await waitFor(() => !app.realtime.rooms.has(s.cardRoom));
+    await settle();
+    expect(board.closeCode).toBeNull();
+    expect(other.closeCode).toBeNull();
+  });
+
+  it('a refused delete (wrong confirmation name) closes nothing', async () => {
+    const s = await setup();
+    const board = await open(s.boardRoom, s.member);
+    const card = await open(s.cardRoom, s.owner);
+    await waitFor(() => board.received.length > 0 && card.received.length > 0);
+    const res = await call('DELETE', `/api/workspaces/${s.ws.id}`, s.owner, {
+      confirmName: 'Wrong',
+    });
+    expect(res.statusCode).toBe(400);
+    await settle();
+    expect(board.closeCode).toBeNull();
+    expect(card.closeCode).toBeNull();
+  });
+
+  it('closes with 4403 a socket whose membership was removed before it joined', async () => {
+    await app.close();
+    let removed = false;
+    const target = { userId: '', workspaceId: '' };
+    await start({
+      beforeJoin: async () => {
+        if (removed) return;
+        removed = true;
+        await prisma.membership.deleteMany({ where: target });
+      },
+    });
+    const s = await setup();
+    target.userId = s.member.user.id;
+    target.workspaceId = s.ws.id;
+    const out = await connect(s.boardRoom, s.member);
+    if (out.kind !== 'open') throw new Error('expected upgrade');
+    expect(await out.client.closed).toBe(WS_CLOSE.forbidden);
     await waitFor(() => app.realtime.rooms.size === 0);
   });
 });

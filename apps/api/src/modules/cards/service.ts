@@ -10,6 +10,7 @@ import {
   type UpdateCardRequest,
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
+import { publishResourceDeleted } from '../../lib/access-events.js';
 import { AppError, notFound } from '../../lib/app-error.js';
 import {
   cardDeletedEvent,
@@ -317,6 +318,7 @@ export async function deleteCard(
     events.push(cardDeletedEvent(card.boardId, row, user.id, meta));
   });
   publishBoardEvents(events);
+  publishResourceDeleted({ type: 'card', cardId: id });
 }
 
 /**

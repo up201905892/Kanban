@@ -1,5 +1,6 @@
 import { ErrorCode, type Role, type Workspace } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
+import { publishResourceDeleted } from '../../lib/access-events.js';
 import { AppError, notFound } from '../../lib/app-error.js';
 import { authorize } from '../authz/index.js';
 
@@ -87,5 +88,6 @@ export async function deleteWorkspace(
       { path: 'confirmName', message: 'Type the workspace name exactly to confirm' },
     ]);
   }
-  await prisma.workspace.deleteMany({ where: { id } });
+  const { count } = await prisma.workspace.deleteMany({ where: { id } });
+  if (count > 0) publishResourceDeleted({ type: 'workspace', workspaceId: id });
 }

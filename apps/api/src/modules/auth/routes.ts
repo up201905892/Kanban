@@ -8,6 +8,7 @@ import {
   signupRequestSchema,
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
+import { publishSessionEnded } from '../../lib/access-events.js';
 import { AppError } from '../../lib/app-error.js';
 import { RateLimiter } from '../../lib/rate-limiter.js';
 import { deleteSession, type AuthUser } from './session.js';
@@ -70,7 +71,10 @@ export function authRoutes({ prisma, nodeEnv, rateLimiter }: AuthRoutesOptions) 
     );
 
     r.post('/api/auth/logout', { schema: { response: { 204: z.null() } } }, async (req, reply) => {
-      if (req.authSession) await deleteSession(prisma, req.authSession.id);
+      if (req.authSession) {
+        await deleteSession(prisma, req.authSession.id);
+        publishSessionEnded({ sessionId: req.authSession.id });
+      }
       reply.header('set-cookie', serializeClearedSessionCookie(nodeEnv));
       return reply.code(204).send(null);
     });
