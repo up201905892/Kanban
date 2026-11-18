@@ -233,6 +233,15 @@ Entry template:
 - **Documentation:** `docs/api.md` (activity endpoint; D11 option A in the column-delete and card-activity sections); no ADR required by the specification; no migrations; no new environment variables; no new dependencies
 - **Lessons:** names for `moved` and `assignee_changed` events come from the current board and members, so deleted columns and former members show generic text; the developer's local test run predated the last two test files (the tester's full run passed). No TODO found in the task's code; no secret found. Milestone "Reports and history" not reached (KB-025 and KB-026 are Planned).
 
+### KB-025 · Sprint burndown — done on 2026-11-18
+
+- **Approving test report:** Report 1 (2026-11-18), commit 3128e34 (production code last changed in 0288fa4; later commits are workflow records only)
+- **Development iterations:** 1
+- **Delivered:** pure `computeBurndown` in `packages/shared` (UTC days, `unestimatedCount`); `GET /api/sprints/:id/burndown` (any role, 404 for non-members) reading `activity_events`; Reports page with a Recharts chart (remaining vs ideal), a text summary, a keyboard-operable "Show as table" toggle with a real table, empty states, and live refresh through board events.
+- **CHANGELOG:** "Added: Each project now has a Reports page with the burndown of the active sprint: a chart of the points still to do against the ideal line, a text summary such as "12 of 30 points remaining, 4 days left", and a "Show as table" button for the same numbers in a table; days follow UTC, cards without an estimate count as 0 points, and the page updates as people move cards (KB-025)." (already added with the code commit)
+- **Documentation:** `docs/api.md` (burndown endpoint, UTC rule and the D11 option A known limitation); no ADR required by the specification; no migrations; no new environment variables; new dependency `recharts` in `apps/web`
+- **Lessons:** the burndown reads `activity_events` rather than the `sprint_started` snapshot in `sprint_events`, so the snapshot stays unused by reports. No TODO left by the task (the `TODO` matches are a test constant name for a "To do" column); no secret introduced. Milestone "Reports and history" not reached (KB-026 and others still open).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
