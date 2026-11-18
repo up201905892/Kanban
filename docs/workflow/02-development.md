@@ -588,3 +588,21 @@ Entry template:
   - Recharts in jsdom renders with a fixed initial size; chart pixels are not asserted in unit tests.
   - Returned cards at close time leave the scope on the close day of a closed sprint.
   - Suggestions for the planner: none.
+
+### KB-033 · Close real-time sockets on logout, session expiry and resource deletion
+
+**Iteration 1 — 2026-11-18**
+
+- **Status at the end:** Ready for test
+- **What was done:** New in-process bus `apps/api/src/lib/access-events.ts` (session ended, resource deleted, and the pure `roomsClosedBy`), next to the membership bus. Logout publishes after the session row is deleted. The realtime routes keep a socket-to-session map (filled right after the upgrade is authenticated) and close the sockets of an ended session with `4401`. Each heartbeat tick also runs `findEndedSessions` (`realtime/sessions.ts`): one query for all distinct session ids, closing missing or expired ones with `4401` (no overlapping runs). `deleteWorkspace`, `deleteProject` (board id and card ids read in the delete transaction) and `deleteCard` publish after the deletion committed; sockets of the affected rooms close with `4403` and leave through the normal path, which stores and unloads the rooms. `RoomManager.connectionsIn` selects connections by room names and/or workspace. Join race: the membership is re-checked right after `rooms.join` (and the role refreshed), closing with `4403` when it is gone; a `beforeJoin` option is the test seam. ADR 0004 section 7 amended (coverage, 30 s worst case, join-race approach, single-instance assumption).
+- **Changed files:** `apps/api/src/lib/access-events.ts`, `apps/api/src/lib/access-events.test.ts`, `apps/api/src/modules/realtime/{routes.ts,rooms.ts,sessions.ts,sessions.test.ts,realtime.test.ts}`, `apps/api/src/modules/auth/routes.ts`, `apps/api/src/modules/workspaces/service.ts`, `apps/api/src/modules/projects/service.ts`, `apps/api/src/modules/cards/service.ts`, `docs/adr/0004-real-time-architecture.md`
+- **Migrations:** none
+- **Commit(s):** `e639421` feat(api): KB-033 close real-time sockets on logout, session expiry and resource deletion
+- **Acceptance criteria covered:** logout 4401 under 1 s with the other session open; expiry and direct row deletion caught at the next tick with one batched query; workspace, project and card deletion close the right rooms with 4403 (board room stays open for a card); refused deletion closes nothing; join race closed; typed bus events in `lib/`; ADR amended; G1, G4, G7, G8, R2.
+- **Tests written by the developer:** unit `access-events.test.ts` (room selection per resource) and `sessions.test.ts` (one query for N sockets); API in `realtime.test.ts` (logout, expiry tick, CLI-style deletion tick, workspace/project/card deletion with an untouched socket in another workspace or room, wrong confirmation name, membership removed before join). No E2E required.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 185, web 317, api 437) · test:e2e not run (task has no E2E tests)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - The "injected failure" case of the criteria is covered through the `400` wrong-confirmation path; a rolled-back deletion publishes nothing because the publish comes after the awaited delete.
+  - Membership re-check happens after the handshake was sent, so a removed member may briefly receive the first sync message before `4403`.
+  - Suggestions for the planner: a project deleted between room authorization and join is not re-checked (documented in the ADR); a follow-up could re-check the resource too.
