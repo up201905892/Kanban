@@ -1012,3 +1012,38 @@ Report template:
 **Tests added by the tester:** none.
 
 **Failures:** none.
+
+### KB-033 · Close real-time sockets on logout, session expiry and resource deletion — Report 1 — 2026-11-18
+
+- **Commit tested:** e639421 (in branch history via 25b2f9b; no uncommitted changes besides the status update)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared, web 317, api 437) | ✔ |
+| E2E | `pnpm test:e2e` (54 passed, 1 flaky that passed on retry: `members.spec.ts` "last owner cannot step down", REST/invite flow with no real-time code; 8 of 8 passed on a 4x repeat) | ✔ |
+| Authorization | Deletes still call `authorize` first; events are published only after the awaited delete, so refused deletes publish nothing; wrong-confirmation test closes nothing | ✔ |
+| Database | no migration in this task | n.a. |
+| Real time | integration tests with real `ws` clients: logout 4401 with second session open, expiry tick, direct row deletion tick, workspace/project/card deletion 4403, join race 4403 | ✔ |
+| Accessibility | n.a. (no UI) | n.a. |
+
+**Acceptance criteria:**
+- [x] Logout publishes session-ended after the row is deleted; only that session's sockets close with 4401: code review of `auth/routes.ts` and `realtime/routes.ts`; API test with two sessions.
+- [x] Heartbeat revalidation, one query for all distinct session ids (`findEndedSessions`), no overlapping runs; expiry and direct-deletion tests; batching unit test.
+- [x] Workspace, project and card deletion publish after commit and close the right rooms with 4403, other rooms untouched (card keeps board room): `roomsClosedBy` unit tests and three API tests. Rooms unload through the normal leave path.
+- [x] Refused deletion publishes nothing: wrong-confirmation test; publish follows the awaited delete.
+- [x] Join race closed by re-checking membership after join; ADR records it; `beforeJoin` seam test gives 4403.
+- [x] Bus event types typed in `apps/api/src/lib/access-events.ts`.
+- [x] ADR 0004 section 7 amended (coverage, 30 s worst case, single-instance, remaining project-deleted-before-join gap): read the diff.
+- [x] Common criteria G1, G4, G7, G8, R2: all checks green.
+
+**Required tests:** unit (room selection, batching) and the API tests listed in the specification exist, assert the specified behaviour and pass. The "injected failure" rollback has no dedicated test; the 400 path covers it and the code order (publish after awaited delete) is consistent.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observation (not a failure):** one flaky E2E in `members.spec.ts` on the first full run; not reproducible and unrelated to this change.
