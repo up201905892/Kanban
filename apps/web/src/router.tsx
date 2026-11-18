@@ -9,6 +9,7 @@ import { MembersPage } from './routes/MembersPage';
 import { NotFoundPage } from './routes/NotFoundPage';
 import { ProjectPage } from './routes/ProjectPage';
 import { ProjectSettingsPage } from './routes/ProjectSettingsPage';
+import { ReportsPage } from './routes/ReportsPage';
 import { RootLayout } from './routes/RootLayout';
 import { RouteError } from './routes/RouteError';
 import { SignupPage } from './routes/SignupPage';
@@ -41,6 +42,7 @@ export const routes: RouteObject[] = [
             children: [{ path: 'cards/:number', element: null }],
           },
           { path: 'projects/:pid/backlog', element: <BacklogPage /> },
+          { path: 'projects/:pid/reports', element: <ReportsPage /> },
           { path: 'projects/:pid/settings', element: <ProjectSettingsPage /> },
         ],
       },

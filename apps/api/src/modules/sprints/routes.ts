@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
   ErrorCode,
+  burndownResponseSchema,
   closeSprintResponseSchema,
   createSprintRequestSchema,
   projectSprintsParamsSchema,
@@ -14,6 +15,7 @@ import {
 import type { PrismaClient } from '../../db.js';
 import { AppError } from '../../lib/app-error.js';
 import { mutationMetaOf } from '../../lib/board-events.js';
+import { getBurndown } from './burndown.js';
 import { closeSprint, createSprint, listSprints, startSprint, updateSprint } from './service.js';
 
 export function sprintRoutes({ prisma }: { prisma: PrismaClient }) {
@@ -84,6 +86,12 @@ export function sprintRoutes({ prisma }: { prisma: PrismaClient }) {
       async (req) => ({
         sprint: await startSprint(prisma, userOf(req), req.params.id, mutationMetaOf(req)),
       }),
+    );
+
+    r.get(
+      '/api/sprints/:id/burndown',
+      { schema: { params: sprintParamsSchema, response: { 200: burndownResponseSchema } } },
+      async (req) => getBurndown(prisma, userOf(req), req.params.id),
     );
 
     r.post(

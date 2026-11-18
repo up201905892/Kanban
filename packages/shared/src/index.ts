@@ -1,3 +1,17 @@
+export {
+  burndownDaySchema,
+  idealPointSchema,
+  burndownResponseSchema,
+  computeBurndown,
+  burndownSummary,
+  type BurndownDay,
+  type IdealPoint,
+  type BurndownResponse,
+  type BurndownEvent,
+  type BurndownSprint,
+  type BurndownCard,
+  type BurndownContext,
+} from './burndown.js';
 export { APP_NAME } from './constants.js';
 export { slugify } from './slugify.js';
 export {
