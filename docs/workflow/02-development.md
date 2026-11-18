@@ -566,3 +566,25 @@ Entry template:
   - Relative time uses "just now", "N min ago", "N h ago", "N days ago", and the UTC date after 30 days; each `<time>` has `dateTime`, a `title` and a screen-reader-only absolute date.
   - Remote `description_changed` entries do not appear live (ADR 0004 section 12); they show after the dialog is reopened or the list is refetched.
   - Suggestions for the planner: none.
+
+### KB-025 · Sprint burndown
+
+**Iteration 1 — 2026-11-18**
+
+- **Status at the end:** Ready for test
+- **What was done:** Shared: `burndown.ts` with the Zod response (`days`, `ideal`, `unestimatedCount`), the pure `computeBurndown(sprint, events, context)` and `burndownSummary`. It replays the card activity events of every card ever added to the sprint (`sprint_added`) in order; a card counts in scope while it is in the sprint and not deleted, with the estimate of that day, and as remaining while outside a Done column. Initial column and estimate of a card are worked back from its present state and the `from` values of its first change. Day boundaries are UTC (documented in `docs/api.md`). API: `GET /api/sprints/:id/burndown` (any role, `workspace:read`, 404 for non-members) in `modules/sprints/burndown.ts`; a planned sprint returns empty arrays; a closed sprint stops at its close day. Web: `features/reports/` (query hook, chart data, `BurndownView`), page `/projects/:pid/reports` and a "Reports" link on the project page. The page has a Recharts line chart (remaining vs ideal) in a `role="img"` wrapper with a text label, the text summary ("12 of 30 points remaining, 4 days left"), a "Show as table" toggle (`aria-pressed`) rendering a real `<table>` with caption and column and row headers, and the empty states "No active sprint" and "No estimated cards". The burndown query is invalidated whenever the board cache updates (the page joins the board room), so it is live. `docs/api.md` (endpoint, computation, D11 option A limitation) and `CHANGELOG.md` updated.
+- **Changed files:** `packages/shared/src/{burndown.ts,burndown.test.ts,index.ts}`, `apps/api/src/modules/sprints/{burndown.ts,burndown.test.ts,routes.ts}`, `apps/web/src/features/reports/{BurndownView.tsx,chart-data.ts,burndown-flow.test.tsx,api/burndown.ts,api/index.ts}`, `apps/web/src/{router.tsx,routes/ReportsPage.tsx,routes/ProjectPage.tsx}`, `apps/web/package.json`, `pnpm-lock.yaml`, `e2e/burndown.spec.ts`, `docs/api.md`, `CHANGELOG.md`
+- **Migrations:** none
+- **Commit(s):** `0288fa4` feat(web): KB-025 sprint burndown
+- **Acceptance criteria covered:** pure function with UTC days and `unestimatedCount`; endpoint; reports page with chart, summary and table toggle; both empty states; known limitation documented; common criteria G1, G2, G8, A1-A4, A7, U1-U10.
+- **Tests written by the developer:** shared `burndown.test.ts` (15: empty sprint, ideal line, range limits, move into and out of Done, scope added mid-sprint, card removed (other sprints ignored), deleted card, estimate change on a done card, unestimated count, UTC boundaries, column-delete move, closed sprint, one-day sprint, summary wording); API `burndown.test.ts` (5: replay with scope and moves, delete and move back, planned sprint, 200 for owner, member and viewer, 404 non-member identical to missing id, 401, 400); web `burndown-flow.test.tsx` (summary, keyboard toggle to the table and back, future days blank, no active sprint, no estimated cards); E2E `e2e/burndown.spec.ts` (start a sprint, table shows 8, a card moved to Done drops today's remaining to 3 live, axe on chart and table views).
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 185, web 317, api 424) · test:e2e ok (55 passed)
+- **New dependencies (G9):** `recharts` ^3.11.0 in `apps/web` (the charting library chosen in CLAUDE.md; no alternatives considered).
+- **Notes for the tester:**
+  - The function signature is `computeBurndown(sprint, events, context)`: the third argument carries the sprint id, Done column ids, the present state of the cards and today's UTC date, so it stays pure.
+  - No schema change: the burndown reads `activity_events` (not the `sprint_started` snapshot), which also covers cards added later. The snapshot in `sprint_events` is unused by KB-025.
+  - Chart shows remaining and ideal; scope is in the table and the summary only (a scope line would add a third series; table has it).
+  - The summary paragraph is not `role="status"` because Recharts' tooltip already uses that role; the chart wrapper has an `aria-label` with the same summary.
+  - Recharts in jsdom renders with a fixed initial size; chart pixels are not asserted in unit tests.
+  - Returned cards at close time leave the scope on the close day of a closed sprint.
+  - Suggestions for the planner: none.
