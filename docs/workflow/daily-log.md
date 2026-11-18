@@ -16,6 +16,18 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-18
+
+- **Decisions for João:**
+  - Optional: a project deleted between room authorization and join is not re-checked (documented in ADR 0004 section 7, from KB-033). Say if you want a follow-up task.
+  - Observation: the E2E test "the last owner cannot step down and a revoked link stops working" (`e2e/members.spec.ts`) was flaky once; KB-035 already covers stabilising it.
+- **Done:** KB-025 (sprint burndown), KB-033 (close real-time sockets on access loss)
+- **Tested:** KB-025 (Passed), KB-033 (Passed)
+- **Developed:** KB-025, KB-033 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` on npm)
+- **Rule violations found:** none
+- **Next step:** KB-026, KB-035, KB-037, KB-038, KB-039, KB-040, KB-028 and KB-014 are the next `Planned` tasks.
+
 ## 2026-11-17
 
 - **Decisions for João:**
