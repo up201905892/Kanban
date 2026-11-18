@@ -981,3 +981,34 @@ Report template:
 **Tests added by the tester:** none.
 
 **Failures:** none.
+
+### KB-025 · Sprint burndown — Report 1 — 2026-11-18
+
+- **Commit tested:** 3128e34 (HEAD; includes KB-025 code 0288fa4; no uncommitted changes besides the status update)
+- **Result:** Passed
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared, web 317, api 424) | ✔ |
+| E2E | `pnpm test:e2e` (55 passed, includes `e2e/burndown.spec.ts` with axe on chart and table views) | ✔ |
+| Authorization | `getBurndown` calls `authorize(... 'workspace:read')` before reading; API test: 200 owner/member/viewer, 404 non-member identical to unknown id, 401, 400 | ✔ |
+| Database | no migration in this task; no schema change | n.a. |
+| Real time | burndown query invalidated on board cache updates (page joins the board room); E2E confirms today's remaining drops live after a move to Done | ✔ |
+| Accessibility | toggle is a button with `aria-pressed`, keyboard test in `burndown-flow.test.tsx`; table has caption, column and row headers; chart wrapper has `role="img"` plus text label and summary; axe in E2E | ✔ |
+
+**Acceptance criteria:**
+- [x] `computeBurndown` pure, UTC days, `unestimatedCount`: code review of `packages/shared/src/burndown.ts` and 15 unit tests.
+- [x] `GET /api/sprints/:id/burndown` returns {days, ideal, unestimatedCount}, any role: API tests.
+- [x] Reports page with Recharts chart, text summary, "Show as table" toggle with real table: web flow test and E2E.
+- [x] Empty states (no active sprint, no estimated cards): web flow test.
+- [x] Known limitation (D11 option A) documented in `docs/api.md` burndown section: read.
+- [x] Common criteria: all checks green.
+
+**Required tests:** unit fixtures (scope added mid-sprint, move out of Done, deleted card, estimate change on done card, empty sprint), API (200 per role, 404, 401), E2E (move to Done drops remaining, axe) and keyboard toggle test all exist, assert the specified behaviour and pass.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
