@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
-import { expect, logInViaApi, test } from './fixtures.js';
+import { afterWrite, expect, logInViaApi, test } from './fixtures.js';
 
 // Printed by `pnpm db:seed:large` (local and CI databases only; the seed refuses production).
 const SEED_USER = {
@@ -53,7 +53,9 @@ test.describe('board with 600 cards', () => {
     );
     await page.keyboard.press('ArrowRight');
     await expect(live).toHaveText(/moved to Review, position \d+ of 121$/);
-    await page.keyboard.press('Space');
+    await afterWrite(page, 'POST', /^\/api\/cards\/[^/]+\/move$/, () =>
+      page.keyboard.press('Space'),
+    );
     await expect(live).toHaveText(/dropped in Review, position \d+ of 121$/);
 
     // It persisted: after a reload the card is in Review according to the server.

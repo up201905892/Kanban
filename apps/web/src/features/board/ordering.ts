@@ -138,3 +138,18 @@ export function applyColumnUpdate(
   }
   return { ...board, columns };
 }
+
+/**
+ * True when hovering `overId` leaves the held card exactly where it is in its own column.
+ * `overId` is another card or the column itself (then: last). Collision detection can report
+ * the column right after pick-up (a card alone in its column, or the last card).
+ */
+export function isOwnSpot(
+  target: readonly string[],
+  heldId: string,
+  overId: string,
+  overIsColumn: boolean,
+): boolean {
+  const hovered = overIsColumn ? target.length - 1 : target.indexOf(overId);
+  return hovered === target.indexOf(heldId);
+}

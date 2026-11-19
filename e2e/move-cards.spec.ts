@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { expect, signUpViaApi, test } from './fixtures.js';
+import { afterWrite, expect, signUpViaApi, test } from './fixtures.js';
 
 const ORIGIN = 'http://localhost:5173';
+const MOVE_URL = /^\/api\/cards\/[^/]+\/move$/;
 
 async function expectNoBlockingAxeViolations(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -57,7 +58,7 @@ test.describe('moving cards', () => {
       steps: 5,
     });
     await page.mouse.move(to.x + to.width / 2, to.y + 60, { steps: 15 });
-    await page.mouse.up();
+    await afterWrite(page, 'POST', MOVE_URL, () => page.mouse.up());
     await expect(tilesIn(page, 'In progress')).toHaveText(['MV-1 First']);
     await expect(tilesIn(page, 'To do')).toHaveText(['MV-2 Second']);
     // The drop did not open the card.
@@ -92,7 +93,7 @@ test.describe('moving cards', () => {
     await expect(live).toContainText('Picked up');
     await page.keyboard.press('ArrowRight');
     await expect(live).toContainText('moved to In progress');
-    await page.keyboard.press('Space');
+    await afterWrite(page, 'POST', MOVE_URL, () => page.keyboard.press('Space'));
     await expect(live).toHaveText("Card MV-1 'Fix login' dropped in In progress, position 1 of 1");
     await expect(tilesIn(page, 'In progress')).toHaveText(['MV-1 Fix login']);
     await expect(page.getByRole('button', { name: 'Move card MV-1' })).toBeFocused();
@@ -115,7 +116,7 @@ test.describe('moving cards', () => {
     await expect(page.getByTestId('live-polite')).toContainText('position 2 of 3');
     await page.keyboard.press('ArrowDown');
     await expect(page.getByTestId('live-polite')).toContainText('position 3 of 3');
-    await page.keyboard.press('Space');
+    await afterWrite(page, 'POST', MOVE_URL, () => page.keyboard.press('Space'));
     await expect(tilesIn(page, 'To do')).toHaveText(['MV-2 Two', 'MV-3 Three', 'MV-1 One']);
     await page.reload();
     await expect(tilesIn(page, 'To do')).toHaveText(['MV-2 Two', 'MV-3 Three', 'MV-1 One']);
@@ -128,7 +129,9 @@ test.describe('moving cards', () => {
     const dialog = page.getByRole('dialog', { name: 'Card MV-2' });
     await dialog.getByLabel('Column').selectOption({ label: 'Done' });
     await dialog.getByLabel('Position').selectOption({ label: 'Top' });
-    await dialog.getByRole('button', { name: 'Move card' }).click();
+    await afterWrite(page, 'POST', MOVE_URL, () =>
+      dialog.getByRole('button', { name: 'Move card' }).click(),
+    );
     await expect(page.getByTestId('live-polite')).toHaveText(
       "Card MV-2 'Beta' moved to Done, position 1 of 1",
     );

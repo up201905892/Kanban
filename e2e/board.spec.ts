@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { expect, signUpViaApi, test } from './fixtures.js';
+import { afterWrite, expect, signUpViaApi, test } from './fixtures.js';
 
 const ORIGIN = 'http://localhost:5173';
 
@@ -87,7 +87,9 @@ test.describe('board and columns', () => {
 
     // Mark Review as the Done column.
     await page.getByRole('button', { name: 'Actions for column Review' }).click();
-    await page.getByRole('menuitem', { name: 'Mark as Done column' }).click();
+    await afterWrite(page, 'PATCH', /^\/api\/columns\/[^/]+$/, () =>
+      page.getByRole('menuitem', { name: 'Mark as Done column' }).click(),
+    );
     await expect(columnTitles(page)).toHaveText([
       'In progress',
       'Backlog',
@@ -115,7 +117,9 @@ test.describe('board and columns', () => {
     await page.getByRole('menuitem', { name: 'Delete' }).click();
     const dialog = page.getByRole('dialog', { name: 'Delete column Done?' });
     await expectNoBlockingAxeViolations(page);
-    await dialog.getByRole('button', { name: 'Delete column' }).click();
+    await afterWrite(page, 'DELETE', /^\/api\/columns\/[^/]+$/, () =>
+      dialog.getByRole('button', { name: 'Delete column' }).click(),
+    );
     await expect(columnTitles(page)).toHaveText(['In progress', 'Backlog', 'Review (Done column)']);
     await page.reload();
     await expect(columnTitles(page)).toHaveText(['In progress', 'Backlog', 'Review (Done column)']);

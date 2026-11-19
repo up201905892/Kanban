@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { expect, signUpViaApi, test } from './fixtures.js';
+import { afterWrite, expect, signUpViaApi, test } from './fixtures.js';
 
 const ORIGIN = 'http://localhost:5173';
 
@@ -46,7 +46,9 @@ test.describe('cards', () => {
     await expect(page.getByLabel('Card title')).toBeFocused();
     for (const title of ['Write spec', 'Build it', 'Ship it']) {
       await page.keyboard.type(title);
-      await page.keyboard.press('Enter');
+      await afterWrite(page, 'POST', /^\/api\/columns\/[^/]+\/cards$/, () =>
+        page.keyboard.press('Enter'),
+      );
       await expect(page.getByLabel('Card title')).toBeFocused();
       await expect(page.getByLabel('Card title')).toHaveValue('');
     }
@@ -116,7 +118,9 @@ test.describe('cards', () => {
     await page.getByRole('button', { name: 'Delete card' }).click();
     const confirm = page.getByRole('dialog', { name: 'Delete card CT-2?' });
     await expectNoBlockingAxeViolations(page);
-    await confirm.getByRole('button', { name: 'Delete card' }).click();
+    await afterWrite(page, 'DELETE', /^\/api\/cards\/[^/]+$/, () =>
+      confirm.getByRole('button', { name: 'Delete card' }).click(),
+    );
     await expect(page.getByRole('dialog')).toBeHidden();
     await expect(tilesIn(page, 'To do')).toHaveText(['CT-1 Write spec', 'CT-3 Ship it']);
     await expect(page.getByTestId('live-polite')).toHaveText('Card CT-2 deleted');
@@ -144,7 +148,9 @@ test.describe('cards', () => {
     const dialog = page.getByRole('dialog', { name: 'Delete column In progress?' });
     await expect(dialog.getByText(/This column has 1 card/)).toBeVisible();
     await dialog.getByLabel('Move cards to').selectOption({ label: 'Done' });
-    await dialog.getByRole('button', { name: 'Delete column' }).click();
+    await afterWrite(page, 'DELETE', /^\/api\/columns\/[^/]+$/, () =>
+      dialog.getByRole('button', { name: 'Delete column' }).click(),
+    );
     await expect(tilesIn(page, 'Done')).toHaveText(['CT-1 Moving card']);
     await expect(page.getByTestId('live-polite')).toHaveText(
       'Column In progress deleted; 1 card moved to Done',

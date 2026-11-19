@@ -4,6 +4,7 @@ import {
   applyColumnDelete,
   applyColumnUpdate,
   cardsOf,
+  isOwnSpot,
   layoutOf,
   neighboursAt,
   placeCard,
@@ -145,5 +146,21 @@ describe('neighboursAt and layoutOf', () => {
 
   it('lists the card ids of every column in order', () => {
     expect(layoutOf(board())).toEqual({ a: ['x', 'y'], b: ['z'], c: [] });
+  });
+});
+
+describe('isOwnSpot', () => {
+  it('is true when the column itself is hovered and the held card is alone or last', () => {
+    expect(isOwnSpot(['a'], 'a', 'col', true)).toBe(true);
+    expect(isOwnSpot(['a', 'b'], 'b', 'col', true)).toBe(true);
+  });
+
+  it('is false when the column is hovered but the held card is not last', () => {
+    expect(isOwnSpot(['a', 'b'], 'a', 'col', true)).toBe(false);
+  });
+
+  it('is true over the held card itself and false over a neighbour', () => {
+    expect(isOwnSpot(['a', 'b'], 'a', 'a', false)).toBe(true);
+    expect(isOwnSpot(['a', 'b'], 'a', 'b', false)).toBe(false);
   });
 });

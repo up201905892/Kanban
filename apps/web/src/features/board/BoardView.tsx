@@ -48,7 +48,7 @@ import { PresenceList } from '../presence/PresenceList';
 import { CardOverlay, ColumnCards, cardHandleId, cardTileId } from './CardList';
 import { ColumnMenu, type ColumnMenuItem } from './ColumnMenu';
 import { useBoard, useCreateColumn, useDeleteColumn, useUpdateColumn } from './api';
-import { cardsOf, layoutOf, neighboursAt, sortColumns } from './ordering';
+import { cardsOf, isOwnSpot, layoutOf, neighboursAt, sortColumns } from './ordering';
 import { useBoardEvents } from './useBoardEvents';
 
 /** Which column of a drag layout holds `id` (a card id) or is `id` (a column id). */
@@ -593,7 +593,6 @@ export function BoardView({
     const id = String(active.id);
     const overId = String(over.id);
     if (overId === id && !leftOwnSpot.current) return;
-    leftOwnSpot.current = true;
     const from = containerOf(layout, id);
     const to = containerOf(layout, overId);
     const card = cardById(id);
@@ -601,9 +600,13 @@ export function BoardView({
     const target = layout[to] ?? [];
     if (from === to) {
       const index = overId in layout ? target.length - 1 : target.indexOf(overId);
+      // Right after pick-up the column itself can be reported as "over": still its own spot.
+      if (!leftOwnSpot.current && isOwnSpot(target, id, overId, overId in layout)) return;
+      leftOwnSpot.current = true;
       if (index >= 0) announce(`${label(card)} moved to ${where(to, target, index)}`);
       return;
     }
+    leftOwnSpot.current = true;
     // Into another column: the card goes where it is hovering (below the hovered card when the
     // dragged copy is past its middle), or last when the column itself is the target.
     let index = target.length;

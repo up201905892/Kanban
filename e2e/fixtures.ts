@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { test as base, type Page } from '@playwright/test';
+import { expect, test as base, type Page } from '@playwright/test';
 
 /** Must match `WEB_ORIGIN` of the api (default web dev server). */
 const WEB_ORIGIN = 'http://localhost:5173';
@@ -65,4 +65,24 @@ export const test = base.extend<Fixtures>({
   },
 });
 
-export { expect } from '@playwright/test';
+export { expect };
+
+/**
+ * Runs `action` and resolves once the server has answered the matching write request
+ * (a successful response is asserted). Optimistic UI updates appear before the server
+ * has stored anything, so a test that reloads or opens a second browser right after
+ * must wait on this signal instead of the optimistic DOM.
+ */
+export async function afterWrite(
+  page: Page,
+  method: 'POST' | 'PATCH' | 'PUT' | 'DELETE',
+  url: RegExp,
+  action: () => Promise<unknown>,
+): Promise<void> {
+  const response = page.waitForResponse(
+    (r) => r.request().method() === method && url.test(new URL(r.url()).pathname),
+  );
+  await action();
+  const result = await response;
+  expect(result.ok(), `${method} ${result.url()} -> ${result.status()}`).toBe(true);
+}

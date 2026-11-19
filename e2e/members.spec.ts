@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { expect, signUpViaApi, test } from './fixtures.js';
+import { afterWrite, expect, signUpViaApi, test } from './fixtures.js';
 
 const ORIGIN = 'http://localhost:5173';
 
@@ -70,7 +70,9 @@ test.describe('invites and members', () => {
     // A promotes B to member (role select is reachable and labelled with the name).
     await a.reload();
     const select = a.getByRole('combobox', { name: 'Role for Bob Viewer' });
-    await select.selectOption('member');
+    await afterWrite(a, 'PATCH', /^\/api\/workspaces\/[^/]+\/members\/[^/]+$/, () =>
+      select.selectOption('member'),
+    );
     await expect(select).toHaveValue('member');
     await expectNoBlockingAxeViolations(a);
 
@@ -87,7 +89,9 @@ test.describe('invites and members', () => {
     // A removes B (with confirmation); B loses access at once but the project stays.
     await a.getByRole('button', { name: 'Remove Bob Viewer' }).click();
     const confirm = a.getByRole('dialog', { name: 'Remove member' });
-    await confirm.getByRole('button', { name: 'Remove' }).click();
+    await afterWrite(a, 'DELETE', /^\/api\/workspaces\/[^/]+\/members\/[^/]+$/, () =>
+      confirm.getByRole('button', { name: 'Remove' }).click(),
+    );
     await expect(a.getByRole('combobox', { name: 'Role for Bob Viewer' })).toHaveCount(0);
     await b.goto(`/workspaces/${workspaceId}`);
     await expect(b.getByText(/not found|unavailable/i).first()).toBeVisible();
@@ -105,7 +109,15 @@ test.describe('invites and members', () => {
 
     await a.goto(`/workspaces/${workspaceId}/members`);
     await a.getByRole('combobox', { name: 'Role for Solo Owner' }).selectOption('viewer');
-    await expect(a.getByText(/at least one owner/)).toBeVisible();
+    // Scoped to the members region: the same text is announced (after 50 ms) in the
+    // assertive live region, which is asserted separately.
+    await expect(
+      a
+        .getByRole('region', { name: 'People' })
+        .getByRole('alert')
+        .filter({ hasText: /at least one owner/ }),
+    ).toBeVisible();
+    await expect(a.getByTestId('live-assertive')).toHaveText(/at least one owner/);
     await expect(a.getByRole('combobox', { name: 'Role for Solo Owner' })).toHaveValue('owner');
 
     // Keyboard only: open the invite dialog, create, copy.
@@ -125,7 +137,10 @@ test.describe('invites and members', () => {
     await a.keyboard.press('Escape');
 
     // Revoke it; a visitor now sees one generic message.
-    await a.getByRole('button', { name: /^Revoke viewer|^Revoke member/ }).click();
+    // The revoke is optimistic: wait for the server to confirm before B opens the link.
+    await afterWrite(a, 'DELETE', /^\/api\/invites\/[^/]+$/, () =>
+      a.getByRole('button', { name: /^Revoke viewer|^Revoke member/ }).click(),
+    );
     await expect(a.getByText('No active invite links.')).toBeVisible();
     await userB.page.goto(new URL(link).pathname);
     await expect(userB.page.getByRole('heading', { name: 'Invite not valid' })).toBeVisible();
