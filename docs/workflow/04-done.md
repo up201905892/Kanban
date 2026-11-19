@@ -251,6 +251,15 @@ Entry template:
 - **Documentation:** `docs/api.md` (logout and WebSocket close codes); ADR 0004 section 7 (done in the task); no migrations; no new environment variables; no new dependencies
 - **Lessons:** a project deleted between room authorization and join is not re-checked (documented in the ADR; possible follow-up for the planner); the "injected failure" rollback has no dedicated test (the 400 path covers it); one unrelated flaky E2E in `members.spec.ts` (KB-035 covers it). No TODO found in the task's code; no secret found. Milestone "Real time" not reached (KB-037, KB-039 and KB-040 are Planned).
 
+### KB-028 · Performance with 500+ cards — done on 2026-11-19
+
+- **Approving test report:** Report 1 (2026-11-19), commit 7981063 (later commits, 7aae44a and 49eb7c9, only change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** `pnpm db:seed:large` (600 cards over 5 columns, refuses to run with `NODE_ENV=production`); virtualized column lists with TanStack Virtual (at most 150 tiles with 600 cards, own scroll area per column, `aria-posinset`/`aria-setsize`); ArrowUp/ArrowDown/Home/End walk through a whole column and focus restores scroll off-screen cards into view; board request in 5 SQL statements for the whole request (joined relation loading, `relationJoins` preview feature, no migration); memoized tile bodies so one board event re-renders one tile body; timings in `docs/performance.md`.
+- **CHANGELOG:** "Added: Boards with hundreds of cards now stay fast: each column shows only the cards in view and scrolls on its own, the board loads with a fixed number of database queries, and one live change redraws only the card it affects; arrow keys, Home and End walk through a long column, and moving a card by keyboard still announces its position out of the full count (KB-028)."
+- **Documentation:** `docs/performance.md` (done in the task); no new endpoints or messages, so no `docs/api.md` change; no ADR required by the specification; no migrations; no new environment variables; new dependency `@tanstack/react-virtual` in `apps/web` (named by the task)
+- **Lessons:** `validateSessionToken` (used by every authenticated request and the WebSocket upgrade) changed to a joined query and has no direct unit test, only route tests; the 5-query budget holds for a fresh session (a daily renewal adds one `UPDATE`); keyboard dragging inside a very long column relies on dnd-kit auto-scroll and is not covered by an E2E; suggestion for the planner: a jump-to-card or "Move to top/bottom" shortcut for long columns. No TODO found in the task's code. The only credential in the repository is the demo seed password in `apps/api/src/seed/large-board.ts`, documented in the code as local-only (the seed refuses to run in production) and not a real secret. Milestone "Quality and delivery" not reached (KB-029, KB-030, KB-031, KB-032 and KB-035 are Planned); the other phases still have open tasks.
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->

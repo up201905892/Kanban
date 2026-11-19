@@ -35,7 +35,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-025 | Sprint burndown | Reports and history | Medium | KB-022 | Done |
 | KB-026 | Velocity of recent sprints | Reports and history | Low | KB-023 | Planned |
 | KB-027 | Adopt `@up201905892/ui` and replace local components | Design system | Medium | KB-004, external: `@up201905892/ui` published on npm | Proposed |
-| KB-028 | Performance with 500+ cards | Quality and delivery | Medium | KB-018 | Passed |
+| KB-028 | Performance with 500+ cards | Quality and delivery | Medium | KB-018 | Done |
 | KB-029 | End-to-end collaboration suite (two browsers) | Quality and delivery | Medium | KB-009, KB-021, KB-023, KB-034, KB-038, KB-039 | Planned |
 | KB-030 | Accessibility audit and fixes | Quality and delivery | Medium | KB-020, KB-021, KB-024, KB-025 | Planned |
 | KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017, KB-037 | Planned |
@@ -1269,6 +1269,7 @@ Task template (copy for each new task):
 - 2026-11-19 · developer · In development → Ready for test · commit 7981063
 - 2026-11-19 · tester · Ready for test → In test · entry check passed
 - 2026-11-19 · tester · In test → Passed · report 1, all checks green
+- 2026-11-19 · finisher · Passed → Done · CHANGELOG updated, recorded in 04-done.md
 
 ### KB-029 · End-to-end collaboration suite (two browsers)
 
