@@ -628,3 +628,27 @@ Entry template:
   - The E2E seeds through `pnpm db:seed:large` against the database the e2e api uses; the fixed seed login `large-board@example.com` is reused across runs (a new workspace and project per run).
   - Column lists now scroll independently once taller than `min(70vh, 48rem)`.
   - Suggestions for the planner: a "Move to top/bottom" or jump-to-card shortcut inside long columns could be useful for keyboard users; not in scope here.
+
+### KB-035 · Stabilise the flaky members and move-cards E2E tests
+
+**Iteration 1 — 2026-11-19**
+
+- **Status at the end:** Ready for test
+- **What was done:** Root causes found and fixed, one application bug among them.
+  - `members.spec.ts` "last owner cannot step down": the role error is shown twice, in the `role="alert"` paragraph of the People region at once and in the assertive live region (`Announcer`, `role="alert"`) 50 ms later. `getByText(/at least one owner/)` therefore matched one element at first and two later, a strict-mode violation depending on timing. The locator is now `region "People"` > `alert` filtered by text, and the announcement is asserted separately through `getByTestId('live-assertive')`.
+  - `members.spec.ts` revoked-invite link (line 98 at acab99f): root cause is the planner candidate. Revoking is optimistic ("No active invite links." shows before the `DELETE /api/invites/:id` answers), so the second context could open the link while the invite was still valid. The test now waits for the DELETE response.
+  - `move-cards.spec.ts` "Space on the card itself...": the reload followed the optimistic reorder before `POST /api/cards/:id/move` had answered (planner hypothesis confirmed; the key-listener attachment was not the cause). All moves now wait for the move response. Same wait added to the other reload-after-optimistic places in the spec (mouse drag, keyboard move, "Move to...").
+  - New helper `afterWrite(page, method, urlPattern, action)` in `e2e/fixtures.ts`: starts `waitForResponse`, runs the action, asserts a 2xx response. No fixed sleeps anywhere.
+  - Audit of every other spec: reload or second browser right after an optimistic change fixed in `board.spec.ts` (mark as Done column, delete column), `cards.spec.ts` (three card creations, delete card, delete column with cards), `large-board.spec.ts` (drop), and in `members.spec.ts` (role change before B reloads, member removal before B navigates). Unscoped `getByText` that could also hit a live region: none found elsewhere. Not changed: `burndown`, `card-fields`, `collab-description`, `projects`, `workspaces` reloads (the state was written through the API, a saved status is awaited, or the success announcement is emitted in `onSuccess`).
+  - Application bug found by the repeat runs ("a failed move rolls back" failed 3/160 and 14/40 under load): right after pick-up, dnd-kit can report the column itself as `over` (a card alone in its column, or the last card). `onDragOver` took that as a move and announced "moved to To do, position 1 of 1", overwriting "Picked up ..." 50 ms later. Fixed in `BoardView.tsx` with the pure `isOwnSpot` (in `ordering.ts`): no announcement while the card has not left its own spot. Unit test in `ordering.test.ts`.
+- **Changed files:** `e2e/fixtures.ts`, `e2e/members.spec.ts`, `e2e/move-cards.spec.ts`, `e2e/board.spec.ts`, `e2e/cards.spec.ts`, `e2e/large-board.spec.ts`, `apps/web/src/features/board/BoardView.tsx`, `apps/web/src/features/board/ordering.ts`, `apps/web/src/features/board/ordering.test.ts`
+- **Migrations:** none
+- **Commit(s):** `a42520e` fix(web): KB-035 stabilise members and move-cards E2E tests
+- **Acceptance criteria covered:** all, see above. Repeat run: `npx playwright test e2e/members.spec.ts e2e/move-cards.spec.ts --repeat-each=20 --retries=0` gave 160 passed, 0 failed (before the `isOwnSpot` fix: 157 passed, 3 failed, all in "a failed move rolls back"). Full `pnpm test:e2e`: 56 passed. G1 ok.
+- **Tests written by the developer:** unit `isOwnSpot` cases; E2E changes as above.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (web 323, api 438) · test:e2e ok (56 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - `pnpm test:e2e -- <files> --repeat-each=20` as written in the criterion did not apply the file filter or flags here (it ran the whole suite once, 56 tests); I ran `npx playwright test <files> --repeat-each=20 --retries=0` instead. Use that form to reproduce.
+  - The `isOwnSpot` unit test covers the decision function; the dnd-kit event itself is not reproducible in jsdom, so the E2E repeat run is the regression check.
+  - Suggestions for the planner: the `pnpm test:e2e -- args` forwarding could be fixed (root `package.json` script), outside this task's scope.

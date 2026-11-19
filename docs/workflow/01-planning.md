@@ -42,7 +42,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Planned |
 | KB-033 | Close real-time sockets on logout, session expiry and resource deletion | Real time | Medium | KB-016 | Done |
 | KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Done |
-| KB-035 | Stabilise the flaky members and move-cards E2E tests | Quality and delivery | Medium | KB-009, KB-015 | Planned |
+| KB-035 | Stabilise the flaky members and move-cards E2E tests | Quality and delivery | Medium | KB-009, KB-015 | Ready for test |
 | KB-036 | Card actions menu on the board tile (D9) | Board | Low | KB-015, D9 answered | Rejected |
 | KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Planned |
 | KB-038 | Unassign a member's cards when they are demoted to viewer (D10) | Authentication and workspaces | Medium | KB-009, KB-013 | Planned |
@@ -1499,6 +1499,8 @@ Task template (copy for each new task):
 - 2026-11-06 · planner · created as Proposed · follow-up from the KB-012 and KB-015 development notes, the KB-012 and KB-016 test reports and the daily log of 2026-11-05
 - 2026-11-10 · planner · spec revised: added the revoked-invite flake (`members.spec.ts:98`) from the KB-018 test report 1; estimate stays S · stays Proposed
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
+- 2026-11-19 · developer · Planned → In development · started
+- 2026-11-19 · developer · In development → Ready for test · commit a42520e
 
 ### KB-036 · Card actions menu on the board tile (D9)
 
