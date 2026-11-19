@@ -606,3 +606,25 @@ Entry template:
   - The "injected failure" case of the criteria is covered through the `400` wrong-confirmation path; a rolled-back deletion publishes nothing because the publish comes after the awaited delete.
   - Membership re-check happens after the handshake was sent, so a removed member may briefly receive the first sync message before `4403`.
   - Suggestions for the planner: a project deleted between room authorization and join is not re-checked (documented in the ADR); a follow-up could re-check the resource too.
+
+### KB-028 · Performance with 500+ cards
+
+**Iteration 1 — 2026-11-19**
+
+- **Status at the end:** Ready for test
+- **What was done:** `pnpm db:seed:large` (`apps/api/src/cli/seed-large.ts`, library in `apps/api/src/seed/large-board.ts`) creates a project with 600 cards over 5 columns with every field filled; it exits with an error when `NODE_ENV=production`. `GET /api/projects/:pid/board` now takes 5 SQL statements for the whole request (session+user and board+columns+cards each use one joined statement, `relationLoadStrategy: 'join'`, which needed the `relationJoins` preview feature in `schema.prisma`; no migration). Column lists are virtualized with TanStack Virtual in `CardList.tsx` (own scroll area per column, overscan 4, held and focused tiles kept rendered, `aria-posinset`/`aria-setsize` on each item). ArrowDown/ArrowUp/Home/End on a card link move focus through the whole column; `BoardView` registers a per-column "reveal" function so every focus restore (dialog close, after a drop, after a failed move) scrolls an off-screen card into view first. Tiles are a thin sortable shell plus a memoized `CardBody`; sensor options are module constants so dnd-kit's listeners stay stable and the memo holds; the id list keeps its identity when unchanged. Timings and the query table are in `docs/performance.md`.
+- **Changed files:** `package.json`, `pnpm-lock.yaml`, `apps/web/package.json`, `apps/web/src/features/board/{BoardView.tsx,CardList.tsx}`, `apps/web/src/styles.css`, `apps/api/prisma/schema.prisma`, `apps/api/src/modules/boards/service.ts`, `apps/api/src/modules/auth/session.ts`, `apps/api/src/cli/seed-large.ts`, `apps/api/src/seed/large-board.ts`, `docs/performance.md`
+- **Migrations:** none (the schema change is only a generator preview feature; `prisma generate` is part of `pnpm build`)
+- **Commit(s):** `7981063` feat(web): KB-028 virtualize board columns and keep 600-card boards fast
+- **Acceptance criteria covered:** seed command (`seed-large.ts`, used by the E2E); at most 150 tiles with 600 cards (`board-virtualized.test.tsx`, `e2e/large-board.spec.ts`); keyboard/pointer drag for off-screen cards and full-count announcements (E2E: "position 60 of 120", keyboard drag of card 300); at most 5 queries and timings (`board-performance.test.ts`, `docs/performance.md`); one event re-renders one tile body (`board-virtualized.test.tsx`); G1, G9, U3, U5.
+- **Tests written by the developer:** unit `apps/web/src/features/board/board-virtualized.test.tsx` (bounded tiles and `aria-setsize`, render counter after one event, End/ArrowUp/Home reach the last and first card); API `apps/api/src/modules/boards/board-performance.test.ts` (Prisma query event counter on the whole request, 600 seeded cards); E2E `e2e/large-board.spec.ts` (runs the real seed command, bounded DOM, arrows to card 300, keyboard move to the next column, reload persists).
+- **Local checks:** build ok · lint ok (zero warnings) · typecheck ok · test ok (shared 185, web 320, api 438) · test:e2e ok (56 passed)
+- **New dependencies (G9):** `@tanstack/react-virtual` ^3.14.26 (apps/web; named by the task)
+- **Notes for the tester:**
+  - The "at most 5 queries" budget counts the whole HTTP request (session lookup and authorization included), which is stricter than counting only the handler. The session change touches `validateSessionToken`, used by every authenticated request and the WebSocket upgrade.
+  - The "render counter" counts renders of the memoized tile body (`setTileRenderProbe` in `CardList.tsx`). The thin sortable shell around it still re-renders through dnd-kit's context; that is by design.
+  - Tab reaches only the rendered tiles; the arrow/Home/End keys are how a keyboard user walks a long column (documented in `docs/performance.md`). Per D9 each tile still has two Tab stops (link and move handle).
+  - Keyboard dragging across a very long column moves one rendered neighbour per key press and relies on dnd-kit's auto-scroll; the E2E covers a cross-column move of card 300, not a long within-column drag.
+  - The E2E seeds through `pnpm db:seed:large` against the database the e2e api uses; the fixed seed login `large-board@example.com` is reused across runs (a new workspace and project per run).
+  - Column lists now scroll independently once taller than `min(70vh, 48rem)`.
+  - Suggestions for the planner: a "Move to top/bottom" or jump-to-card shortcut inside long columns could be useful for keyboard users; not in scope here.
