@@ -89,6 +89,8 @@ export async function getBoard(
 ): Promise<BoardResponse> {
   await authorize(prisma, user, { type: 'project', id: projectId }, 'workspace:read');
   const board = await prisma.board.findUnique({
+    // One joined statement for the board, columns and cards, however many cards there are.
+    relationLoadStrategy: 'join',
     where: { projectId },
     include: {
       columns: { orderBy: [{ position: 'asc' }, { id: 'asc' }] },

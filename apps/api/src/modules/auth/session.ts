@@ -49,6 +49,8 @@ export async function validateSessionToken(
   now: Date = new Date(),
 ): Promise<SessionResult | null> {
   const row = await prisma.session.findUnique({
+    // One joined statement instead of a second query for the user (KB-028 query budget).
+    relationLoadStrategy: 'join',
     where: { tokenHash: hashToken(token) },
     include: { user: { select: { id: true, email: true, name: true, createdAt: true } } },
   });

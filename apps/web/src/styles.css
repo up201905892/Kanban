@@ -181,13 +181,25 @@ main,
   color: #595959;
 }
 
+/* Long columns scroll on their own: only the visible tiles are in the DOM (KB-028). */
+.card-scroll {
+  margin: 0.5rem 0;
+  max-height: min(70vh, 48rem);
+  overflow-y: auto;
+}
+
 .card-list {
   list-style: none;
-  margin: 0.5rem 0;
+  margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
+  position: relative;
+}
+
+.card-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
 }
 
 .card-tile {

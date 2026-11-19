@@ -16,6 +16,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@kanban/shared": "workspace:*",
     "@tanstack/react-query": "^5.105.0",
+    "@tanstack/react-virtual": "^3.14.26",
     "lib0": "^0.2.119",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

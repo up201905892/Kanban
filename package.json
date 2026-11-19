@@ -19,6 +19,7 @@
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @kanban/api exec prisma migrate deploy",
+    "db:seed:large": "pnpm --filter @kanban/api exec tsx src/cli/seed-large.ts",
     "db:migrate:dev": "pnpm --filter @kanban/api exec prisma migrate dev"
   },
   "devDependencies": {

@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import {
   cardReference,
@@ -68,6 +68,9 @@ const SILENT_ANNOUNCEMENTS = {
   onDragEnd: () => undefined,
   onDragCancel: () => undefined,
 };
+
+const POINTER_SENSOR_OPTIONS = { activationConstraint: { distance: 5 } };
+const KEYBOARD_SENSOR_OPTIONS = { coordinateGetter: sortableKeyboardCoordinates };
 
 const triggerIdOf = (columnId: string) => `column-menu-${columnId}`;
 const ADD_BUTTON_ID = 'add-column-button';
@@ -322,9 +325,11 @@ export function BoardView({
   const createCard = useCreateCard(project.id);
   const deleteCard = useDeleteCard(project.id);
   const moveCard = useMoveCard(project.id);
+  // The options are module constants so the sensors (and the listeners dnd-kit derives from them)
+  // keep their identity between renders: tiles are memoized on them.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(PointerSensor, POINTER_SENSOR_OPTIONS),
+    useSensor(KeyboardSensor, KEYBOARD_SENSOR_OPTIONS),
   );
   // While a card is being dragged: the ids of every column in the order the drag currently shows,
   // the card being held and where it started (for Escape and for "nothing changed").
@@ -338,12 +343,35 @@ export function BoardView({
   const [deleting, setDeleting] = useState<Column | null>(null);
   const focusAfterRender = useRef<string | null>(null);
 
+  // Columns register a function that scrolls one of their cards into view: with a virtualized list
+  // the card to focus may not be in the DOM yet.
+  const reveals = useRef(new Map<string, (cardId: string) => boolean>());
+  const registerReveal = useCallback((columnId: string, reveal: (cardId: string) => boolean) => {
+    reveals.current.set(columnId, reveal);
+    return () => {
+      if (reveals.current.get(columnId) === reveal) reveals.current.delete(columnId);
+    };
+  }, []);
+
+  /** Focuses an element by id; a card tile or handle that is not rendered is scrolled to first. */
+  function focusById(id: string, attempts = 8): void {
+    const element = document.getElementById(id);
+    if (element) {
+      element.focus();
+      return;
+    }
+    const cardId = /^card-(?:tile|handle)-(.+)$/.exec(id)?.[1];
+    if (!cardId || attempts <= 0) return;
+    for (const reveal of reveals.current.values()) if (reveal(cardId)) break;
+    requestAnimationFrame(() => focusById(id, attempts - 1));
+  }
+
   // Keyed DOM nodes that move can lose focus; put it back where the user was.
   useLayoutEffect(() => {
     const id = focusAfterRender.current;
     if (id) {
       focusAfterRender.current = null;
-      document.getElementById(id)?.focus();
+      focusById(id);
     }
   });
 
@@ -516,7 +544,7 @@ export function BoardView({
     onCloseCard();
     // A deep link has no earlier focus to return to; the tile is the natural place.
     if (card) {
-      requestAnimationFrame(() => document.getElementById(cardTileId(card.id))?.focus());
+      requestAnimationFrame(() => focusById(cardTileId(card.id)));
     }
   }
 
@@ -527,7 +555,8 @@ export function BoardView({
   const data: BoardResponse = filtering
     ? { ...board.data, cards: board.data.cards.filter((c) => c.sprintId === activeSprint.id) }
     : board.data;
-  const cardById = (id: string) => data.cards.find((c) => c.id === id);
+  const cardsById = new Map(data.cards.map((c) => [c.id, c]));
+  const cardById = (id: string) => cardsById.get(id);
   const label = (card: CardSummary) =>
     `Card ${cardReference(project.key, card.number)} '${card.title}'`;
   const columnName = (columnId: string) => columns.find((c) => c.id === columnId)?.name ?? '';
@@ -604,7 +633,7 @@ export function BoardView({
   }
 
   function focusHandle(id: string) {
-    requestAnimationFrame(() => document.getElementById(cardHandleId(id))?.focus());
+    requestAnimationFrame(() => focusById(cardHandleId(id)));
   }
 
   function onDragEnd({ active, over }: DragEndEvent) {
@@ -790,6 +819,8 @@ export function BoardView({
                       cards={cardsShown(column.id)}
                       canDrag={canEditCards}
                       members={members}
+                      heldId={heldId}
+                      registerReveal={registerReveal}
                     />
                     {canEditCards && (
                       <AddCard

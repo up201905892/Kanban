@@ -2,6 +2,8 @@ generator client {
   provider     = "prisma-client"
   output       = "../src/generated/prisma"
   moduleFormat = "esm"
+  /// Lets hot paths load a relation in the same statement (`relationLoadStrategy: 'join'`, KB-028).
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
