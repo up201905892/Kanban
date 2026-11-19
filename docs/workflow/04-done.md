@@ -260,6 +260,15 @@ Entry template:
 - **Documentation:** `docs/performance.md` (done in the task); no new endpoints or messages, so no `docs/api.md` change; no ADR required by the specification; no migrations; no new environment variables; new dependency `@tanstack/react-virtual` in `apps/web` (named by the task)
 - **Lessons:** `validateSessionToken` (used by every authenticated request and the WebSocket upgrade) changed to a joined query and has no direct unit test, only route tests; the 5-query budget holds for a fresh session (a daily renewal adds one `UPDATE`); keyboard dragging inside a very long column relies on dnd-kit auto-scroll and is not covered by an E2E; suggestion for the planner: a jump-to-card or "Move to top/bottom" shortcut for long columns. No TODO found in the task's code. The only credential in the repository is the demo seed password in `apps/api/src/seed/large-board.ts`, documented in the code as local-only (the seed refuses to run in production) and not a real secret. Milestone "Quality and delivery" not reached (KB-029, KB-030, KB-031, KB-032 and KB-035 are Planned); the other phases still have open tasks.
 
+### KB-035 · Stabilise the flaky members and move-cards E2E tests — done on 2026-11-19
+
+- **Approving test report:** Report 1 (2026-11-19), commit a42520e (later commits, cc3f64e and 2dce46b, only change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** root causes of the three flaky E2E tests fixed (role error matched twice by an unscoped `getByText`; reload or second browser opening before optimistic writes were answered); new `afterWrite` helper in `e2e/fixtures.ts`, applied to the `board`, `cards`, `large-board`, `members` and `move-cards` specs; one application bug fixed: `onDragOver` could announce a move right after pick-up (`isOwnSpot` in `ordering.ts`, with a unit test). Repeat runs 160/160 and 80/80 without retries.
+- **CHANGELOG:** "Fixed: Picking up a card with the keyboard or mouse no longer sometimes announces a move to the same position, which could replace the "Picked up" announcement for screen reader users (KB-035)."
+- **Documentation:** no new endpoints, messages or environment variables, so no `docs/api.md` or `.env.example` change; no ADR required; no migrations; no new dependencies
+- **Lessons:** `pnpm test:e2e -- <files> --repeat-each` does not forward arguments (use `npx playwright test`); suggestion for the planner: fix the root `package.json` script to forward arguments. No TODO found in the task's code; no secret found (the e2e password is a fake test value). Milestone "Quality and delivery" not reached (KB-029, KB-030, KB-031 and KB-032 are still open).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->

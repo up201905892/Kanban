@@ -42,4 +42,5 @@ All notable changes to this project are recorded here, in the format of [Keep a 
 
 ### Fixed
 
+- Picking up a card with the keyboard or mouse no longer sometimes announces a move to the same position, which could replace the "Picked up" announcement for screen reader users (KB-035).
 - Cards that are pushed to a new position when someone adds a card or deletes a column now update live for everyone on the board, so all people see the same card order without reloading (KB-034).
