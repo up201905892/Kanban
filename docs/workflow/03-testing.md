@@ -1083,3 +1083,39 @@ Report template:
 **Observations (not failures):**
 - `validateSessionToken` has no direct unit test; its behaviour is covered through route tests in `auth.test.ts`.
 - The 5-query budget holds for a fresh session; a request that renews a session older than a day adds one `UPDATE` (at most daily, independent of card count).
+
+### KB-035 · Stabilise the flaky members and move-cards E2E tests
+
+**Report 1 — 2026-11-19 — Passed**
+
+- **Commit tested:** `a42520e` (in `develop` history; working tree clean apart from the status update)
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (web 323, api 438) | ✔ |
+| E2E | `pnpm test:e2e` (56 passed) | ✔ |
+| Repeat run | `npx playwright test e2e/members.spec.ts e2e/move-cards.spec.ts --repeat-each=20 --retries=0`: 160 passed, 0 failed | ✔ |
+| Stress run | same files, `--repeat-each=10 --workers=4 --retries=0`: 80 passed | ✔ |
+| Authorization / API / Database | No API or migration change | n.a. |
+| Real time | Touched specs use two browser contexts (members); they now wait on server write responses and pass repeatedly | ✔ |
+| Accessibility | Role error and assertive announcement both still asserted (region "People" > alert, and `live-assertive`); keyboard move tests unchanged in behaviour | ✔ |
+
+**Acceptance criteria:**
+- [x] Members "last owner" locator scoped to region "People" > alert, announcement asserted separately via `live-assertive`: code review plus 20 repeats.
+- [x] Move-cards "Space on the card itself": root cause (reload before the move response) written in the development entry; fix waits on `waitForResponse` through `afterWrite`, no fixed sleeps (grep of the diff).
+- [x] Revoked-invite test: root cause (optimistic revoke, second context opens link early) documented; waits on the DELETE response.
+- [x] Other specs audited; places fixed and listed (`board`, `cards`, `large-board`, `members`); no unscoped `getByText` matching a live region found.
+- [x] Application bug (`onDragOver` announcing a move right after pick-up) fixed in `BoardView.tsx` with `isOwnSpot` and a unit test. Regression review: `isOwnSpot` is only consulted before the card has left its own spot (`leftOwnSpot` false); once left, moves back to the original position still announce; cross-column path unchanged apart from setting the flag. Full unit and E2E suites (keyboard move, mouse drag, failed-move rollback, announcements) pass.
+- [x] Repeat run with zero failures (160/160 and 80/80); full `pnpm test:e2e` passes.
+- [x] G1: all checks green.
+
+**Required tests:** E2E for the three tests repeated 20 times with retries disabled: done; the unit test for `isOwnSpot` exists and covers alone, last, not last, own card and neighbour.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):** `pnpm test:e2e -- <files> --repeat-each` does not forward the arguments (as the developer noted); `npx playwright test` was used.

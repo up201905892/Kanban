@@ -42,7 +42,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Planned |
 | KB-033 | Close real-time sockets on logout, session expiry and resource deletion | Real time | Medium | KB-016 | Done |
 | KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Done |
-| KB-035 | Stabilise the flaky members and move-cards E2E tests | Quality and delivery | Medium | KB-009, KB-015 | Ready for test |
+| KB-035 | Stabilise the flaky members and move-cards E2E tests | Quality and delivery | Medium | KB-009, KB-015 | Passed |
 | KB-036 | Card actions menu on the board tile (D9) | Board | Low | KB-015, D9 answered | Rejected |
 | KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Planned |
 | KB-038 | Unassign a member's cards when they are demoted to viewer (D10) | Authentication and workspaces | Medium | KB-009, KB-013 | Planned |
@@ -1501,6 +1501,8 @@ Task template (copy for each new task):
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
 - 2026-11-19 · developer · Planned → In development · started
 - 2026-11-19 · developer · In development → Ready for test · commit a42520e
+- 2026-11-19 · tester · Ready for test → In test · testing started
+- 2026-11-19 · tester · In test → Passed · report 1, all checks and criteria verified, repeat runs 160/160 and 80/80
 
 ### KB-036 · Card actions menu on the board tile (D9)
 
