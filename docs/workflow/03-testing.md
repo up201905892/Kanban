@@ -1047,3 +1047,39 @@ Report template:
 **Failures:** none.
 
 **Observation (not a failure):** one flaky E2E in `members.spec.ts` on the first full run; not reproducible and unrelated to this change.
+
+### KB-028 · Performance with 500+ cards
+
+**Report 1 — 2026-11-19 — Passed**
+
+- **Commit tested:** `7981063` (in `develop` history; working tree clean apart from the status update)
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared ok, web 320, api 438) | ✔ |
+| E2E | `pnpm test:e2e` (56 passed, no flakes) | ✔ |
+| Authorization | Board route still calls `authorize` first; the `validateSessionToken` change only adds `relationLoadStrategy: 'join'` (same where, same selected user fields, same expiry and renewal logic); existing auth tests for 401 on an expired session (deleted), no renewal within a day, renewal after a day with cookie re-send all pass | ✔ |
+| Database | No migration; `relationJoins` is a generator preview feature only; `prisma generate` runs in build | n.a. |
+| Real time | Board event handling covered by the render-counter unit test; the WebSocket upgrade uses the same session lookup and its integration tests pass | ✔ |
+| Accessibility | E2E: arrows reach card 300, keyboard move across columns, announcement "position 60 of 120"; unit: End/ArrowUp/Home reach last and first card, `aria-setsize`/`aria-posinset` | ✔ |
+
+**Acceptance criteria:**
+- [x] `pnpm db:seed:large` creates 600 cards over 5 columns (API test asserts 5 columns and 600 cards; E2E runs the real command). With `NODE_ENV=production` it prints "Refusing to seed demo data" and exits non-zero: run manually.
+- [x] Virtualized columns, at most 150 tiles with 600 cards: `board-virtualized.test.tsx` and `e2e/large-board.spec.ts`.
+- [x] Keyboard navigation and drag outside the viewport, full-count announcements: E2E keyboard move of card 300 persists after reload; announcement uses the full count; code review of the reveal function in `BoardView.tsx` and `CardList.tsx`.
+- [x] Board request uses at most 5 queries (measured 5 queries, 32 ms, for the whole request including session and authorization); timings in `docs/performance.md`.
+- [x] One board event re-renders only the affected tile body: render-counter unit test.
+- [x] Common criteria G1, G9 (only `@tanstack/react-virtual`, named by the task), U3, U5: all checks green.
+
+**Required tests:** unit (bounded tiles, render counter), API (query counter on 600 cards, whole request), E2E (seeded board, keyboard move of the 300th card, reload) and accessibility (arrows/Home/End reach the last card) exist, assert the specified behaviour and pass.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):**
+- `validateSessionToken` has no direct unit test; its behaviour is covered through route tests in `auth.test.ts`.
+- The 5-query budget holds for a fresh session; a request that renews a session older than a day adds one `UPDATE` (at most daily, independent of card count).
