@@ -16,6 +16,18 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-19
+
+- **Decisions for João:**
+  - Optional follow-up tasks suggested by the agents (say in `approvals.md` if you want them planned): (1) the root `pnpm test:e2e` script does not forward arguments such as file filters or `--repeat-each` (workaround: `npx playwright test`); (2) a "jump to card" / "Move to top/bottom" shortcut for keyboard users in long columns; (3) `validateSessionToken` has no direct unit test (only route tests cover it).
+  - FYI: KB-028 changed `validateSessionToken` to load session and user in one joined query (used by every authenticated request and the WebSocket upgrade). The tester found no regression. It also enabled the Prisma `relationJoins` preview feature and added `@tanstack/react-virtual`.
+- **Done:** KB-028 (performance with 500+ cards), KB-035 (stabilise flaky E2E tests)
+- **Tested:** KB-028 (Passed), KB-035 (Passed; 160/160 repeat runs)
+- **Developed:** KB-028, KB-035 (both went through the whole cycle today). KB-035 also fixed a real bug: the "Picked up" announcement could be overwritten by a spurious "moved" announcement.
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` on npm)
+- **Rule violations found:** none
+- **Next step:** KB-037, KB-038, KB-039, KB-040, KB-026 and KB-014 are the next `Planned` tasks; KB-029 unlocks once KB-038 and KB-039 are Done.
+
 ## 2026-11-18
 
 - **Decisions for João:**
