@@ -397,6 +397,23 @@ describe('demoting a member to viewer unassigns their cards (KB-038)', () => {
     });
   });
 
+  it('refuses an unknown member (404) and an invalid role (400) and changes nothing', async () => {
+    const { owner, member, ws, card } = await setup();
+    await call('PATCH', `/api/cards/${card.id}`, owner, { assigneeId: member.user.id });
+    const { events, off } = collect();
+    const unknown = await patchRole(ws.id, '00000000-0000-4000-8000-000000000000', owner, 'viewer');
+    const invalid = await patchRole(ws.id, member.user.id, owner, 'admin');
+    off();
+    expect(unknown.statusCode).toBe(404);
+    expect(invalid.statusCode).toBe(400);
+    expect(invalid.json()).toMatchObject({ error: { code: expect.any(String) } });
+    expect(events).toEqual([]);
+    expect(await prisma.card.findUniqueOrThrow({ where: { id: card.id } })).toMatchObject({
+      assigneeId: member.user.id,
+      version: 2,
+    });
+  });
+
   it('leaves cards in other workspaces untouched', async () => {
     const { owner, member, ws, card } = await setup();
     const other = workspaceResponseSchema.parse(
