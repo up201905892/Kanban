@@ -278,6 +278,15 @@ Entry template:
 - **Documentation:** ADR 0004 section 9 amended (done in the task); no new endpoints or messages, so no `docs/api.md` change; no new environment variables (timings are options, not variables); no migrations; no new dependencies
 - **Lessons:** `RealtimeService.shutdown()` now returns a result and is memoized; the "timers do not keep the process alive" unit test only inspects timers created after its spy (the rest verified by code reading). Retained rooms stay in memory until the database recovers. No TODO found in the task's code; no secret found. Milestone "Real time" not reached (KB-039, KB-040 and KB-043 are Planned).
 
+### KB-038 · Unassign a member's cards when they are demoted to viewer (D10) — done on 2026-11-20
+
+- **Approving test report:** Report 1 (2026-11-20), commit 00e7f7e (the later commit 0845ec6 only adds tests; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** changing an owner or member to viewer now unassigns their live cards in the workspace through the shared `unassignCards` helper, in the same transaction (boards locked in id order, `version` + 1, `assignee_changed` with the owner as actor, `card_updated` board events after commit only); the Members page asks for confirmation (Cancel and Escape keep the role and return focus), invalidates the board and card queries and announces the result politely.
+- **CHANGELOG:** "Changed: Changing an owner or member to viewer on the Members page now asks for confirmation ("<name> will become a viewer and their cards in this workspace will be unassigned.") and unassigns that person's cards in the workspace, as removing them already does; boards update live and the result is announced (KB-038)."
+- **Documentation:** `docs/api.md` documents the side effect on the members endpoint; no new endpoints, messages or environment variables; no ADR required; no migrations; no new dependencies
+- **Lessons:** events are asserted on the in-process bus rather than a `ws` client (bus-to-socket path covered by `board-events.test.ts`); query invalidation uses the `['projects']` and `['cards']` prefixes because keys carry no workspace id. No TODO found in the task's code; no secret found. Milestone "Authentication and workspaces" not re-reached (KB-042 is Planned).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
