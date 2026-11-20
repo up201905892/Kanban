@@ -269,6 +269,15 @@ Entry template:
 - **Documentation:** no new endpoints, messages or environment variables, so no `docs/api.md` or `.env.example` change; no ADR required; no migrations; no new dependencies
 - **Lessons:** `pnpm test:e2e -- <files> --repeat-each` does not forward arguments (use `npx playwright test`); suggestion for the planner: fix the root `package.json` script to forward arguments. No TODO found in the task's code; no secret found (the e2e password is a fake test value). Milestone "Quality and delivery" not reached (KB-029, KB-030, KB-031 and KB-032 are still open).
 
+### KB-037 · Keep unsaved collaborative edits when the final flush fails — done on 2026-11-20
+
+- **Approving test report:** Report 1 (2026-11-20), commit 2e6fe52 (later commits, 34f4277 and c0de80a, only change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** a failed final store (Yjs append or `Card.description` projection) no longer drops the room: it is retained in memory and retried with backoff (1 s doubling, cap 30 s); a client joining a retained room gets the in-memory document; a compaction-only failure does not retain the room; errors log document name and attempt (no content) and one warning after 5 minutes; graceful shutdown retries within a 10 s deadline and exits with code 1, naming each unsaved document, when edits could not be saved; timers are `unref()`ed and `retainedRooms()` is exposed for tests.
+- **CHANGELOG:** "Added: A database failure while a card description is being saved no longer loses the last edits: the server keeps the unsaved text in memory and keeps retrying (after 1, 2, 4 seconds and so on, at most every 30 seconds), a person who opens the card meanwhile still sees the edits, and when the server is stopped it waits up to 10 seconds for the database and exits with an error, naming each document, if something could not be saved (KB-037)."
+- **Documentation:** ADR 0004 section 9 amended (done in the task); no new endpoints or messages, so no `docs/api.md` change; no new environment variables (timings are options, not variables); no migrations; no new dependencies
+- **Lessons:** `RealtimeService.shutdown()` now returns a result and is memoized; the "timers do not keep the process alive" unit test only inspects timers created after its spy (the rest verified by code reading). Retained rooms stay in memory until the database recovers. No TODO found in the task's code; no secret found. Milestone "Real time" not reached (KB-039, KB-040 and KB-043 are Planned).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
