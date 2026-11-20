@@ -1119,3 +1119,41 @@ Report template:
 **Failures:** none.
 
 **Observations (not failures):** `pnpm test:e2e -- <files> --repeat-each` does not forward the arguments (as the developer noted); `npx playwright test` was used.
+
+### KB-037 · Keep unsaved collaborative edits when the final flush fails
+
+**Report 1 — 2026-11-20 — Passed**
+
+- **Commit tested:** `2e6fe52` (in `develop` history; working tree clean apart from the status update)
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared, web 323, api 453) | ✔ |
+| E2E | `pnpm test:e2e` (56 passed) | ✔ |
+| Targeted run | `vitest run` on `retention*`, `persistence*`, `description*` (49 passed) | ✔ |
+| Authorization / API validation | No route, schema or contract change | n.a. |
+| Database | No migration; no schema change | n.a. |
+| Real time | Integration tests with real `ws` clients over the real PostgreSQL store wrapped to fail on demand: second client joins a retained room and sees the edit, the edit survives an app rebuild, retry after the last client left | ✔ |
+| Accessibility | n.a. (no UI) | n.a. |
+
+**Acceptance criteria:**
+- [x] Failed final append keeps the room and retries with 1 s, 2 s, 4 s ... cap 30 s, then compacts and drops: code review of `rooms.ts` (`retain`, `scheduleRetry`, `retryStore`, `leave`) and unit tests "retains the room ... third attempt", "caps the retry delay".
+- [x] Joining a retained room serves the in-memory doc and calls `resume`; the room unloads again on the last leave: code review of `join`, unit test and the integration test with a second client.
+- [x] Projection follows the same rule (`description.ts` `store` rethrows, retry with backoff, deleted card ends the retry): unit tests "retries a projection ..." and "stops retrying ... card was deleted".
+- [x] Compaction-only failure does not keep the room (`compactSafely`): unit test.
+- [x] Error log per failed attempt with `doc` and `attempt` and no content; one warning after 5 minutes: code review and unit test "logs the retention warning once".
+- [x] Shutdown deadline (option, not environment variable): exit 1 with each document named when never recovered, exit 0 with the edit in the database when recovered: two integration tests; `gracefulShutdown` reviewed.
+- [x] Timers `unref()`ed (retry, warning, persistence timers), `retainedRooms()` accessor exists and is used by tests. At the deadline unsaved rooms are dropped so no timer survives.
+- [x] ADR 0004 section 9 amended (failure semantics, backoff, memory implication, exit code 1) and CHANGELOG entry: read the diff.
+- [x] Common criteria G1, G4, G7, G8, R7: all checks green.
+
+**Required tests:** all listed unit and API tests exist in `retention.test.ts` and `retention.integration.test.ts`, assert the specified behaviour (timings with fake timers, real `ws` clients, rebuild on the same database) and are not trivial. E2E and accessibility n/a as specified.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):** the "no timer keeps the process alive" unit test only inspects timers created after its spy, as the developer noted; the other timers were verified by reading the code.
