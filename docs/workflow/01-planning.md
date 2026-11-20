@@ -44,7 +44,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Done |
 | KB-035 | Stabilise the flaky members and move-cards E2E tests | Quality and delivery | Medium | KB-009, KB-015 | Done |
 | KB-036 | Card actions menu on the board tile (D9) | Board | Low | KB-015, D9 answered | Rejected |
-| KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Planned |
+| KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Ready for test |
 | KB-038 | Unassign a member's cards when they are demoted to viewer (D10) | Authentication and workspaces | Medium | KB-009, KB-013 | Planned |
 | KB-039 | Card and column tombstones in the live board cache | Real time | Medium | KB-018 | Planned |
 | KB-040 | Enforce the description length limit in the shared document | Real time | Medium | KB-019 | Planned |
@@ -1573,6 +1573,8 @@ Task template (copy for each new task):
 - 2026-11-09 · planner · created as Proposed · follow-up from the KB-017 test report 1 observation, confirmed by reading `persistence.ts` (`store()`, the doc `destroy` handler) and `rooms.ts` (`leave()`, `drop()`); added as a KB-031 dependency so it is fixed before the first deploy
 - 2026-11-10 · planner · spec revised after KB-019 (Done): its done record repeats the lost-last-window risk, and KB-019 added a second write on unload and shutdown (the projection into `Card.description`). Both writes are now covered by the retain-and-retry rule; estimate stays M · stays Proposed
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
+- 2026-11-20 · developer · Planned → In development · entry check passed, dependencies Done
+- 2026-11-20 · developer · In development → Ready for test · commit 2e6fe52
 
 ### KB-038 · Unassign a member's cards when they are demoted to viewer (D10)
 
