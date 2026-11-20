@@ -32,6 +32,11 @@ export interface RoomPersistence {
   store(room: RoomRef, doc: Y.Doc): Promise<void>;
   /** Writes every batch still waiting in memory (graceful shutdown). */
   flush?(): Promise<void>;
+  /**
+   * A client joined a room whose store was failing (KB-037): the room is live again, so writes
+   * that were waiting for the unload retry go back to the normal batching path.
+   */
+  resume?(room: RoomRef, doc: Y.Doc): void;
 }
 
 export const noPersistence: RoomPersistence = {
@@ -61,6 +66,31 @@ export interface Room {
   /** Resolves once persistence has loaded the document. */
   ready: Promise<void>;
   closing: boolean;
+  /** Set while the room has no client and its last store failed (KB-037): the doc is kept in memory. */
+  retained: RetainedState | null;
+}
+
+interface RetainedState {
+  attempt: number;
+  timer: NodeJS.Timeout | null;
+  warnTimer: NodeJS.Timeout;
+}
+
+export interface RoomManagerOptions {
+  log?: { error(obj: object, msg: string): void; warn(obj: object, msg: string): void };
+  /** First retry delay of a failed store (doubles up to `retryMaxMs`). Default 1 s. */
+  retryInitialMs?: number;
+  /** Cap of the retry delay. Default 30 s. */
+  retryMaxMs?: number;
+  /** A room retained this long logs one warning. Default 5 minutes. */
+  retainWarnMs?: number;
+  /** Time shutdown waits for the documents to be stored. Default 10 s. */
+  shutdownDeadlineMs?: number;
+}
+
+export interface ShutdownResult {
+  /** Names of the documents whose last edits could not be saved before the deadline. */
+  unsaved: string[];
 }
 
 /** Board rooms carry awareness and server-pushed events only; clients never write their document. */
@@ -84,8 +114,80 @@ export class RoomManager {
   private readonly rooms = new Map<string, Room>();
   private readonly storing = new Set<Promise<void>>();
   private shuttingDown = false;
+  private shutdownPromise: Promise<ShutdownResult> | null = null;
+  private retainedChanged: (() => void)[] = [];
 
-  constructor(private readonly persistence: RoomPersistence = noPersistence) {}
+  constructor(
+    private readonly persistence: RoomPersistence = noPersistence,
+    private readonly options: RoomManagerOptions = {},
+  ) {}
+
+  /** Names of the rooms kept in memory because their last store failed (test-visible, KB-037). */
+  retainedRooms(): string[] {
+    return [...this.rooms.values()].filter((r) => r.retained).map((r) => r.name);
+  }
+
+  private notifyRetainedChanged(): void {
+    const waiters = this.retainedChanged;
+    this.retainedChanged = [];
+    for (const wake of waiters) wake();
+  }
+
+  /** Stops the retry and warning timers of a retained room. */
+  private release(room: Room): void {
+    const retained = room.retained;
+    if (!retained) return;
+    room.retained = null;
+    if (retained.timer) clearTimeout(retained.timer);
+    clearTimeout(retained.warnTimer);
+    this.notifyRetainedChanged();
+  }
+
+  /** Keeps the room (document and unsaved batch) and retries its store with backoff. */
+  private retain(room: Room): void {
+    const state: RetainedState = {
+      attempt: 0,
+      timer: null,
+      warnTimer: setTimeout(
+        () => {
+          this.options.log?.warn(
+            { doc: room.name },
+            'collaborative document retained after failed stores',
+          );
+        },
+        this.options.retainWarnMs ?? 5 * 60_000,
+      ),
+    };
+    state.warnTimer.unref();
+    room.retained = state;
+    this.scheduleRetry(room, state);
+  }
+
+  private scheduleRetry(room: Room, state: RetainedState): void {
+    state.attempt += 1;
+    const initial = this.options.retryInitialMs ?? 1000;
+    const delay = Math.min(this.options.retryMaxMs ?? 30_000, initial * 2 ** (state.attempt - 1));
+    state.timer = setTimeout(() => {
+      state.timer = null;
+      void this.retryStore(room, state);
+    }, delay);
+    state.timer.unref();
+  }
+
+  private async retryStore(room: Room, state: RetainedState): Promise<void> {
+    if (room.retained !== state || room.closing) return;
+    try {
+      await this.persistence.store(room.ref, room.doc);
+    } catch {
+      // Logged by the persistence layer with the attempt number.
+      if (room.retained === state && !room.closing) this.scheduleRetry(room, state);
+      return;
+    }
+    // A client that joined meanwhile released the room: it is live again and keeps it.
+    if (room.retained !== state) return;
+    this.release(room);
+    if (room.conns.size === 0 && !room.closing) this.drop(room);
+  }
 
   get size(): number {
     return this.rooms.size;
@@ -139,6 +241,7 @@ export class RoomManager {
       conns: new Set(),
       ready: Promise.resolve(),
       closing: false,
+      retained: null,
     };
     room.ready = this.persistence.load(ref, doc);
     // The cleanup on a failed load must not itself raise an unhandled rejection.
@@ -182,6 +285,7 @@ export class RoomManager {
   private drop(room: Room): void {
     if (this.rooms.get(room.name) === room) this.rooms.delete(room.name);
     room.closing = true;
+    this.release(room);
     room.awareness.destroy();
     room.doc.destroy();
   }
@@ -198,6 +302,12 @@ export class RoomManager {
     const room = this.getOrCreate(ref);
     room.conns.add(conn);
     conn.room = room;
+    // A retained room is live again: its in-memory document (with the unsaved edits) is served
+    // and the normal batching path writes the pending batch.
+    if (room.retained) {
+      this.release(room);
+      this.persistence.resume?.(room.ref, room.doc);
+    }
     try {
       await room.ready;
     } catch {
@@ -295,22 +405,29 @@ export class RoomManager {
     }
     conn.awarenessIds.clear();
     if (room.conns.size > 0 || room.closing) return;
-    const stored = (async () => {
+    const stored = (async (): Promise<boolean> => {
       try {
         await room.ready;
         await this.persistence.store(room.ref, room.doc);
+        return true;
       } catch {
-        // Persistence errors are logged by the hook's owner; the room is dropped either way.
+        // Logged by the hook's owner. A failed load drops the room (see getOrCreate); a failed
+        // store keeps it, with its unsaved edits, and retries (KB-037).
+        return false;
       }
     })();
-    this.storing.add(stored);
+    const settled = stored.then(() => {});
+    this.storing.add(settled);
+    let ok: boolean;
     try {
-      await stored;
+      ok = await stored;
     } finally {
-      this.storing.delete(stored);
+      this.storing.delete(settled);
     }
     // Someone who joined while storing keeps the room alive.
-    if (room.conns.size === 0 && !room.closing) this.drop(room);
+    if (room.conns.size > 0 || room.closing) return;
+    if (ok) this.drop(room);
+    else if (!room.retained) this.retain(room);
   }
 
   /** Pushes a JSON board event (custom message type) to every connection of a board room. */
@@ -326,20 +443,46 @@ export class RoomManager {
   /**
    * Graceful shutdown: stop accepting joins and document writes, write the pending batches, then
    * close every socket with 1012 (service restart, clients reconnect) and wait for the rooms to
-   * be stored. Safe to call more than once.
+   * be stored, retrying failed stores until the deadline (KB-037). Rooms that could not be stored
+   * in time are reported in `unsaved` and dropped. Safe to call more than once: later calls get
+   * the result of the first.
    */
-  async shutdown(): Promise<void> {
+  shutdown(): Promise<ShutdownResult> {
+    this.shutdownPromise ??= this.runShutdown();
+    return this.shutdownPromise;
+  }
+
+  private async runShutdown(): Promise<ShutdownResult> {
     this.shuttingDown = true;
+    let deadlineTimer: NodeJS.Timeout | undefined;
+    const deadline = new Promise<void>((resolve) => {
+      deadlineTimer = setTimeout(resolve, this.options.shutdownDeadlineMs ?? 10_000);
+    });
+    const storeAll = async (): Promise<void> => {
+      try {
+        await this.persistence.flush?.();
+      } catch {
+        // Logged by the persistence layer; the rooms are stored (and retried) below.
+      }
+      const conns = [...this.rooms.values()].flatMap((r) => [...r.conns]);
+      for (const conn of conns) {
+        conn.socket.close(WS_CLOSE.serviceRestart, 'Server shutting down');
+        await this.leave(conn);
+      }
+      await Promise.all([...this.storing]);
+      // Rooms whose store failed are retried by their own backoff timers; wait for them.
+      while (this.retainedRooms().length > 0) {
+        await new Promise<void>((resolve) => this.retainedChanged.push(resolve));
+      }
+    };
     try {
-      await this.persistence.flush?.();
-    } catch {
-      // Logged by the persistence layer; the rooms are stored (and retried) below.
+      await Promise.race([storeAll(), deadline]);
+    } finally {
+      clearTimeout(deadlineTimer);
     }
-    const conns = [...this.rooms.values()].flatMap((r) => [...r.conns]);
-    for (const conn of conns) {
-      conn.socket.close(WS_CLOSE.serviceRestart, 'Server shutting down');
-      await this.leave(conn);
-    }
-    await Promise.all([...this.storing]);
+    // Whatever is still here was not stored in time.
+    const unsaved = [...this.rooms.values()].map((room) => room.name);
+    for (const room of [...this.rooms.values()]) this.drop(room);
+    return { unsaved };
   }
 }

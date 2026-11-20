@@ -19,13 +19,22 @@ import { onMembershipChange } from '../../lib/membership-events.js';
 import { getSessionFromCookieHeader } from '../auth/session.js';
 import { authorize, type ResourceRef } from '../authz/index.js';
 import { findEndedSessions } from './sessions.js';
-import { RoomManager, noPersistence, type Connection, type RoomPersistence } from './rooms.js';
+import {
+  RoomManager,
+  noPersistence,
+  type Connection,
+  type RoomManagerOptions,
+  type RoomPersistence,
+  type ShutdownResult,
+} from './rooms.js';
 
 export interface RealtimeOptions {
   /** Document persistence hook (KB-017). Defaults to none (in-memory only). */
   persistence?: RoomPersistence;
   /** Ping interval in milliseconds. Defaults to 30 s; tests shorten it. */
   heartbeatMs?: number;
+  /** Retry, warning and shutdown-deadline timings of the rooms (KB-037); tests shorten them. */
+  rooms?: RoomManagerOptions;
   /** Test seam: awaited after the room authorization and before joining (widens the race window). */
   beforeJoin?: (ref: RoomRef) => Promise<void>;
 }
@@ -36,7 +45,7 @@ export interface RealtimeService {
   broadcastBoardEvent(boardId: string, event: BoardEventMessage): void;
   readonly rooms: RoomManager;
   /** Flushes pending document batches and closes every socket with 1012 (SIGTERM/SIGINT). */
-  shutdown(): Promise<void>;
+  shutdown(): Promise<ShutdownResult>;
 }
 
 declare module 'fastify' {
@@ -56,7 +65,7 @@ const toBytes = (raw: RawData): Uint8Array => {
 
 /** Creates the real-time service; `buildApp` decorates the root instance with it (`app.realtime`). */
 export function createRealtime(options: RealtimeOptions = {}): RealtimeService {
-  const rooms = new RoomManager(options.persistence ?? noPersistence);
+  const rooms = new RoomManager(options.persistence ?? noPersistence, options.rooms);
   return {
     rooms,
     shutdown: () => rooms.shutdown(),

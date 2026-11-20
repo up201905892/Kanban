@@ -20,17 +20,21 @@ import { gracefulShutdown, installShutdownHandlers } from '../../lib/graceful-sh
 import { TEST_ORIGIN, createUserAndLogin, type TestUser } from '../../test-utils/auth.js';
 import { resetDatabase } from '../../test-utils/reset-database.js';
 import { createPrismaDocumentStore, createYjsPersistence } from './persistence.js';
+import type { RoomManagerOptions } from './rooms.js';
 
 const prisma = createPrismaClient(process.env['DATABASE_URL'] ?? '');
 let app: FastifyInstance;
 let port = 0;
 const clients: Client[] = [];
 
-async function start(persistence?: ReturnType<typeof createYjsPersistence>): Promise<void> {
+async function start(
+  persistence?: ReturnType<typeof createYjsPersistence>,
+  rooms?: RoomManagerOptions,
+): Promise<void> {
   app = buildApp({
     prisma,
     webOrigin: TEST_ORIGIN,
-    ...(persistence ? { realtime: { persistence } } : {}),
+    ...(persistence ? { realtime: { persistence, ...(rooms ? { rooms } : {}) } } : {}),
   });
   await app.listen({ port: 0, host: '127.0.0.1' });
   port = (app.server.address() as AddressInfo).port;
