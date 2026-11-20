@@ -168,7 +168,7 @@ Any member. Response `200 { members: [{ userId, name, email, role, joinedAt }] }
 
 ### PATCH /api/workspaces/:wid/members/:userId
 
-Owner only. Body `{ role: "owner" | "member" | "viewer" }`. Response `200 { member }`. Errors: `400`, `401`, `403`, `404`, `409 LAST_OWNER` (demoting the only owner).
+Owner only. Body `{ role: "owner" | "member" | "viewer" }`. Response `200 { member }`. Errors: `400`, `401`, `403`, `404`, `409 LAST_OWNER` (demoting the only owner). Side effect: changing an owner or member to `viewer` unassigns every live card of that workspace assigned to them, in the same transaction (each card gets `version` + 1 and an `assignee_changed { from, to: null }` event with the caller as actor, and a `card_updated` board event after commit), the same as removing or leaving. Other role changes touch no cards.
 
 ### DELETE /api/workspaces/:wid/members/:userId
 

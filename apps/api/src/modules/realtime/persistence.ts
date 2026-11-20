@@ -29,6 +29,9 @@ export interface PersistenceOptions {
   /** Snapshot size above which a warning is logged. */
   warnBytes?: number;
   log?: PersistenceLogger;
+  /** First retry delay after a failed write (doubles up to `retryMaxMs`). */
+  retryInitialMs?: number;
+  retryMaxMs?: number;
 }
 
 export const DEFAULT_BATCH_MS = 500;
@@ -44,8 +47,20 @@ interface DocState {
   timer: NodeJS.Timeout | null;
   /** Serialises writes for this document so they stay in order and never overlap. */
   chain: Promise<void>;
+  /** Failed write attempts in a row; drives the backoff and the log. Reset by a success. */
+  failures: number;
   onUpdate: (update: Uint8Array, origin: unknown) => void;
 }
+
+export const RETRY_INITIAL_MS = 1000;
+export const RETRY_MAX_MS = 30_000;
+
+/** 1 s, 2 s, 4 s ... capped at 30 s, for the n-th failure in a row (n starts at 1). */
+export const backoffMs = (
+  failures: number,
+  initial = RETRY_INITIAL_MS,
+  max = RETRY_MAX_MS,
+): number => Math.min(max, initial * 2 ** Math.max(0, failures - 1));
 
 const noopLog: PersistenceLogger = { error: () => {}, warn: () => {} };
 
@@ -65,6 +80,8 @@ export function createYjsPersistence(
   const compactAfter = options.compactAfter ?? DEFAULT_COMPACT_AFTER;
   const warnBytes = options.warnBytes ?? DEFAULT_WARN_BYTES;
   const log = options.log ?? noopLog;
+  const retryInitialMs = options.retryInitialMs ?? RETRY_INITIAL_MS;
+  const retryMaxMs = options.retryMaxMs ?? RETRY_MAX_MS;
   const states = new Map<string, DocState>();
 
   const compact = async (name: string): Promise<void> => {
@@ -74,6 +91,15 @@ export function createYjsPersistence(
         { doc: name, bytes },
         'collaborative document is larger than the size warning limit',
       );
+    }
+  };
+
+  /** Compaction only tidies the rows: a failure is logged and the next load merges them as usual. */
+  const compactSafely = async (name: string): Promise<void> => {
+    try {
+      await compact(name);
+    } catch (err) {
+      log.error({ err, doc: name }, 'could not compact collaborative document');
     }
   };
 
@@ -89,16 +115,23 @@ export function createYjsPersistence(
       state.chain = state.chain
         .catch(() => {})
         .then(async () => {
+          let count: number;
           try {
-            const count = await store.appendUpdate(name, merged);
-            if (count >= compactAfter) await compact(name);
+            count = await store.appendUpdate(name, merged);
           } catch (err) {
-            log.error({ err, doc: name }, 'could not persist collaborative document updates');
+            state.failures += 1;
+            log.error(
+              { err, doc: name, attempt: state.failures },
+              'could not persist collaborative document updates',
+            );
             // Keep the edits for the next attempt; they are still in the live document too.
             state.pending.unshift(merged);
-            schedule(name, state, Math.max(batchMs, 1000));
+            schedule(name, state, backoffMs(state.failures, retryInitialMs, retryMaxMs));
             throw err;
           }
+          state.failures = 0;
+          // The rows are written: a failed compaction must not keep the batch (it would be written twice).
+          if (count >= compactAfter) await compactSafely(name);
         });
       // The caller of a timer flush has nobody to throw to; explicit callers await `chain`.
       state.chain.catch(() => {});
@@ -130,6 +163,7 @@ export function createYjsPersistence(
         pending: [],
         timer: null,
         chain: Promise.resolve(),
+        failures: 0,
         onUpdate: (update, origin) => {
           if (origin === FROM_STORE) return;
           state.pending.push(update);
@@ -149,10 +183,27 @@ export function createYjsPersistence(
       const name = roomName(ref);
       const state = states.get(name);
       if (!state || state.doc !== doc) return;
-      await flushState(name, state);
+      try {
+        await flushState(name, state);
+      } catch (err) {
+        // The caller (the room manager) owns the retry of an unload: no second retry timer here.
+        // `resume` restarts the batching path if a client joins meanwhile.
+        if (state.timer) clearTimeout(state.timer);
+        state.timer = null;
+        throw err;
+      }
       // Compaction on unload; it runs after the last append of this document.
-      state.chain = state.chain.catch(() => {}).then(() => compact(name));
+      state.chain = state.chain.catch(() => {}).then(() => compactSafely(name));
       await state.chain;
+    },
+
+    resume(ref, doc) {
+      if (!isPersisted(ref)) return;
+      const name = roomName(ref);
+      const state = states.get(name);
+      if (state && state.doc === doc && state.pending.length > 0) {
+        schedule(name, state, backoffMs(state.failures, retryInitialMs, retryMaxMs));
+      }
     },
 
     async flush() {

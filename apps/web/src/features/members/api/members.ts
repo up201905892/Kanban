@@ -50,8 +50,13 @@ export function useChangeMemberRole(workspaceId: string) {
     onError: (_error, _vars, context) => {
       queryClient.setQueryData(membersKey(workspaceId), context?.members);
     },
-    onSettled: () => {
+    onSettled: (_data, _error, { role }) => {
       void queryClient.invalidateQueries({ queryKey: membersKey(workspaceId) });
+      if (role === 'viewer') {
+        // Demotion unassigns the person's cards: boards and open cards must refetch.
+        void queryClient.invalidateQueries({ queryKey: ['projects'] });
+        void queryClient.invalidateQueries({ queryKey: ['cards'] });
+      }
       // The caller's own role may have changed.
       void queryClient.invalidateQueries({ queryKey: workspaceKey(workspaceId), exact: true });
     },

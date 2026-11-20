@@ -652,3 +652,42 @@ Entry template:
   - `pnpm test:e2e -- <files> --repeat-each=20` as written in the criterion did not apply the file filter or flags here (it ran the whole suite once, 56 tests); I ran `npx playwright test <files> --repeat-each=20 --retries=0` instead. Use that form to reproduce.
   - The `isOwnSpot` unit test covers the decision function; the dnd-kit event itself is not reproducible in jsdom, so the E2E repeat run is the regression check.
   - Suggestions for the planner: the `pnpm test:e2e -- args` forwarding could be fixed (root `package.json` script), outside this task's scope.
+
+### KB-037 · Keep unsaved collaborative edits when the final flush fails
+
+**Iteration 1 — 2026-11-20**
+
+- **Status at the end:** Ready for test
+- **What was done:** A failed final store no longer loses edits. `RoomPersistence.store` now rejects when the Yjs append or the `Card.description` projection failed (a compaction failure after a successful append is only logged, in `compactSafely`). `RoomManager.leave()` keeps such a room (`room.retained`, listed by `retainedRooms()`) and retries `store` after 1 s, 2 s, 4 s ... capped at 30 s, then compacts and drops the room. A client that joins a retained room gets the in-memory document; a new optional hook `RoomPersistence.resume` hands the pending writes back to the normal batching path (both layers implement it). While a room has no client the room manager owns the retry, so the persistence layers clear their own retry timer when `store` fails; in a live room their timers retry with the same backoff (`backoffMs`, failure counter per document). Each failed attempt logs `{ doc, attempt }` (never content); a room retained for 5 minutes logs one warning. `RoomManager.shutdown()` is memoized, retries within a deadline (10 s default) and returns `{ unsaved }`; `gracefulShutdown` logs each unsaved document by name and returns exit code 1 (0 only when all were saved). Retry/warning/deadline timings are `RoomManagerOptions` (`RealtimeOptions.rooms`), and `retryInitialMs`/`retryMaxMs` on both persistence layers, not environment variables. All timers are `unref()`ed. ADR 0004 section 9 amended and CHANGELOG entry added.
+- **Changed files:** `apps/api/src/modules/realtime/{rooms.ts,persistence.ts,description.ts,routes.ts}`, `apps/api/src/app.ts`, `apps/api/src/lib/graceful-shutdown.ts`, `apps/api/src/modules/realtime/{retention.test.ts,retention.integration.test.ts}`, `apps/api/src/modules/realtime/persistence.integration.test.ts` (only the `start` helper signature), `docs/adr/0004-real-time-architecture.md`, `CHANGELOG.md`
+- **Migrations:** none
+- **Commit(s):** `2e6fe52` feat(api): KB-037 keep unsaved collaborative edits when the final flush fails
+- **Acceptance criteria covered:** retain and retry with backoff, join of a retained room, projection retry and deleted-card stop, compaction-only failure, error and warning logs, shutdown deadline with exit codes 0 and 1, `unref` timers and `retainedRooms()`, ADR amended (all in `retention.test.ts` and `retention.integration.test.ts`); G1, G4, G7, G8, R7.
+- **Tests written by the developer:** unit `retention.test.ts` (fake store, fake Prisma, fake timers: three attempts with backoff, 30 s cap, join during retention, compaction failure, 5-minute warning once, timers unref'd, shutdown unsaved / recovered, projection retry and deleted card); API `retention.integration.test.ts` (real `ws` clients over the real PostgreSQL store wrapped to fail on demand: second client sees the edit and it survives an app rebuild, retry after the last client left, shutdown exit 1 naming the document, shutdown exit 0 with the edit stored).
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 185, web 323, api 453) · test:e2e ok (56 passed; E2E not required by the task)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - `RealtimeService.shutdown()` now returns `Promise<ShutdownResult>` instead of `void`; the `onClose` hook calls it again and gets the memoized result, so closing the app never waits a second deadline.
+  - The unref test in `retention.test.ts` only inspects timers created after its spy; the process-level behaviour is the best check (no hang after a failed shutdown).
+  - At the deadline the unsaved rooms are dropped (docs destroyed) so no timer survives.
+  - The projection retry test uses a fake Prisma; the real-database projection path is unchanged in logic.
+  - Suggestions for the planner: none.
+
+### KB-038 · Unassign a member's cards when they are demoted to viewer (D10)
+
+**Iteration 1 — 2026-11-20**
+
+- **Status at the end:** Ready for test
+- **What was done:** `changeMemberRole` now calls the shared `unassignCards` helper (the one removal and leaving use) inside the role-change transaction when an owner or member becomes a viewer. Boards are locked in id order, each live card gets `version` + 1 and an `assignee_changed { from, to: null }` event with the owner as actor, and the `card_updated` board events are published after the commit only (nothing on 403, 404, 409 or rollback). Other role changes and viewer to viewer touch no cards. UI: choosing "Viewer" for an owner or member in the Members page opens a "Change to viewer" confirmation with the specified text; Cancel and Escape keep the role (the select is controlled) and Dialog returns focus to the select; on success the board (`['projects']`) and card (`['cards']`) queries are invalidated and "<name> is now viewer and their cards were unassigned" is announced politely. `docs/api.md` and `CHANGELOG.md` updated.
+- **Changed files:** `apps/api/src/modules/members/service.ts`, `apps/api/src/modules/cards/fields.test.ts`, `apps/web/src/routes/MembersPage.tsx`, `apps/web/src/features/members/api/members.ts`, `apps/web/src/features/members/members-flow.test.tsx`, `e2e/members.spec.ts`, `docs/api.md`, `CHANGELOG.md`
+- **Migrations:** none
+- **Commit(s):** `00e7f7e` feat(api): KB-038 unassign a member's cards when they are demoted to viewer
+- **Acceptance criteria covered:** all; G1, G4, G5, G8, A1, A4, A5, A7, U1, U3-U7, U9, R6.
+- **Tests written by the developer:** API (in `fields.test.ts`): live card only unassigned with version and actor, demoted owner, no-op and other role changes write nothing, 409 and 403 change nothing, other workspace untouched, injected failure (temporary DB trigger on `activity_events`) rolls back role and assignments; web unit: confirmation text, Escape restores role and focus, confirm sends the PATCH and announces; E2E: confirmation with axe, Escape returns focus, confirm, then the board tile shows no assignee; the existing last-owner E2E and unit test now confirm the dialog first.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 185, web 324, api 459) · test:e2e ok (57 tests; members spec re-run after fixing the new test)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - Event publication is asserted by subscribing to the in-process board event bus (`onBoardEvent`) rather than a real `ws` client; the bus-to-socket path is already covered by `board-events.test.ts`.
+  - Playwright's `selectOption` does not focus the select, so the E2E focuses it first, as a keyboard user would; focus return relies on `Dialog` restoring the previously focused element.
+  - The board and card invalidation is by the prefixes `['projects']` and `['cards']` (query keys carry no workspace id), so it is slightly broader than the workspace.
+  - Suggestions for the planner: none.

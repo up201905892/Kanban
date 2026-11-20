@@ -6,6 +6,7 @@ import {
   roomName,
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
+import { backoffMs, RETRY_INITIAL_MS, RETRY_MAX_MS } from './persistence.js';
 import type { Connection, RoomPersistence } from './rooms.js';
 
 /** Name of the `Y.Map` that holds the "seeded" marker next to the text. */
@@ -15,7 +16,6 @@ const SEEDED_KEY = 'seeded';
 const SEED = Symbol('seed');
 
 export const DEFAULT_PROJECTION_DEBOUNCE_MS = 1000;
-const RETRY_MS = 2000;
 
 export interface PreviousDescriptionEvent {
   from: number;
@@ -52,16 +52,22 @@ export interface ProjectionOptions {
   /** Quiet time after the last change before `Card.description` is written (must stay under 2 s). */
   debounceMs?: number;
   log?: ProjectionLogger;
+  /** First retry delay after a failed write (doubles up to `retryMaxMs`). */
+  retryInitialMs?: number;
+  retryMaxMs?: number;
   now?: () => Date;
 }
 
 interface DescriptionState {
   doc: Y.Doc;
   cardId: string;
+  name: string;
   timer: NodeJS.Timeout | null;
   /** The person behind the changes made since the last projection. */
   actorId: string | null;
   dirty: boolean;
+  /** Failed projections in a row; drives the backoff and the log. */
+  failures: number;
   chain: Promise<void>;
 }
 
@@ -83,6 +89,8 @@ export function createDescriptionPersistence(
   const debounceMs = options.debounceMs ?? DEFAULT_PROJECTION_DEBOUNCE_MS;
   const now = options.now ?? (() => new Date());
   const log = options.log;
+  const retryInitialMs = options.retryInitialMs ?? RETRY_INITIAL_MS;
+  const retryMaxMs = options.retryMaxMs ?? RETRY_MAX_MS;
   const states = new Map<string, DescriptionState>();
 
   const projectNow = async (state: DescriptionState): Promise<void> => {
@@ -140,12 +148,17 @@ export function createDescriptionPersistence(
             }
           });
         } catch (err) {
-          log?.error({ err, card: state.cardId }, 'could not project the card description');
+          state.failures += 1;
+          log?.error(
+            { err, doc: state.name, attempt: state.failures },
+            'could not project the card description',
+          );
           state.dirty = true;
           state.actorId ??= actorId;
-          schedule(state, RETRY_MS);
+          schedule(state, backoffMs(state.failures, retryInitialMs, retryMaxMs));
           throw err;
         }
+        state.failures = 0;
       });
     state.chain.catch(() => {});
     return state.chain;
@@ -182,9 +195,11 @@ export function createDescriptionPersistence(
       const state: DescriptionState = {
         doc,
         cardId: ref.id,
+        name,
         timer: null,
         actorId: null,
         dirty: false,
+        failures: 0,
         chain: Promise.resolve(),
       };
       doc.on('update', (_update: Uint8Array, origin: unknown) => {
@@ -203,14 +218,33 @@ export function createDescriptionPersistence(
 
     async store(ref, doc) {
       const state = states.get(roomName(ref));
+      // Both writes are attempted; if either fails the error is rethrown so the room is retained
+      // and the whole unload retried (KB-037). The layer that failed has logged it.
+      let failure: unknown = null;
       if (state && state.doc === doc) {
         try {
           await projectNow(state);
-        } catch {
-          // Logged; the document itself is still stored below and the projection is retried.
+        } catch (err) {
+          failure = err;
         }
       }
-      await inner.store(ref, doc);
+      try {
+        await inner.store(ref, doc);
+      } catch (err) {
+        failure ??= err;
+      }
+      if (failure) {
+        // The room manager owns the retry of an unload; `resume` restarts the debounce path.
+        if (state?.timer) clearTimeout(state.timer);
+        if (state) state.timer = null;
+        throw failure;
+      }
+    },
+
+    resume(ref, doc) {
+      const state = states.get(roomName(ref));
+      if (state && state.doc === doc && state.dirty) schedule(state, debounceMs);
+      inner.resume?.(ref, doc);
     },
 
     async flush() {

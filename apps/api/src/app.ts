@@ -91,6 +91,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     // Documents live in PostgreSQL unless a test injects another persistence hook (KB-017).
     const realtimeOptions: RealtimeOptions = {
       ...options.realtime,
+      rooms: { log: app.log, ...options.realtime?.rooms },
       persistence:
         options.realtime?.persistence ??
         createDescriptionPersistence(

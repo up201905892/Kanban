@@ -16,6 +16,19 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-20
+
+- **Decisions for João:**
+  - Optional: item (2) of the 2026-11-19 follow-ups (a "jump to card" / "Move to top/bottom" keyboard shortcut for long columns) was not planned because your answer named only (1) and (3). Say so in `approvals.md` if you want it.
+  - FYI: the tester could not run `prisma migrate reset --force` (Prisma's AI-safety guard needs explicit user consent). KB-038 has no migration, so it was marked n.a.; it will matter for any task that adds a migration.
+- **Done:** KB-037 (keep unsaved collaborative edits when the final flush fails), KB-038 (unassign cards when a member is demoted to viewer)
+- **Tested:** KB-037 (Passed), KB-038 (Passed)
+- **Developed:** KB-037, KB-038 (both went through the whole cycle today)
+- **Planned from your decisions:** KB-041 (forward args through `pnpm test:e2e`), KB-042 (unit tests for `validateSessionToken`), KB-043 (re-check the room's resource on WebSocket join; also covers deleted cards)
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` on npm)
+- **Rule violations found:** none
+- **Next step:** KB-039, KB-040, KB-043, KB-041, KB-026, KB-014 are next; KB-029 unlocks once KB-039 is Done.
+
 ## 2026-11-19
 
 - **Decisions for João:**
