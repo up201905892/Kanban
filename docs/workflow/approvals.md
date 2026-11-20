@@ -21,7 +21,8 @@ How to use it: add one line per decision (on GitHub, on the `develop` branch, ev
 | 2026-11-13 | Approve | KB-038 | Implements D10 = A |
 | 2026-11-13 | Answer | D11 | A: accept and document that deleting a column hard-deletes its soft-deleted cards and their history in v1.0 |
 | 2026-11-13 | Approve | KB-014, KB-020, KB-023, KB-025, KB-026, KB-028, KB-029, KB-030, KB-031, KB-032 | Approve the rest of the MVP; develop as dependencies close |
-
+| 2026-11-20 | Answer | 2026-11-19 follow-ups | Plan (1) pnpm test:e2e forwards arguments and (3) unit test for validateSessionToken |
+| 2026-11-20 | Answer | ADR 0004 §7 | Plan a follow-up: re-check the project still exists on room join |
 
 Possible decisions:
 
