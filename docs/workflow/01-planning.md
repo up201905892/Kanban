@@ -48,6 +48,9 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-038 | Unassign a member's cards when they are demoted to viewer (D10) | Authentication and workspaces | Medium | KB-009, KB-013 | Planned |
 | KB-039 | Card and column tombstones in the live board cache | Real time | Medium | KB-018 | Planned |
 | KB-040 | Enforce the description length limit in the shared document | Real time | Medium | KB-019 | Planned |
+| KB-041 | Forward arguments through `pnpm test:e2e` | Quality and delivery | Medium | KB-003 | Planned |
+| KB-042 | Direct unit tests for `validateSessionToken` | Authentication and workspaces | Low | KB-005, KB-028 | Planned |
+| KB-043 | Re-check that the room's resource still exists after a WebSocket join | Real time | Medium | KB-033 | Planned |
 
 **Priority rule used:** High = blocks at least one other High/Medium task on the path to the v1.0 release; Medium = MVP scope that blocks nothing (or only Medium tasks at the end of the plan); Low = MVP scope that is the first candidate to move to v1.1 if the schedule slips.
 
@@ -61,7 +64,9 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 
 **Estimate update (2026-11-13):** KB-036 rejected (D9 = A), so the plan total is 5 S + 24 M + 10 L = **50.25 ideal days** (55.25 if every L takes 3 days). Done: 30 ideal days. Planned: 5 S + 13 M + 2 L = 19.25 ideal days. Still Proposed: KB-027 (M, 1 day; waits for `@up201905892/ui` on npm).
 
-**ADRs required** (files in `docs/adr/NNNN-<slug>.md`, next free number): auth and sessions (KB-005), authorization model (KB-007), ordering and conflict handling (KB-010), real-time architecture and Yjs↔DB authority (KB-016, extended by KB-017, KB-019, KB-033, KB-037 and KB-040), deployment topology (KB-031).
+**Estimate update (2026-11-20):** KB-041, KB-042 and KB-043 (all S) add 0.75 ideal day, from João's answers of 2026-11-20 (`approvals.md`). New plan total: 8 S + 24 M + 10 L = **51.0 ideal days** (56.0 if every L takes 3 days).
+
+**ADRs required** (files in `docs/adr/NNNN-<slug>.md`, next free number): auth and sessions (KB-005), authorization model (KB-007), ordering and conflict handling (KB-010), real-time architecture and Yjs↔DB authority (KB-016, extended by KB-017, KB-019, KB-033, KB-037, KB-040 and KB-043), deployment topology (KB-031).
 
 ## Technical decisions
 
@@ -232,6 +237,8 @@ Lines from `approvals.md` already handled by the planner (prevents applying the 
 | 2026-11-13 | Approve | KB-038 | 2026-11-13 |
 | 2026-11-13 | Answer | D11 | 2026-11-13 |
 | 2026-11-13 | Approve | KB-014, KB-020, KB-023, KB-025, KB-026, KB-028, KB-029, KB-030, KB-031, KB-032 | 2026-11-13 |
+| 2026-11-20 | Answer | 2026-11-19 follow-ups (items 1 and 3 planned as KB-041 and KB-042; item 2, the keyboard jump shortcut, not requested and not planned) | 2026-11-20 |
+| 2026-11-20 | Answer | ADR 0004 §7 (planned as KB-043) | 2026-11-20 |
 
 Note: the first row of the `approvals.md` table (`YYYY-MM-DD · Approve · KB-001 to KB-008`, in italics) is the usage example, not a decision; it is not applied. KB-001 to KB-004 and KB-010 were approved in the conversation on 2026-10-24.
 
@@ -1659,3 +1666,91 @@ Task template (copy for each new task):
 **History:**
 - 2026-11-10 · planner · created as Proposed · follow-up from the KB-019 development note, test report 1 observations and done record lessons (concurrent merges can exceed 20,000 characters; the projection cuts the copy silently)
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
+
+### KB-041 · Forward arguments through `pnpm test:e2e`
+
+- **MVP phase:** Quality and delivery
+- **Priority:** Medium
+- **Depends on:** KB-003
+- **Estimate:** S
+
+**Goal:** Make `pnpm test:e2e` accept Playwright arguments (file filters, `--repeat-each`, `--retries`, `--grep`), so the commands written in task specs work as written. Today `pnpm test:e2e -- e2e/members.spec.ts --repeat-each=20` runs the whole suite once and ignores the arguments (KB-035 development entry, test report 1 and done record); developers had to use `npx playwright test` instead. KB-029 asks for `pnpm test:e2e -- --repeat-each=10`, so it relies on this.
+
+**Acceptance criteria:**
+- [ ] The root cause is found and written in the development entry (for example, the literal `--` that pnpm 10 passes to the script, or how the root script is defined).
+- [ ] Both forms forward every argument to Playwright: `pnpm test:e2e <args>` and `pnpm test:e2e -- <args>`. Example checks, each recorded in the development entry with the number of tests Playwright reports: `pnpm test:e2e -- e2e/members.spec.ts --list` and `pnpm test:e2e e2e/members.spec.ts --list` list only the tests of that file; `pnpm test:e2e -- e2e/members.spec.ts --repeat-each=2 --retries=0` runs that file's tests twice each and no other file.
+- [ ] `pnpm test:e2e` with no arguments behaves exactly as before (whole suite, same `playwright.config.ts`, same web servers), because CI (`.github/workflows/ci.yml`, not changed by this task) runs it that way.
+- [ ] The fix stays in the root `package.json` scripts (and, only if needed, a small script under `scripts/` with no new runtime dependency, G9). `playwright.config.ts` is not changed unless the root cause is there.
+- [ ] Any place in the repository docs (README, `docs/`) that shows the `npx playwright test` workaround or the `pnpm test:e2e -- <args>` form is updated to the working form.
+- [ ] Common criteria: G1, G9.
+
+**Required tests:**
+- Unit: n/a (script change); if a helper script is added, it has a unit test for the argument handling (with and without a leading `--`, no arguments).
+- API: n/a.
+- E2E: the commands in the criteria above, run and recorded by the developer and repeated by the tester; the full `pnpm test:e2e` passes.
+- Accessibility: n/a.
+
+**Out of scope:** changes to the CI workflow, other browsers, changes to individual specs.
+
+**History:**
+- 2026-11-20 · planner · created as Proposed · item (1) of the 2026-11-19 follow-ups (KB-035 development entry, test report 1 and done record)
+- 2026-11-20 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-20, Answer "2026-11-19 follow-ups": "Plan (1) pnpm test:e2e forwards arguments")
+
+### KB-042 · Direct unit tests for `validateSessionToken`
+
+- **MVP phase:** Authentication and workspaces
+- **Priority:** Low
+- **Depends on:** KB-005, KB-028
+- **Estimate:** S
+
+**Goal:** Cover `validateSessionToken` (`apps/api/src/modules/auth/session.ts`) with direct tests. Every authenticated request and every WebSocket upgrade goes through it, and KB-028 changed it to one joined query (`relationLoadStrategy: 'join'`), but today only route tests cover it indirectly. Direct tests pin its contract (expiry, deletion of expired rows, sliding renewal, returned fields, query budget) so later changes cannot break it silently.
+
+**Acceptance criteria:**
+- [ ] A test file next to the module (e.g. `apps/api/src/modules/auth/session.test.ts`) calls `validateSessionToken` directly, with `now` injected, against the test PostgreSQL used by the API tests (the joined query cannot be verified with a fake client). The database is reset between tests (A7 setup).
+- [ ] Cases covered: unknown token → `null` and no write; valid session not due for renewal → the user and session, `renewed: false`, `expiresAt` and `lastUsedAt` unchanged in the database; valid session due for renewal (at and just past the `shouldRenew` threshold) → `renewed: true`, new `expiresAt` equal to `sessionExpiry(now)`, `lastUsedAt = now` in the database; session just before and exactly at `expiresAt` (boundary as defined by `isExpired`) → the expected result; expired session → `null` and the row is deleted, other sessions of the same user are untouched; the returned `user` has exactly `id`, `email`, `name`, `createdAt` (no password hash or other columns).
+- [ ] Query budget: with Prisma query events (as in `boards/board-performance.test.ts`), a valid session not due for renewal runs exactly one SQL statement; a renewal runs two (lookup + update).
+- [ ] `getSessionFromCookieHeader` has direct cases too: no header, header without the session cookie, and a valid cookie among other cookies.
+- [ ] No production code changes, unless a test finds a bug; then it is fixed with that test as the reproduction and listed in the development entry.
+- [ ] Common criteria: G1, G8.
+
+**Required tests:**
+- Unit: the cases above (this task is the tests).
+- API: n/a (existing route tests stay as they are).
+- E2E: n/a.
+- Accessibility: n/a.
+
+**Out of scope:** changes to the session lifetime or renewal rules, tests for `createSession`/`deleteSession` beyond what the cases above need, the WebSocket session revalidation (KB-033, already tested).
+
+**History:**
+- 2026-11-20 · planner · created as Proposed · item (3) of the 2026-11-19 follow-ups (KB-028 tester note: `validateSessionToken` has no direct unit test)
+- 2026-11-20 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-20, Answer "2026-11-19 follow-ups": "Plan … (3) unit test for validateSessionToken")
+
+### KB-043 · Re-check that the room's resource still exists after a WebSocket join
+
+- **MVP phase:** Real time
+- **Priority:** Medium
+- **Depends on:** KB-033
+- **Estimate:** S
+- **ADR required:** amend `docs/adr/0004-real-time-architecture.md` section 7
+
+**Goal:** Close the last gap listed in ADR 0004 section 7 ("Still limited"): a project deleted (or a card soft-deleted) between the room authorization and the join is not re-checked, so the socket can stay in a room of a resource that no longer exists until the client leaves. KB-033 already re-checks the membership after the join (`apps/api/src/modules/realtime/routes.ts`); this task extends that re-check to the room's resource.
+
+**Acceptance criteria:**
+- [ ] After the connection is registered in the room, the server re-checks both the membership and that the room's resource still resolves: for `board:<id>`, the board and its project exist; for `card:<id>:description`, the card exists, is not soft-deleted, and its board and project exist. Recommended approach: call the shared policy `authorize(prisma, user, resource, 'workspace:read')` again (its resolvers already return 404 for a missing project or a soft-deleted card), replacing the membership-only query; any 404/403 closes the socket with `4403` (R2, missing and forbidden indistinguishable) and the refreshed role is taken from the result as today.
+- [ ] A socket closed by this re-check leaves the room through the normal path, so a room left with no clients is unloaded through the persistence hook as in KB-033; no pending message of that socket is processed and no document data is sent to it after the close.
+- [ ] Joins where nothing changed behave as before (no extra close, same role refresh). The re-check adds at most one policy call per join; no query is added per message.
+- [ ] Workspace deletion during the window is covered by the same check (it removes the memberships); the KB-033 membership-removed race keeps passing.
+- [ ] ADR 0004 section 7 is amended (not rewritten): the "Still limited" bullet says the project and card cases are now re-checked after the join, and names the approach.
+- [ ] Common criteria: G1, G7, G8, R2.
+
+**Required tests:**
+- Unit: n/a, unless the developer extracts pure logic.
+- API (integration with real `ws` clients and the existing `beforeJoin` test seam, as in the KB-033 race test): a project deleted during the widened window → a board socket and a card socket of that project end closed with `4403`, and the board room is not left loaded; a card soft-deleted during the window → its description socket ends closed with `4403` while a board socket of the same project stays open; a workspace deleted during the window → closed with `4403`; nothing changed during the window → the socket stays open and syncs; the existing KB-033 membership-removed race test still passes.
+- E2E: n/a (client handling of `4403` exists since KB-019/KB-020/KB-021).
+- Accessibility: n/a.
+
+**Out of scope:** multi-instance fan-out of bus events (ADR 0004 section 10), purging documents of deleted cards, client-side changes.
+
+**History:**
+- 2026-11-20 · planner · created as Proposed · follow-up from KB-033 (ADR 0004 section 7 "Still limited"; daily log 2026-11-18)
+- 2026-11-20 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-20, Answer "ADR 0004 §7": "Plan a follow-up: re-check the project still exists on room join")
