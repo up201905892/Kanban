@@ -45,7 +45,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-035 | Stabilise the flaky members and move-cards E2E tests | Quality and delivery | Medium | KB-009, KB-015 | Done |
 | KB-036 | Card actions menu on the board tile (D9) | Board | Low | KB-015, D9 answered | Rejected |
 | KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Done |
-| KB-038 | Unassign a member's cards when they are demoted to viewer (D10) | Authentication and workspaces | Medium | KB-009, KB-013 | Planned |
+| KB-038 | Unassign a member's cards when they are demoted to viewer (D10) | Authentication and workspaces | Medium | KB-009, KB-013 | Ready for test |
 | KB-039 | Card and column tombstones in the live board cache | Real time | Medium | KB-018 | Planned |
 | KB-040 | Enforce the description length limit in the shared document | Real time | Medium | KB-019 | Planned |
 | KB-041 | Forward arguments through `pnpm test:e2e` | Quality and delivery | Medium | KB-003 | Planned |
@@ -1609,6 +1609,8 @@ Task template (copy for each new task):
 - 2026-11-09 · planner · created as Proposed · follow-up from the KB-013 developer, tester and finisher notes; approve only together with `Answer | D10 | A` (recommended)
 - 2026-11-10 · planner · spec revised after KB-018 (Done): board events now exist, so the demotion path must publish them like the removal path (criterion, test and R6 added); estimate stays S · stays Proposed
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13) together with `Answer | D10 | A`; the dependency line now records the answer; KB-029 now depends on this task
+- 2026-11-20 · developer · Planned → In development · started
+- 2026-11-20 · developer · In development → Ready for test · commit 00e7f7e
 
 ### KB-039 · Card and column tombstones in the live board cache
 

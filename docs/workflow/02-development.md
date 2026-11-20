@@ -672,3 +672,22 @@ Entry template:
   - At the deadline the unsaved rooms are dropped (docs destroyed) so no timer survives.
   - The projection retry test uses a fake Prisma; the real-database projection path is unchanged in logic.
   - Suggestions for the planner: none.
+
+### KB-038 · Unassign a member's cards when they are demoted to viewer (D10)
+
+**Iteration 1 — 2026-11-20**
+
+- **Status at the end:** Ready for test
+- **What was done:** `changeMemberRole` now calls the shared `unassignCards` helper (the one removal and leaving use) inside the role-change transaction when an owner or member becomes a viewer. Boards are locked in id order, each live card gets `version` + 1 and an `assignee_changed { from, to: null }` event with the owner as actor, and the `card_updated` board events are published after the commit only (nothing on 403, 404, 409 or rollback). Other role changes and viewer to viewer touch no cards. UI: choosing "Viewer" for an owner or member in the Members page opens a "Change to viewer" confirmation with the specified text; Cancel and Escape keep the role (the select is controlled) and Dialog returns focus to the select; on success the board (`['projects']`) and card (`['cards']`) queries are invalidated and "<name> is now viewer and their cards were unassigned" is announced politely. `docs/api.md` and `CHANGELOG.md` updated.
+- **Changed files:** `apps/api/src/modules/members/service.ts`, `apps/api/src/modules/cards/fields.test.ts`, `apps/web/src/routes/MembersPage.tsx`, `apps/web/src/features/members/api/members.ts`, `apps/web/src/features/members/members-flow.test.tsx`, `e2e/members.spec.ts`, `docs/api.md`, `CHANGELOG.md`
+- **Migrations:** none
+- **Commit(s):** `00e7f7e` feat(api): KB-038 unassign a member's cards when they are demoted to viewer
+- **Acceptance criteria covered:** all; G1, G4, G5, G8, A1, A4, A5, A7, U1, U3-U7, U9, R6.
+- **Tests written by the developer:** API (in `fields.test.ts`): live card only unassigned with version and actor, demoted owner, no-op and other role changes write nothing, 409 and 403 change nothing, other workspace untouched, injected failure (temporary DB trigger on `activity_events`) rolls back role and assignments; web unit: confirmation text, Escape restores role and focus, confirm sends the PATCH and announces; E2E: confirmation with axe, Escape returns focus, confirm, then the board tile shows no assignee; the existing last-owner E2E and unit test now confirm the dialog first.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 185, web 324, api 459) · test:e2e ok (57 tests; members spec re-run after fixing the new test)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - Event publication is asserted by subscribing to the in-process board event bus (`onBoardEvent`) rather than a real `ws` client; the bus-to-socket path is already covered by `board-events.test.ts`.
+  - Playwright's `selectOption` does not focus the select, so the E2E focuses it first, as a keyboard user would; focus return relies on `Dialog` restoring the previously focused element.
+  - The board and card invalidation is by the prefixes `['projects']` and `['cards']` (query keys carry no workspace id), so it is slightly broader than the workspace.
+  - Suggestions for the planner: none.
