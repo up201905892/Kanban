@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  type BoardEvent,
   activityEventDataSchema,
   apiErrorSchema,
   boardResponseSchema,
@@ -10,6 +11,7 @@ import {
 } from '@kanban/shared';
 import { buildApp } from '../../app.js';
 import { createPrismaClient } from '../../db.js';
+import { onBoardEvent } from '../../lib/board-events.js';
 import { TEST_ORIGIN, createUserAndLogin, type TestUser } from '../../test-utils/auth.js';
 import { resetDatabase } from '../../test-utils/reset-database.js';
 
@@ -296,5 +298,154 @@ describe('removing a member unassigns their cards', () => {
     expect(res.statusCode).toBe(409);
     const row = await prisma.card.findUniqueOrThrow({ where: { id: card.id } });
     expect(row.assigneeId).toBe(owner.user.id);
+  });
+});
+
+describe('demoting a member to viewer unassigns their cards (KB-038)', () => {
+  const patchRole = (wid: string, userId: string, who: TestUser, role: string) =>
+    call('PATCH', `/api/workspaces/${wid}/members/${userId}`, who, { role });
+
+  async function secondCard(owner: TestUser, projectId: string, title: string) {
+    const board = boardResponseSchema.parse(
+      (await call('GET', `/api/projects/${projectId}/board`, owner)).json(),
+    );
+    return cardResponseSchema.parse(
+      (await call('POST', `/api/columns/${board.columns[0]?.id}/cards`, owner, { title })).json(),
+    ).card;
+  }
+
+  function collect() {
+    const events: BoardEvent[] = [];
+    const off = onBoardEvent((e) => events.push(e));
+    return { events, off };
+  }
+
+  it('unassigns only live cards, with a version bump and the owner as actor', async () => {
+    const { owner, member, ws, project, card } = await setup();
+    const deleted = await secondCard(owner, project.id, 'Gone');
+    await call('PATCH', `/api/cards/${card.id}`, owner, { assigneeId: member.user.id });
+    await call('PATCH', `/api/cards/${deleted.id}`, owner, { assigneeId: member.user.id });
+    await call('DELETE', `/api/cards/${deleted.id}`, owner);
+    const before = await prisma.card.findUniqueOrThrow({ where: { id: deleted.id } });
+
+    const { events, off } = collect();
+    const res = await patchRole(ws.id, member.user.id, owner, 'viewer');
+    off();
+    expect(res.statusCode).toBe(200);
+
+    expect(await prisma.card.findUniqueOrThrow({ where: { id: card.id } })).toMatchObject({
+      assigneeId: null,
+      version: 3,
+    });
+    expect(await prisma.card.findUniqueOrThrow({ where: { id: deleted.id } })).toMatchObject({
+      assigneeId: member.user.id,
+      version: before.version,
+    });
+    expect((await eventsOf(card.id)).at(-1)).toEqual({
+      type: 'assignee_changed',
+      data: { from: member.user.id, to: null },
+    });
+    const last = await prisma.activityEvent.findFirstOrThrow({
+      where: { cardId: card.id },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+    expect(last.actorId).toBe(owner.user.id);
+    expect(events.map((e) => e.type)).toEqual(['card_updated']);
+  });
+
+  it('unassigns an owner who is demoted while another owner remains', async () => {
+    const { owner, member, ws, card } = await setup();
+    await prisma.membership.update({
+      where: { workspaceId_userId: { workspaceId: ws.id, userId: member.user.id } },
+      data: { role: 'owner' },
+    });
+    await call('PATCH', `/api/cards/${card.id}`, owner, { assigneeId: member.user.id });
+    expect((await patchRole(ws.id, member.user.id, owner, 'viewer')).statusCode).toBe(200);
+    expect((await prisma.card.findUniqueOrThrow({ where: { id: card.id } })).assigneeId).toBeNull();
+  });
+
+  it('writes nothing for other role changes and for viewer to viewer', async () => {
+    const { owner, member, viewer, ws, card } = await setup();
+    await call('PATCH', `/api/cards/${card.id}`, owner, { assigneeId: member.user.id });
+    const { events, off } = collect();
+    expect((await patchRole(ws.id, member.user.id, owner, 'owner')).statusCode).toBe(200);
+    expect((await patchRole(ws.id, member.user.id, owner, 'member')).statusCode).toBe(200);
+    expect((await patchRole(ws.id, viewer.user.id, owner, 'viewer')).statusCode).toBe(200);
+    expect((await patchRole(ws.id, viewer.user.id, owner, 'member')).statusCode).toBe(200);
+    expect((await patchRole(ws.id, viewer.user.id, owner, 'owner')).statusCode).toBe(200);
+    off();
+    expect(events).toEqual([]);
+    expect(await prisma.card.findUniqueOrThrow({ where: { id: card.id } })).toMatchObject({
+      assigneeId: member.user.id,
+      version: 2,
+    });
+  });
+
+  it('refuses the last owner (409) and a non-owner (403) and changes nothing', async () => {
+    const { owner, member, ws, card } = await setup();
+    await call('PATCH', `/api/cards/${card.id}`, owner, { assigneeId: owner.user.id });
+    const { events, off } = collect();
+    const last = await patchRole(ws.id, owner.user.id, owner, 'viewer');
+    const forbidden = await patchRole(ws.id, owner.user.id, member, 'viewer');
+    off();
+    expect(last.statusCode).toBe(409);
+    expect(forbidden.statusCode).toBe(403);
+    expect(events).toEqual([]);
+    expect(await prisma.card.findUniqueOrThrow({ where: { id: card.id } })).toMatchObject({
+      assigneeId: owner.user.id,
+      version: 2,
+    });
+  });
+
+  it('leaves cards in other workspaces untouched', async () => {
+    const { owner, member, ws, card } = await setup();
+    const other = workspaceResponseSchema.parse(
+      (await call('POST', '/api/workspaces', owner, { name: 'Other' })).json(),
+    ).workspace;
+    await prisma.membership.create({
+      data: { workspaceId: other.id, userId: member.user.id, role: 'member' },
+    });
+    const otherProject = projectResponseSchema.parse(
+      (
+        await call('POST', `/api/workspaces/${other.id}/projects`, owner, { name: 'O', key: 'OT' })
+      ).json(),
+    ).project;
+    const otherCard = await secondCard(owner, otherProject.id, 'Elsewhere');
+    await call('PATCH', `/api/cards/${card.id}`, owner, { assigneeId: member.user.id });
+    await call('PATCH', `/api/cards/${otherCard.id}`, owner, { assigneeId: member.user.id });
+    await patchRole(ws.id, member.user.id, owner, 'viewer');
+    expect(await prisma.card.findUniqueOrThrow({ where: { id: otherCard.id } })).toMatchObject({
+      assigneeId: member.user.id,
+      version: 2,
+    });
+  });
+
+  it('rolls back the role and the assignments together when a write fails', async () => {
+    const { owner, member, ws, card } = await setup();
+    await call('PATCH', `/api/cards/${card.id}`, owner, { assigneeId: member.user.id });
+    await prisma.$executeRawUnsafe(
+      `CREATE OR REPLACE FUNCTION kb038_fail() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'injected'; END; $$ LANGUAGE plpgsql`,
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE TRIGGER kb038_fail BEFORE INSERT ON activity_events FOR EACH ROW EXECUTE FUNCTION kb038_fail()`,
+    );
+    const { events, off } = collect();
+    try {
+      const res = await patchRole(ws.id, member.user.id, owner, 'viewer');
+      expect(res.statusCode).toBe(500);
+    } finally {
+      off();
+      await prisma.$executeRawUnsafe(`DROP TRIGGER kb038_fail ON activity_events`);
+      await prisma.$executeRawUnsafe(`DROP FUNCTION kb038_fail()`);
+    }
+    expect(events).toEqual([]);
+    const membership = await prisma.membership.findUniqueOrThrow({
+      where: { workspaceId_userId: { workspaceId: ws.id, userId: member.user.id } },
+    });
+    expect(membership.role).toBe('member');
+    expect(await prisma.card.findUniqueOrThrow({ where: { id: card.id } })).toMatchObject({
+      assigneeId: member.user.id,
+      version: 2,
+    });
   });
 });

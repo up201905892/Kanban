@@ -1,5 +1,5 @@
 import { ROLES, can, roleSchema } from '@kanban/shared';
-import type { Member, Workspace } from '@kanban/shared';
+import type { Member, Role, Workspace } from '@kanban/shared';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { Button, Dialog, EmptyState, ErrorState, Spinner, useAnnounce } from '../components';
@@ -50,6 +50,7 @@ function MemberTable({ workspace, isOwner }: { workspace: Workspace; isOwner: bo
   const announce = useAnnounce();
   const navigate = useNavigate();
   const [target, setTarget] = useState<Member | null>(null);
+  const [demoting, setDemoting] = useState<Member | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
   if (isPending) return <Spinner label="Loading members" />;
@@ -72,14 +73,35 @@ function MemberTable({ workspace, isOwner }: { workspace: Workspace; isOwner: bo
   function onRoleChange(member: Member, value: string) {
     const parsed = roleSchema.safeParse(value);
     if (!parsed.success) return;
+    if (parsed.data === 'viewer' && member.role !== 'viewer') {
+      // The select is controlled, so it keeps the old role until the person confirms.
+      setDemoting(member);
+      return;
+    }
+    applyRole(member, parsed.data);
+  }
+
+  function applyRole(member: Member, role: Role) {
     setProblem(null);
     changeRole.mutate(
-      { userId: member.userId, role: parsed.data },
+      { userId: member.userId, role },
       {
-        onSuccess: () => announce(`${member.name} is now ${parsed.data}`),
+        onSuccess: () =>
+          announce(
+            role === 'viewer'
+              ? `${member.name} is now viewer and their cards were unassigned`
+              : `${member.name} is now ${role}`,
+          ),
         onError: (e) => report(e, 'Could not change the role'),
       },
     );
+  }
+
+  function confirmDemote() {
+    if (!demoting) return;
+    const member = demoting;
+    setDemoting(null);
+    applyRole(member, 'viewer');
   }
 
   function confirmRemove() {
@@ -186,6 +208,15 @@ function MemberTable({ workspace, isOwner }: { workspace: Workspace; isOwner: bo
         <div className="dialog-actions">
           <Button onClick={confirmRemove}>{leaving ? 'Leave' : 'Remove'}</Button>
           <Button onClick={() => setTarget(null)}>Cancel</Button>
+        </div>
+      </Dialog>
+      <Dialog open={demoting !== null} onClose={() => setDemoting(null)} title="Change to viewer">
+        <p>
+          {`${demoting?.name ?? ''} will become a viewer and their cards in this workspace will be unassigned.`}
+        </p>
+        <div className="dialog-actions">
+          <Button onClick={confirmDemote}>Change to viewer</Button>
+          <Button onClick={() => setDemoting(null)}>Cancel</Button>
         </div>
       </Dialog>
     </section>

@@ -6,6 +6,7 @@ All notable changes to this project are recorded here, in the format of [Keep a 
 
 ### Added
 
+- Changing an owner or member to viewer on the Members page now asks for confirmation ("<name> will become a viewer and their cards in this workspace will be unassigned.") and unassigns that person's cards in the workspace, as removing them already does; boards update live and the result is announced (KB-038).
 - A database failure while a card description is being saved no longer loses the last edits: the server keeps the unsaved text in memory and keeps retrying (after 1, 2, 4 seconds and so on, at most every 30 seconds), a person who opens the card meanwhile still sees the edits, and when the server is stopped it waits up to 10 seconds for the database and exits with an error, naming each document, if something could not be saved (KB-037).
 - Boards with hundreds of cards now stay fast: each column shows only the cards in view and scrolls on its own, the board loads with a fixed number of database queries, and one live change redraws only the card it affects; arrow keys, Home and End walk through a long column, and moving a card by keyboard still announces its position out of the full count (KB-028).
 - Live connections now end when access ends: logging out disconnects that session's live connections within a second, expired sessions are disconnected within about 30 seconds, and deleting a workspace, project or card disconnects everyone viewing it; removing someone while they are connecting can no longer leave them connected (KB-033).
