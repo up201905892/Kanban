@@ -1192,3 +1192,34 @@ Report template:
 **Failures:** none.
 
 **Observations (not failures):** invalidation uses the `['projects']` and `['cards']` prefixes, broader than the workspace (query keys carry no workspace id).
+
+### KB-030 · Accessibility audit and fixes
+
+**Report 1 — 2026-11-23 — Failed**
+
+- **Commit tested:** `69d4d5c` (in `develop` history; working tree clean apart from the status update). Tester test commits: none.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 185, web 326, api 460) | ✔ |
+| E2E | `pnpm test:e2e` (59 passed, includes `accessibility.spec.ts`) | ✔ |
+| Database | No migration or schema change; not applicable | n.a. |
+| API / real time | Not touched (web, docs and E2E only) | n.a. |
+| Accessibility | Axe sweep (WCAG A/AA tags, serious/critical fail) over all routes, 360 px reflow, keyboard-only critical path; read the audit file | see below |
+
+**Acceptance criteria:**
+- [ ] `docs/accessibility-audit.md` with per-screen checklists, keyboard walkthrough, contrast, and an NVDA + Chrome spot check: **NOT MET.** Checklists, walkthrough and contrast are present, but the screen-reader spot check was not performed (audit line 13 and open item O1). The criterion requires it, so it is unmet.
+- [x] D9 card pattern covered explicitly in the board section (audit "Card pattern (D9)", SC 2.5.7): read the file; backed by `move-cards.spec.ts`.
+- [x] Axe sweep spec visits every route with zero serious/critical violations: spec reviewed and passing.
+- [x] A/AA failures fixed (F1 to F3), other items listed with severity (O1 to O3): read the audit. The "Decisions for João" entry in the daily log was not verified as part of this task (daily log is not tester-owned).
+- [ ] Common criteria G1, U3-U5, U9, U10: checks green, but the task as a whole is not complete.
+
+**Required tests:** E2E axe sweep and keyboard-only critical path exist and assert the specified behaviour; not trivial.
+
+**Failures:**
+1. Criterion 1: the NVDA + Chrome spot check of drag-and-drop and live announcements is absent. Steps: open `docs/accessibility-audit.md`, line 13 says "Not performed". Expected: a recorded spot check result. Actual: only a script for João (O1). Likely file: `docs/accessibility-audit.md`. A criterion cannot be passed on a documented intention; either João performs the session and records it, or the planner revises the criterion (for example, to make the session a João-owned follow-up) and the task is retested.
+
+**Observations (not failures):** SC 2.5.8 target sizes reviewed in CSS only (O2); the `[vite] ws proxy ECONNRESET` log noise is pre-existing.
