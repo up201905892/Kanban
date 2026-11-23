@@ -16,6 +16,22 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-23
+
+- **Decisions for João:**
+  - **KB-030 (accessibility audit) is Failed, report 1.** Everything automated passes (axe sweep, keyboard-only path, fixes F1 to F3), but the criterion "NVDA + Chrome spot check" cannot be done in the autonomous environment. Either run the check with the script in `docs/accessibility-audit.md` (open item O1) and record the result, or answer in `approvals.md` with a **Change** (for example, move the spot check to a João-owned follow-up) so the planner revises the criterion. The task stays paused until then.
+  - **KB-031 (deploy preparation) is Failed, report 1.** Two criteria need Docker, which is denied in this environment: the image was never built (no size recorded) and the `pg_dump`/`pg_restore` drill was not run. Steps are in `docs/deployment.md` ("Verify the image locally"). Options: run them yourself and tell me, or **Change** the criteria so those items become a follow-up task for you. Paused until then.
+  - **KB-031 workflow copy:** please copy `docs/deploy/railway-deploy.yml` to `.github/workflows/railway-deploy.yml`. It needs the `RAILWAY_TOKEN` secret, the `RAILWAY_SERVICE` variable and a `production` environment (optionally with required reviewers).
+  - FYI: KB-031 adds `@fastify/helmet` and `@fastify/static`, and moves `prisma` to dependencies (the pre-deploy command runs its CLI in the image). Oversized bodies return 400 in the standard error format, not 413.
+  - Optional follow-ups from KB-030: O2 (24 px target-size check, SC 2.5.8), O3 ("skip to column" shortcut), O4 (re-run the sweep after KB-027).
+  - FYI: `prisma migrate reset --force` is still blocked by Prisma's consent guard in unattended runs.
+- **Done:** none
+- **Tested:** KB-030 (Failed: NVDA spot check not performed), KB-031 (Failed: image size not recorded, backup drill untested)
+- **Developed:** KB-030, KB-031 (both Ready for test, then Failed on the items above)
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` on npm)
+- **Rule violations found:** none
+- **Next step:** KB-039, KB-040, KB-041, KB-043, KB-026, KB-014 and KB-042 are the next `Planned` tasks. KB-030 and KB-031 wait for your decision.
+
 ## 2026-11-20
 
 - **Decisions for João:**
