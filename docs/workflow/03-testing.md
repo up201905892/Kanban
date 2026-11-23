@@ -1223,3 +1223,43 @@ Report template:
 1. Criterion 1: the NVDA + Chrome spot check of drag-and-drop and live announcements is absent. Steps: open `docs/accessibility-audit.md`, line 13 says "Not performed". Expected: a recorded spot check result. Actual: only a script for João (O1). Likely file: `docs/accessibility-audit.md`. A criterion cannot be passed on a documented intention; either João performs the session and records it, or the planner revises the criterion (for example, to make the session a João-owned follow-up) and the task is retested.
 
 **Observations (not failures):** SC 2.5.8 target sizes reviewed in CSS only (O2); the `[vite] ws proxy ECONNRESET` log noise is pre-existing.
+
+### KB-031 · Deploy preparation for Railway
+
+**Report 1 — 2026-11-23 — Failed**
+
+- **Commit tested:** `7894e44` (in `develop` history; working tree clean apart from the status update). Tester test commits: none.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 185, web 326, api 490, includes `deploy.test.ts` and the child-process `process-shutdown.integration.test.ts`) | ✔ |
+| E2E | `pnpm test:e2e` (60 passed, includes `@smoke`) | ✔ |
+| Database | No migration or schema change. `prisma migrate reset --force` was blocked by Prisma's consent guard in this unattended run; not worked around. Migrations are applied by the test setup, which passed. | n.a. |
+| Docker | `docker build` denied by the permission system; not worked around | not run |
+| Real time / accessibility | Real-time shutdown covered by the process-level test; no UI change | ✔ / n.a. |
+
+**Acceptance criteria:**
+- [ ] Multi-stage Dockerfile, non-root, `PORT`, `.dockerignore`, **image size recorded:** Dockerfile and `.dockerignore` read and consistent with the spec (corepack, Node 22, prod deps via `pnpm deploy --prod`, user `node`, `PORT=8080`). The image was never built, so it is unverified, and the size is not recorded (`docs/deployment.md` line 73 says "not recorded yet"). **NOT MET.**
+- [x] Exec-form `node` CMD, no shell wrapper: Dockerfile line 50.
+- [x] Process-level SIGTERM test: exists, starts `dist/server.js`, real signal, asserts exit 0, 1012 closes, edit stored and projected (via snapshot plus rows, deviation explained and acceptable); passes.
+- [x] `railway.json`: Dockerfile builder, `/health/ready`, pre-deploy `prisma migrate deploy`, restart on failure, 1 replica.
+- [x] Hardening (helmet and CSP, `trustProxy`, body limit, https-only production origin): `deploy.test.ts` and `config.test.ts` pass.
+- [x] `TRUST_PROXY` validated, in `.env.example` and docs; rate-limit buckets tested on and off.
+- [x] Dummy hash warmed in `onReady`: test passes.
+- [ ] `docs/deployment.md` with a **tested** `pg_dump`/`pg_restore` runbook: variables, setup, backups and rollback are written, but the dump/restore drill was not run, so the runbook is untested. **NOT MET.**
+- [x] `docs/deploy/railway-deploy.yml`: present, no secrets. The "Decisions for João" request in the daily log is not present yet (the daily log is not tester-owned; noted, not counted on its own).
+- [x] Local verification documented; running it is handed to João (the criterion allows this when agents lack permission). The `@smoke` spec exists and passes against the dev server.
+- [ ] Common criteria G1, G6, G7: checks green, but the task is not complete.
+
+**Required tests:** all exist and assert the specified behaviour; not trivial.
+
+**Failures:**
+1. Image size not recorded and the image never built or run. Expected: a recorded size and a verified build. Actual: `docs/deployment.md` line 73 placeholder. Likely files: `Dockerfile`, `docs/deployment.md`.
+2. The `pg_dump`/`pg_restore` runbook is untested. Expected: a tested runbook. Actual: documented only (`docs/deployment.md` backups section).
+
+Neither has an exception in the criteria (only the local `docker run` step does). Either an environment with Docker and a scratch database runs the build and the drill and records the results, or the planner revises the criteria (for example, moving the size record and the drill to a João-owned follow-up) and the task is retested.
+
+**Observations (not failures):** a body over the limit answers `400 VALIDATION_ERROR` rather than 413 (existing error mapping). `/ws/<anything>` with a plain GET answers 403.
