@@ -38,7 +38,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-028 | Performance with 500+ cards | Quality and delivery | Medium | KB-018 | Done |
 | KB-029 | End-to-end collaboration suite (two browsers) | Quality and delivery | Medium | KB-009, KB-021, KB-023, KB-034, KB-038, KB-039 | Planned |
 | KB-030 | Accessibility audit and fixes | Quality and delivery | Medium | KB-020, KB-021, KB-024, KB-025 | Failed |
-| KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017, KB-037 | Planned |
+| KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017, KB-037 | Ready for test |
 | KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Planned |
 | KB-033 | Close real-time sockets on logout, session expiry and resource deletion | Real time | Medium | KB-016 | Done |
 | KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Done |
@@ -1378,6 +1378,8 @@ Task template (copy for each new task):
 - 2026-11-09 · planner · dependency KB-037 added: every redeploy goes through the graceful shutdown, and a database hiccup during its final flush must not lose the last edits of open descriptions before the app is deployed · stays Proposed
 - 2026-11-10 · planner · spec revised from the KB-017 and KB-019 test observations (real SIGTERM delivery tested only at handler level): added a child-process SIGTERM test against the built api · stays Proposed
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
+- 2026-11-23 · developer · Planned → In development · started
+- 2026-11-23 · developer · In development → Ready for test · commit 7894e44
 
 ### KB-032 · README with demo
 
