@@ -691,3 +691,23 @@ Entry template:
   - Playwright's `selectOption` does not focus the select, so the E2E focuses it first, as a keyboard user would; focus return relies on `Dialog` restoring the previously focused element.
   - The board and card invalidation is by the prefixes `['projects']` and `['cards']` (query keys carry no workspace id), so it is slightly broader than the workspace.
   - Suggestions for the planner: none.
+
+### KB-030 · Accessibility audit and fixes
+
+**Iteration 1 — 2026-11-23**
+
+- **Status at the end:** Ready for test
+- **What was done:** Wrote `docs/accessibility-audit.md` (method, contrast table, per-screen WCAG 2.2 AA checklists for log-in, sign-up, workspaces, members, invite, board, card dialog, backlog and reports, explicit D9 card-pattern section for SC 2.5.7, fixed failures, open items, NVDA script). Added `e2e/accessibility.spec.ts`: an axe sweep (WCAG A/AA tags including contrast, serious and critical fail) over every route logged out and logged in, including the card dialog, an invalid and a valid invite, 404 and two page-level error states, plus a 360 px no-horizontal-scroll check on the same routes and a page-title check; and a keyboard-only critical path (create card, move, open, edit title, close with focus returning to the tile). Fixes: F1 page-level error states now render the page `h1` (`ErrorState` gets `headingLevel`; used by every page that an error replaces); F2 the members table scrolls in its own focusable labelled region so the page does not scroll at 360 px; F3 `useHeadingTitle` in `RootLayout` sets `document.title` to "<h1> - Kanban" (SC 2.4.2).
+- **Changed files:** `docs/accessibility-audit.md`, `e2e/accessibility.spec.ts`, `apps/web/src/components/ErrorState.tsx`, `apps/web/src/components/components.test.tsx`, `apps/web/src/features/auth/RequireAuth.tsx`, `apps/web/src/routes/{BacklogPage,InvitePage,MembersPage,ProjectPage,ProjectSettingsPage,ReportsPage,WorkspacePage,WorkspaceSettingsPage,RootLayout}.tsx`, `apps/web/src/routes/useHeadingTitle.ts`, `apps/web/src/routes/useHeadingTitle.test.tsx`, `apps/web/src/styles.css`
+- **Migrations:** none
+- **Commit(s):** `69d4d5c` feat(web): KB-030 accessibility audit, axe sweep and fixes
+- **Acceptance criteria covered:** audit file, D9 section, axe sweep, A/AA fixes with the rest listed; G1, U3-U5, U9, U10. **Not met: the NVDA + Chrome spot check** (criterion 1), because no screen reader exists in the autonomous environment; the audit contains the script and lists it as open item O1 for João.
+- **Tests written by the developer:** E2E `accessibility.spec.ts` (2 tests); unit `ErrorState` heading level and `useHeadingTitle`.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 185, web 326, api 460) · test:e2e ok (59 passed)
+- **New dependencies (G9):** none (`@axe-core/playwright` already present)
+- **Notes for the tester:**
+  - Axe found no serious or critical violations beyond what F1 to F3 cover; F1 was a moderate axe rule (`page-has-heading-one`) that the spec's own heading wait surfaced, and the sweep waits for an `h1` on every route.
+  - The sweep is long (two passes over 11 routes); it sets a 120 s timeout. The `[vite] ws proxy EPIPE` lines in the log appear when pages close with sockets open; they are pre-existing noise.
+  - The first local E2E run failed with signup 500s because the local database was behind on migrations (`pnpm db:migrate` fixed it); not a code issue.
+  - SC 2.5.8 target sizes were reviewed in CSS only, not measured (audit item O2).
+  - Suggestions for the planner: a Playwright bounding-box check for 24 px target sizes (O2); a "skip to column" shortcut for long boards (O3); an NVDA session owned by João (O1).
