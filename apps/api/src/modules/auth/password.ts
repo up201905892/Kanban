@@ -21,12 +21,27 @@ export async function verifyPassword(passwordHash: string, password: string): Pr
 }
 
 let dummyHash: Promise<string> | undefined;
+let dummyHashReady = false;
+
+/**
+ * Computes the throwaway hash once. Called before the server listens (`onReady`) so the first
+ * unknown-email login after a deploy is as slow as any other.
+ */
+export function warmDummyHash(): Promise<string> {
+  dummyHash ??= hashPassword(randomBytes(16).toString('hex')).then((h) => {
+    dummyHashReady = true;
+    return h;
+  });
+  return dummyHash;
+}
+
+/** True once the throwaway hash has been computed. */
+export const isDummyHashReady = (): boolean => dummyHashReady;
 
 /**
  * Verifies `password` against a throwaway hash. Used when the email is unknown so that
  * the response time matches a real verification (timing equalisation).
  */
 export async function verifyAgainstDummy(password: string): Promise<void> {
-  dummyHash ??= hashPassword(randomBytes(16).toString('hex'));
-  await verifyPassword(await dummyHash, password);
+  await verifyPassword(await warmDummyHash(), password);
 }

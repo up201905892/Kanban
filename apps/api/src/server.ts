@@ -7,7 +7,12 @@ loadDotEnv();
 const config = loadConfigOrExit();
 
 const prisma = createPrismaClient(config.DATABASE_URL);
-const app = buildApp({ prisma, webOrigin: config.WEB_ORIGIN });
+const app = buildApp({
+  prisma,
+  webOrigin: config.WEB_ORIGIN,
+  trustProxy: config.TRUST_PROXY,
+  ...(config.WEB_DIST_DIR ? { webDistDir: config.WEB_DIST_DIR } : {}),
+});
 app.addHook('onClose', async () => {
   await prisma.$disconnect();
 });

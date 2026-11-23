@@ -1,0 +1,58 @@
+# Proposed workflow (KB-031). João copies this file to .github/workflows/railway-deploy.yml.
+# Agents never edit .github/. Nothing here deploys until João adds the secret and the variable.
+#
+# Setup (GitHub repository settings):
+#   Secrets and variables > Actions > Secrets:    RAILWAY_TOKEN        (a Railway *project* token for the production environment)
+#   Secrets and variables > Actions > Variables:  RAILWAY_SERVICE      (name of the app service in Railway)
+#   Optional: an environment named "production" with required reviewers, for a manual approval gate.
+name: Deploy to Railway
+
+on:
+  # Deploy main after CI passed on it.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  # Or deploy by hand from the Actions tab (re-deploys the selected ref).
+  workflow_dispatch: {}
+
+# One deploy at a time; a newer one waits instead of cancelling a running deploy.
+concurrency:
+  group: railway-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    # For workflow_run, only when CI succeeded.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
+    steps:
+      - name: Check configuration
+        run: |
+          test -n "$RAILWAY_TOKEN" || { echo "Secret RAILWAY_TOKEN is not set"; exit 1; }
+          test -n "$RAILWAY_SERVICE" || { echo "Variable RAILWAY_SERVICE is not set"; exit 1; }
+
+      - uses: actions/checkout@v4
+        with:
+          # The commit CI ran on (workflow_run) or the dispatched ref.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install the Railway CLI
+        run: npm install --global @railway/cli
+
+      # Uploads the repository; Railway builds the Dockerfile, runs the pre-deploy migration and
+      # the healthcheck from railway.json. --ci streams the build logs and fails if it fails.
+      - name: Deploy
+        run: railway up --ci --service "$RAILWAY_SERVICE"

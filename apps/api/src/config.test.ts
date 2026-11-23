@@ -64,3 +64,50 @@ describe('loadConfig', () => {
     expect(message).not.toContain('hunter2');
   });
 });
+
+describe('production settings (KB-031)', () => {
+  const production = { ...valid, NODE_ENV: 'production' };
+
+  it('rejects a production WEB_ORIGIN that is not https (Secure cookies)', () => {
+    expect(problems({ ...production, WEB_ORIGIN: 'http://kanban.example.com' })).toContain(
+      'WEB_ORIGIN: must be an https URL in production',
+    );
+    expect(problems({ ...production, WEB_ORIGIN: 'http://10.0.0.5:8080' })).toContain('WEB_ORIGIN');
+  });
+
+  it('accepts https, and http only on loopback (to try the image locally)', () => {
+    expect(() =>
+      loadConfig({ ...production, WEB_ORIGIN: 'https://kanban.example.com' }),
+    ).not.toThrow();
+    expect(() => loadConfig({ ...production, WEB_ORIGIN: 'http://localhost:8080' })).not.toThrow();
+    expect(() => loadConfig({ ...production, WEB_ORIGIN: 'http://127.0.0.1:8080' })).not.toThrow();
+  });
+
+  it('does not require https outside production', () => {
+    expect(() => loadConfig({ ...valid, WEB_ORIGIN: 'http://kanban.example.com' })).not.toThrow();
+  });
+});
+
+describe('TRUST_PROXY', () => {
+  it('defaults to off (0)', () => {
+    expect(loadConfig(valid).TRUST_PROXY).toBe(0);
+    expect(loadConfig({ ...valid, TRUST_PROXY: '' }).TRUST_PROXY).toBe(0);
+  });
+
+  it('accepts a non-negative integer hop count', () => {
+    expect(loadConfig({ ...valid, TRUST_PROXY: '1' }).TRUST_PROXY).toBe(1);
+    expect(loadConfig({ ...valid, TRUST_PROXY: '0' }).TRUST_PROXY).toBe(0);
+    expect(loadConfig({ ...valid, TRUST_PROXY: '2' }).TRUST_PROXY).toBe(2);
+  });
+
+  it.each(['-1', '1.5', 'true', 'abc', ' 1', '1e1', '99'])('rejects %j', (value) => {
+    expect(problems({ ...valid, TRUST_PROXY: value })).toContain('TRUST_PROXY');
+  });
+});
+
+describe('WEB_DIST_DIR', () => {
+  it('is optional', () => {
+    expect(loadConfig(valid).WEB_DIST_DIR).toBeUndefined();
+    expect(loadConfig({ ...valid, WEB_DIST_DIR: '/app/web' }).WEB_DIST_DIR).toBe('/app/web');
+  });
+});
