@@ -17,6 +17,7 @@ export function ProjectSettingsPage() {
   if (project.isError) {
     return (
       <ErrorState
+        headingLevel={1}
         title="Project unavailable"
         message={project.error.message}
         onRetry={() => void project.refetch()}
@@ -33,6 +34,7 @@ function WithRole({ project }: { project: Project }) {
   if (workspace.isError) {
     return (
       <ErrorState
+        headingLevel={1}
         title="Project unavailable"
         message={workspace.error.message}
         onRetry={() => void workspace.refetch()}

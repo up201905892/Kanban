@@ -18,6 +18,7 @@ export function MembersPage() {
   if (isError) {
     return (
       <ErrorState
+        headingLevel={1}
         title="Workspace unavailable"
         message={error.message}
         onRetry={() => void refetch()}
@@ -139,61 +140,63 @@ function MemberTable({ workspace, isOwner }: { workspace: Workspace; isOwner: bo
       {members.length === 0 ? (
         <EmptyState title="No members" />
       ) : (
-        <table aria-labelledby="members-heading">
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Email</th>
-              <th scope="col">Role</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.map((member) => {
-              const isMe = member.userId === me?.id;
-              return (
-                <tr key={member.userId}>
-                  <th scope="row">
-                    {member.name}
-                    {isMe ? ' (you)' : ''}
-                  </th>
-                  <td>{member.email}</td>
-                  <td>
-                    {isOwner ? (
-                      <select
-                        aria-label={`Role for ${member.name}`}
-                        value={member.role}
-                        onChange={(e) => onRoleChange(member, e.target.value)}
-                      >
-                        {ROLES.map((role) => (
-                          <option key={role} value={role}>
-                            {role}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      member.role
-                    )}
-                  </td>
-                  <td>
-                    {isMe ? (
-                      <Button onClick={() => setTarget(member)}>Leave workspace</Button>
-                    ) : (
-                      isOwner && (
-                        <Button
-                          aria-label={`Remove ${member.name}`}
-                          onClick={() => setTarget(member)}
+        <div className="table-scroll" role="region" aria-label="Members table" tabIndex={0}>
+          <table aria-labelledby="members-heading">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Role</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((member) => {
+                const isMe = member.userId === me?.id;
+                return (
+                  <tr key={member.userId}>
+                    <th scope="row">
+                      {member.name}
+                      {isMe ? ' (you)' : ''}
+                    </th>
+                    <td>{member.email}</td>
+                    <td>
+                      {isOwner ? (
+                        <select
+                          aria-label={`Role for ${member.name}`}
+                          value={member.role}
+                          onChange={(e) => onRoleChange(member, e.target.value)}
                         >
-                          Remove
-                        </Button>
-                      )
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                          {ROLES.map((role) => (
+                            <option key={role} value={role}>
+                              {role}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        member.role
+                      )}
+                    </td>
+                    <td>
+                      {isMe ? (
+                        <Button onClick={() => setTarget(member)}>Leave workspace</Button>
+                      ) : (
+                        isOwner && (
+                          <Button
+                            aria-label={`Remove ${member.name}`}
+                            onClick={() => setTarget(member)}
+                          >
+                            Remove
+                          </Button>
+                        )
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
       <Dialog
         open={target !== null}

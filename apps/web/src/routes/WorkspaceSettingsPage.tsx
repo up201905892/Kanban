@@ -16,6 +16,7 @@ export function WorkspaceSettingsPage() {
   if (isError) {
     return (
       <ErrorState
+        headingLevel={1}
         title="Workspace unavailable"
         message={error.message}
         onRetry={() => void refetch()}

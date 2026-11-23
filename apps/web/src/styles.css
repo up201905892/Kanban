@@ -34,6 +34,13 @@ main,
   border: 0;
 }
 
+/* Wide tables scroll inside their own region (360 px screens); the region is focusable so
+   keyboard users can scroll it. */
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .skip-link {
   position: absolute;
   left: 0.5rem;

@@ -10,7 +10,13 @@ export function RequireAuth() {
 
   if (isPending) return <Spinner label="Checking your session" />;
   if (isError) {
-    return <ErrorState message="Could not check your session." onRetry={() => void refetch()} />;
+    return (
+      <ErrorState
+        headingLevel={1}
+        message="Could not check your session."
+        onRetry={() => void refetch()}
+      />
+    );
   }
   if (!user) {
     return (
