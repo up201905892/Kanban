@@ -752,3 +752,21 @@ Entry template:
   - A column tombstone also hides, in a stale refetch, cards that still point at the deleted column (cards moved by `moveCardsTo` come back with the next fresh refetch).
   - The existing assertive message after a failed move still ends with "It is back in To do." even when the tile is removed; the planning criterion says to keep the existing message, so it was not changed.
   - Suggestion for the planner: make the U6 message say the card no longer exists when the failure was a 404 that tombstoned it.
+
+### KB-040 · Enforce the description length limit in the shared document
+
+**Iteration 1 — 2026-11-24**
+
+- **Status at the end:** Ready for test
+- **What was done:** `packages/shared/src/cards.ts` gets `excessToTrim`, `descriptionCounterText` and `DESCRIPTION_COUNTER_FROM` next to the existing `CARD_DESCRIPTION_MAX_LENGTH`, which stays the single source for the trim, the projection backstop, the textarea `maxLength` and the counter. `rooms.ts` gets `trimDescription`, called after every applied sync step 2 or update in a card description room (viewer updates return earlier): it deletes the excess from the end in one transaction with a server origin (`TRIM_ORIGIN`), which is broadcast and persisted like any update (KB-017). It never cuts a surrogate pair in half, does nothing at or below the limit, and writes no activity event. The KB-019 projection cut stays and now logs a warning with the document name and length (no content). In the editor the old "N of 20000 characters" hint is replaced by a visible counter from 19,000 ("N characters left", then "Description limit reached (20,000 characters)"), linked to the textarea with `aria-describedby` and not a live region. A remote change that only deletes from the end, leaves the text at the limit and removed items of this client's own (`transaction.deleteSet.clients`) is announced once, politely (`trim.ts`). ADR 0004 section 12 amended (new bullet).
+- **Changed files:** `packages/shared/src/{cards.ts,cards.test.ts,index.ts}`, `apps/api/src/modules/realtime/{rooms.ts,description.ts,description.integration.test.ts}`, `apps/web/src/features/cards/{DescriptionSection.tsx,trim.ts,trim.test.ts,cards-flow.test.tsx}`, `docs/adr/0004-real-time-architecture.md`
+- **Migrations:** none
+- **Commit(s):** `5647afd` feat(api): KB-040 enforce the description length limit in the shared document
+- **Acceptance criteria covered:** all, including G1, G7, G8, R1, R3, R4, R7, U4, U5. CHANGELOG is left to the finisher.
+- **Tests written by the developer:** unit (shared) `excessToTrim` below, at and above the limit, counter text at 18,999, 19,000, 19,999 and 20,000; unit (web) `trim.test.ts`; API integration with real `ws` clients: two concurrent 15,000 character inserts converge on identical 20,000 characters in both documents and in `Card.description` with no backstop warning, one 50,000 character raw update gives 20,000 for every client and for a new client after the app is rebuilt on the same database, exactly 20,000 is not trimmed, a viewer's oversized update is discarded; web: counter at 19,000 linked by `aria-describedby`, trim of own text announced once, trim of other people's text not announced.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (web 343, api 494, shared) · test:e2e ok (60 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - The "own text" detection is a heuristic: a tail-only remote deletion that leaves 20,000 (or 19,999) characters and removes some of this client's own text is announced, even if it was an ordinary deletion by another person. Documented in `trim.ts`.
+  - The trim runs once per applied update, so a large update first reaches every client in full and is then followed by the trim update.
+  - Counter text uses `toLocaleString('en-US')` ("1,000 characters left").
