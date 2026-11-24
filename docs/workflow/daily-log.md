@@ -16,6 +16,18 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-24
+
+- **Decisions for João:**
+  - Still waiting on you (no new lines in `approvals.md`): **KB-030** (NVDA spot check cannot run unattended) and **KB-031** (needs Docker for the image build and backup drill; also copy `docs/deploy/railway-deploy.yml` to `.github/workflows/railway-deploy.yml`). Details are in the 2026-11-23 entry. Both stay paused; KB-032 waits on KB-031.
+  - Optional follow-up for the planner: after a 404 on a card move, the announcement still ends with "It is back in To do." although the card is removed (from KB-039). Say so in `approvals.md` if you want it planned.
+- **Done:** KB-039 (tombstones in the live board cache), KB-040 (description length limit enforced in the shared document)
+- **Tested:** KB-039 (Passed), KB-040 (Passed)
+- **Developed:** KB-039, KB-040 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` on npm)
+- **Rule violations found:** none
+- **Next step:** KB-029 is now unblocked. KB-041, KB-043, KB-026, KB-014 and KB-042 are also `Planned`.
+
 ## 2026-11-23
 
 - **Decisions for João:**
