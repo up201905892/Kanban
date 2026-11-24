@@ -10,16 +10,27 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, request } from '../../../lib/api';
 import { boardKey, boardScope, useBoardMutation } from '../../board/api';
 import { cardsOf, placeCard } from '../../board/ordering';
+import {
+  filterTombstoned,
+  tombstoneCard,
+  tombstoneOn404,
+  tombstonesOf,
+} from '../../board/tombstones';
 
 export const cardKey = (id: string) => ['cards', id] as const;
 
 /** The full card (with its description). An empty id means "not known yet". */
 export function useCard(id: string) {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: cardKey(id),
     enabled: id !== '',
     queryFn: async ({ signal }) =>
-      (await apiClient.get(`/api/cards/${id}`, cardResponseSchema, signal)).card,
+      (
+        await tombstoneOn404(queryClient, id, () =>
+          apiClient.get(`/api/cards/${id}`, cardResponseSchema, signal),
+        )
+      ).card,
   });
 }
 
@@ -85,7 +96,13 @@ export function useUpdateCard(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation<CardResponse, Error, UpdateCardVars, UpdateContext>({
     scope: { id: boardScope(projectId) },
-    mutationFn: ({ id, patch }) => apiClient.patch(`/api/cards/${id}`, patch, cardResponseSchema),
+    mutationFn: ({ id, patch }) =>
+      tombstoneOn404(
+        queryClient,
+        id,
+        () => apiClient.patch(`/api/cards/${id}`, patch, cardResponseSchema),
+        true,
+      ),
     onMutate: async ({ id, patch }) => {
       await queryClient.cancelQueries({ queryKey: boardKey(projectId) });
       await queryClient.cancelQueries({ queryKey: cardKey(id) });
@@ -116,7 +133,10 @@ export function useUpdateCard(projectId: string) {
       queryClient.setQueryData(cardKey(card.id), card);
     },
     onError: (_error, { id }, context) => {
-      queryClient.setQueryData(boardKey(projectId), context?.board);
+      queryClient.setQueryData(
+        boardKey(projectId),
+        context?.board && filterTombstoned(context.board, tombstonesOf(queryClient)),
+      );
       queryClient.setQueryData(cardKey(id), context?.card);
     },
     onSettled: (_data, _error, { id }) => {
@@ -139,7 +159,12 @@ export function useMoveCard(projectId: string) {
   return useBoardMutation<MoveCardVars, CardResponse>(
     projectId,
     async ({ id, ...body }) => {
-      const result = await apiClient.post(`/api/cards/${id}/move`, body, cardResponseSchema);
+      const result = await tombstoneOn404(
+        queryClient,
+        id,
+        () => apiClient.post(`/api/cards/${id}/move`, body, cardResponseSchema),
+        true,
+      );
       // The card dialog may hold an older copy (version, column).
       void queryClient.invalidateQueries({ queryKey: cardKey(id) });
       return result;
@@ -150,10 +175,15 @@ export function useMoveCard(projectId: string) {
 }
 
 export function useDeleteCard(projectId: string) {
+  const queryClient = useQueryClient();
   return useBoardMutation<string, void>(
     projectId,
     async (id) => {
-      await request(`/api/cards/${id}`, { method: 'DELETE' });
+      // Deleted (204) or already gone (404): either way the card must not come back (KB-039).
+      await tombstoneOn404(queryClient, id, () =>
+        request(`/api/cards/${id}`, { method: 'DELETE' }),
+      );
+      tombstoneCard(queryClient, id);
     },
     (board, id) => ({ ...board, cards: board.cards.filter((c) => c.id !== id) }),
   );

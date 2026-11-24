@@ -284,6 +284,37 @@ describe('moving cards', () => {
       expect(within(todo).getByRole('link', { name: 'KB-2 Card 2' })).toBeVisible(),
     );
   });
+
+  it('removes the tile when the move gets 404 because the card is gone (KB-039)', async () => {
+    let gone = false;
+    stubFetch({
+      // The board answer is stale: it still lists the card, so only the tombstone can hide it.
+      ...server('owner', [card(1), card(2)]),
+      [`GET /api/cards/${kid(2)}`]: () =>
+        gone
+          ? jsonResponse(404, { error: { code: 'NOT_FOUND', message: 'Resource not found' } })
+          : jsonResponse(200, { card: full(card(2)) }),
+      [`POST /api/cards/${kid(2)}/move`]: () => {
+        gone = true;
+        return jsonResponse(404, { error: { code: 'NOT_FOUND', message: 'Resource not found' } });
+      },
+    });
+    const user = board(`/projects/${PID}/cards/2`);
+    const dialog = await screen.findByRole('dialog', { name: 'Card KB-2' });
+    await user.selectOptions(within(dialog).getByLabelText('Column'), 'In progress');
+    await user.click(within(dialog).getByRole('button', { name: 'Move card' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('live-assertive')).toHaveTextContent(
+        "Could not move Card KB-2 'Card 2': Resource not found",
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'KB-2 Card 2' })).toBeNull());
+    expect(screen.getByRole('link', { name: 'KB-1 Card 1' })).toBeVisible();
+    // The announcement is the existing rollback message, said once.
+    expect(screen.getByTestId('live-assertive').textContent).toBe(
+      "Could not move Card KB-2 'Card 2': Resource not found. It is back in To do.",
+    );
+  });
 });
 
 describe('card dialog', () => {

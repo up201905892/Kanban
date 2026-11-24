@@ -1,17 +1,39 @@
 import type { BoardEvent, BoardResponse, Card, CardSummary, Column } from '@kanban/shared';
 import { sortSprints } from '../sprints/planning';
+import type { Tombstones } from './tombstones';
 
 const upsertColumn = (columns: Column[], column: Column): Column[] =>
   columns.some((c) => c.id === column.id)
     ? columns.map((c) => (c.id === column.id ? column : c))
     : [...columns, column];
 
+/** True when a create, update or move event is about a card or column that was deleted. */
+export function isTombstoned(event: BoardEvent, tombstones: Tombstones): boolean {
+  switch (event.type) {
+    case 'column_created':
+    case 'column_updated':
+      return tombstones.columns.has(event.entity.id);
+    case 'card_created':
+    case 'card_updated':
+    case 'card_moved':
+      return tombstones.cards.has(event.entity.id);
+    default:
+      return false;
+  }
+}
+
 /**
  * Applies one board event to the cached board. Idempotent and safe against out-of-order delivery:
  * a card event whose `version` is not newer than the cached card's is ignored (and the same board
- * object is returned). Columns are not versioned, so their events are always applied.
+ * object is returned). Columns are not versioned, so their events are always applied, except for
+ * ids in `tombstones` (KB-039): an event for a deleted card or column is ignored ("delete wins").
  */
-export function applyBoardEvent(board: BoardResponse, event: BoardEvent): BoardResponse {
+export function applyBoardEvent(
+  board: BoardResponse,
+  event: BoardEvent,
+  tombstones?: Tombstones,
+): BoardResponse {
+  if (tombstones && isTombstoned(event, tombstones)) return board;
   switch (event.type) {
     case 'column_created':
     case 'column_updated': {

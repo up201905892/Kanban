@@ -300,6 +300,64 @@ describe('live board updates', () => {
   });
 });
 
+describe('tombstones (KB-039)', () => {
+  it('ignores a late update, move or create of a deleted card', async () => {
+    stubFetch(server('owner', [card(1), card(2)]).handlers);
+    open();
+    const socket = await connected();
+    send(socket, deleted(card(2)));
+    await waitFor(() => expect(screen.queryByRole('link', { name: /KB-2/ })).toBeNull());
+
+    send(socket, cardEvent('card_updated', card(2, { title: 'Late', version: 5 })));
+    send(socket, cardEvent('card_moved', card(2, { columnId: cid(2), version: 6 })));
+    send(socket, cardEvent('card_created', card(2, { version: 7 })));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(screen.queryByRole('link', { name: /KB-2/ })).toBeNull();
+    expect(screen.getByRole('link', { name: 'KB-1 Card 1' })).toBeVisible();
+    // Nothing is announced for the ignored events.
+    expect(polite()).not.toHaveTextContent('Late');
+  });
+
+  it('does not bring a card back when a refetch that started before the delete resolves after it', async () => {
+    const s = server('owner', [card(1), card(2)]);
+    stubFetch(s.handlers);
+    open();
+    const socket = await connected();
+    send(socket, deleted(card(2)));
+    await waitFor(() => expect(screen.queryByRole('link', { name: /KB-2/ })).toBeNull());
+
+    // The server still answers with the deleted card, as a slow, older response would.
+    s.cards.push(card(2));
+    const before = s.counts.board;
+    act(() => socket.close(1006));
+    await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(2), { timeout: 3000 });
+    act(() => FakeWebSocket.last.open());
+    await waitFor(() => expect(s.counts.board).toBe(before + 1));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(screen.queryByRole('link', { name: /KB-2/ })).toBeNull();
+    expect(screen.getByRole('link', { name: 'KB-1 Card 1' })).toBeVisible();
+  });
+
+  it('keeps the deleted-card message of the open dialog after a late update', async () => {
+    stubFetch(server('owner', [card(1)]).handlers);
+    open(`/projects/${PID}/cards/1`);
+    const socket = await connected();
+    await screen.findByText('Initial text');
+    send(socket, deleted(card(1)));
+    expect(await screen.findByText('This card was deleted by Ana')).toBeVisible();
+    send(socket, cardEvent('card_updated', card(1, { title: 'Late', version: 9 })));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(screen.getByText('This card was deleted by Ana')).toBeVisible();
+    expect(screen.queryByRole('link', { name: /KB-1/ })).toBeNull();
+  });
+});
+
 describe('live updates and accessibility', () => {
   const remoteMove = (c: Cd) =>
     cardEvent('card_moved', { ...c, columnId: cid(2), version: c.version + 1 });
