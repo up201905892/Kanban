@@ -46,7 +46,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-036 | Card actions menu on the board tile (D9) | Board | Low | KB-015, D9 answered | Rejected |
 | KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Done |
 | KB-038 | Unassign a member's cards when they are demoted to viewer (D10) | Authentication and workspaces | Medium | KB-009, KB-013 | Done |
-| KB-039 | Card and column tombstones in the live board cache | Real time | Medium | KB-018 | Planned |
+| KB-039 | Card and column tombstones in the live board cache | Real time | Medium | KB-018 | Ready for test |
 | KB-040 | Enforce the description length limit in the shared document | Real time | Medium | KB-019 | Planned |
 | KB-041 | Forward arguments through `pnpm test:e2e` | Quality and delivery | Medium | KB-003 | Planned |
 | KB-042 | Direct unit tests for `validateSessionToken` | Authentication and workspaces | Low | KB-005, KB-028 | Planned |
@@ -1652,6 +1652,8 @@ Task template (copy for each new task):
 **History:**
 - 2026-11-10 · planner · created as Proposed · follow-up from the KB-018 development note ("no tombstone"), test report 1 observations and done record lessons; columns included because their events are never filtered by version
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
+- 2026-11-24 · developer · Planned → In development · started
+- 2026-11-24 · developer · In development → Ready for test · commit 8655423
 
 ### KB-040 · Enforce the description length limit in the shared document
 

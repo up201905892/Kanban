@@ -732,3 +732,23 @@ Entry template:
   - A body over the limit answers `400 VALIDATION_ERROR` (the existing mapping of framework 4xx errors in `serializeError`), not 413.
   - `/ws/<anything>` with a plain GET still answers 403 (the websocket route's own Origin check), not 404; the 404 test uses `/ws`.
   - Suggestions for the planner: a follow-up to run `docker build`, the `@smoke` run against the container and the `pg_dump`/`pg_restore` drill once an environment with Docker permission exists (or by João); consider a `/health` exemption of the CSP is not needed. The sliding session cookie is only `Secure` when `NODE_ENV=production`, which the image sets.
+
+
+### KB-039 · Card and column tombstones in the live board cache
+
+**Iteration 1 — 2026-11-24**
+
+- **Status at the end:** Ready for test
+- **What was done:** New `features/board/tombstones.ts`: a bounded `IdSet` (1,000 most recent ids, re-adding refreshes an id), `Tombstones` (cards and columns), the pure `filterTombstoned(board, tombstones)` (same object when nothing is removed), and a per-`QueryClient` registry with `tombstoneCard`, `tombstoneColumn` and `tombstoneOn404`. `applyBoardEvent` takes the tombstones as a parameter (no module state in the reducers) and ignores create, update and move events for tombstoned cards, and create and update events for tombstoned columns. `useBoardEvents` records `card_deleted` and `column_deleted` ids (also own echoes) and skips the activity and card-query invalidations for ignored events. Own `DELETE` success (204) tombstones the card or column. `useBoard` filters every fetched board before it reaches the cache, and the optimistic rollbacks (`useBoardMutation`, `useUpdateCard`) are filtered too, so a rollback cannot restore a deleted card. A `404` from the card read, update, move or delete tombstones the card and removes its tile; for move and update a second read of the card first confirms the card itself is gone (a 404 can also mean a missing destination column). The existing U6 rollback message is the only announcement. The open dialog keeps the KB-018 "deleted by" state because it depends on the tile being absent.
+- **Changed files:** `apps/web/src/features/board/{tombstones.ts,tombstones.test.ts,board-events.ts,useBoardEvents.ts,board-live.test.tsx}`, `apps/web/src/features/board/api/board.ts`, `apps/web/src/features/cards/api/cards.ts`, `apps/web/src/features/cards/cards-flow.test.tsx`
+- **Migrations:** none
+- **Commit(s):** `8655423` feat(web): KB-039 tombstones for deleted cards and columns in the live board cache
+- **Acceptance criteria covered:** all, including G1, G8, U5, U6 and R6.
+- **Tests written by the developer:** unit `tombstones.test.ts` (late update, move and create after delete return the same object; column update after delete; bound drops the oldest; unrelated ids unaffected; board filtering); web `board-live.test.tsx` (late events after delete, a reconnect refetch that still contains the deleted card, dialog keeps "deleted by" after a late update) and `cards-flow.test.tsx` (move that gets 404 removes the tile and announces once).
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 185, web 337, api 490) · test:e2e ok (60 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - Tombstones live for the session (per `QueryClient`), not per page; ids are never reused, so this is equivalent to "per board page" and survives navigation between the board, backlog and reports.
+  - A column tombstone also hides, in a stale refetch, cards that still point at the deleted column (cards moved by `moveCardsTo` come back with the next fresh refetch).
+  - The existing assertive message after a failed move still ends with "It is back in To do." even when the tile is removed; the planning criterion says to keep the existing message, so it was not changed.
+  - Suggestion for the planner: make the U6 message say the card no longer exists when the failure was a 404 that tombstoned it.
