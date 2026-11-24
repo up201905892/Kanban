@@ -296,6 +296,15 @@ Entry template:
 - **Documentation:** client-only change, so no `docs/api.md`, `.env.example` or ADR change; no migrations; no new dependencies
 - **Lessons:** after a 404 move the message still ends with "It is back in To do." although the tile is removed; suggestion for the planner: make the U6 message say the card no longer exists when the 404 tombstoned it. Tombstones are per `QueryClient` (session), equivalent to per page because ids are never reused. No TODO found in the task's code; no secret found. Milestone "Real time" not reached (KB-040 and KB-043 are still open).
 
+### KB-040 · Enforce the description length limit in the shared document — done on 2026-11-24
+
+- **Approving test report:** Report 1 (2026-11-24), commit 5647afd (the later commits, f1a10f5, e22556a and e01850a, only add tests or change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** after every applied sync step 2 or update from a member in a card description room, the server deletes the excess over `CARD_DESCRIPTION_MAX_LENGTH` (20,000) from the end in one server-origin transaction, broadcast and persisted like any update; deterministic, idempotent, never splits a surrogate pair, writes no activity event; the projection cut stays as a backstop and logs a warning with document name and length only; the editor shows a counter from 19,000 characters linked by `aria-describedby` (not a live region) and announces once, politely, a trim of the person's own text.
+- **CHANGELOG:** "Added: A card description can no longer go past 20,000 characters when several people paste or type at the same time: the server removes the excess from the end for everyone, the editor shows "N characters left" from 19,000 characters and "Description limit reached (20,000 characters)" at the limit, and a trim of your own text is announced politely (KB-040)."
+- **Documentation:** ADR 0004 section 12 amended (done in the task); no new endpoints or messages, so no `docs/api.md` change; no new environment variables; no migrations; no new dependencies
+- **Lessons:** the own-text trim announcement is a heuristic (an ordinary tail deletion by someone else that leaves 20,000 characters can be announced too); a large update reaches every client in full before the trim update follows. No TODO found in the task's code; no secret found. Milestone "Real time" not reached (KB-043 is still Planned).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
