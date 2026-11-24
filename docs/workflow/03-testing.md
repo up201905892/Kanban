@@ -1263,3 +1263,36 @@ Report template:
 Neither has an exception in the criteria (only the local `docker run` step does). Either an environment with Docker and a scratch database runs the build and the drill and records the results, or the planner revises the criteria (for example, moving the size record and the drill to a João-owned follow-up) and the task is retested.
 
 **Observations (not failures):** a body over the limit answers `400 VALIDATION_ERROR` rather than 413 (existing error mapping). `/ws/<anything>` with a plain GET answers 403.
+
+### KB-039 · Card and column tombstones in the live board cache
+
+**Report 1 — 2026-11-24 — Passed**
+
+- **Commit tested:** `8655423` (in `develop` history; working tree clean). Tester test commits: none.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 185, web 337, api 490) | ✔ |
+| E2E | `pnpm test:e2e` (60 passed) | ✔ |
+| Database | No migration or schema change (client-only task) | n.a. |
+| Real time | Covered by fake-WebSocket integration tests (late events, reconnect refetch); two-browser E2E is n/a per spec | ✔ |
+| Accessibility | No announcement for ignored events (asserted); deleted-card dialog state kept (asserted) | ✔ |
+
+**Acceptance criteria:**
+- [x] Tombstone sets for cards and columns, filled by `card_deleted` and `column_deleted` events (own echo too) and by own successful DELETE (204); bounded to 1,000 most recent: read `tombstones.ts`, `useBoardEvents.ts`, `board.ts`, `cards.ts`; bound tested in `tombstones.test.ts`.
+- [x] Create, update and move events for tombstoned ids are ignored and the same object is returned; version filter and own-echo suppression unchanged: `isTombstoned` in `board-events.ts`, unit and web tests.
+- [x] Refetched board data is filtered (`useBoard`, rollbacks in `useBoardMutation` and `useUpdateCard`); the open card dialog keeps "This card was deleted by <name>": `board-live.test.tsx` reconnect-refetch and dialog tests.
+- [x] A 404 from card read or mutation tombstones the card and removes its tile; the existing U6 message is announced once (the text was asserted exactly): `cards-flow.test.tsx`.
+- [x] Reducers pure, tombstones passed as a parameter (no module state; registry is a WeakMap used only by hooks).
+- [x] Common criteria G1, G8, U5, U6, R6: checks green, no new dependencies, no new announcements.
+
+**Required tests:** all exist and assert the specified behaviour (unit: late update, move, create, column update, filtering, bound, unrelated ids; web: late events, stale refetch, 404 move announced once). Not trivial.
+
+**Failures:** none.
+
+**Observations (not failures):**
+1. After a 404 move the message still ends with "It is back in To do." although the tile is removed. The criterion says to keep the existing message; the developer already suggested a planner follow-up.
+2. Tombstones are per `QueryClient` (session), not per page; equivalent because ids are never reused.
