@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { compareByPosition } from '@kanban/shared';
 import { App } from '../../App';
@@ -538,6 +538,82 @@ describe('card dialog', () => {
     board(`/projects/${PID}/cards/1`);
     const area = await screen.findByRole('textbox', { name: 'Description' });
     expect(area).toHaveAttribute('maxlength', '20000');
+  });
+
+  it('shows the characters-left counter from 19,000 and links it to the editor', async () => {
+    stubFetch(server('owner', [card(1)]));
+    board(`/projects/${PID}/cards/1`);
+    const area = await screen.findByRole('textbox', { name: 'Description' });
+    let room!: FakeRoom;
+    act(() => {
+      room = serveDescription('a'.repeat(18_999));
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('description-status')).toHaveTextContent('Saved'),
+    );
+    expect(screen.queryByTestId('description-counter')).toBeNull();
+    act(() => {
+      room.doc.getText('description').insert(0, 'b');
+    });
+    expect(area).toHaveAccessibleDescription('1,000 characters left');
+    expect(screen.getByTestId('description-counter')).toHaveTextContent('1,000 characters left');
+    act(() => {
+      room.doc.getText('description').insert(0, 'c'.repeat(1_000));
+    });
+    expect(area).toHaveAccessibleDescription('Description limit reached (20,000 characters)');
+    // Neither the counter nor the limit text is a live region.
+    expect(screen.getByTestId('live-polite')).toBeEmptyDOMElement();
+  });
+
+  it('announces once when a server trim removes text this client inserted', async () => {
+    stubFetch(server('owner', [card(1)]));
+    board(`/projects/${PID}/cards/1`);
+    const area = await screen.findByRole('textbox', { name: 'Description' });
+    let room!: FakeRoom;
+    act(() => {
+      room = serveDescription('a'.repeat(18_500));
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('description-status')).toHaveTextContent('Saved'),
+    );
+    fireEvent.input(area, { target: { value: 'a'.repeat(18_500) + 'm'.repeat(1_000) } });
+    expect(screen.getByTestId('live-polite')).toBeEmptyDOMElement();
+    const remote = room.doc.getText('description');
+    act(() => {
+      remote.insert(0, 'r'.repeat(800));
+    });
+    expect(screen.getByTestId('live-polite')).toBeEmptyDOMElement();
+    act(() => {
+      remote.delete(20_000, remote.length - 20_000);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('live-polite')).toHaveTextContent(
+        'The description reached the 20,000 character limit; the end was removed.',
+      ),
+    );
+    expect(area).toHaveValue(remote.toString());
+  });
+
+  it('does not announce a server trim that only removed other peoples text', async () => {
+    stubFetch(server('owner', [card(1)]));
+    board(`/projects/${PID}/cards/1`);
+    await screen.findByRole('textbox', { name: 'Description' });
+    let room!: FakeRoom;
+    act(() => {
+      room = serveDescription('a'.repeat(19_800));
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('description-status')).toHaveTextContent('Saved'),
+    );
+    const remote = room.doc.getText('description');
+    act(() => {
+      remote.insert(remote.length, 'z'.repeat(500));
+    });
+    act(() => {
+      remote.delete(20_000, 300);
+    });
+    expect(remote.length).toBe(20_000);
+    expect(screen.getByTestId('live-polite')).toBeEmptyDOMElement();
   });
 
   it('does not trap Tab in the description editor', async () => {

@@ -3,6 +3,7 @@ import {
   CARD_DESCRIPTION_MAX_LENGTH,
   DESCRIPTION_ACTIVITY_WINDOW_MS,
   DESCRIPTION_TEXT_NAME,
+  excessToTrim,
   roomName,
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
@@ -46,6 +47,7 @@ export function planDescriptionActivity(
 
 export interface ProjectionLogger {
   error(obj: object, msg: string): void;
+  warn?(obj: object, msg: string): void;
 }
 
 export interface ProjectionOptions {
@@ -103,10 +105,12 @@ export function createDescriptionPersistence(
     const actorId = state.actorId;
     state.actorId = null;
     // Everything beyond the limit is cut (the editor stops input earlier; this is the backstop).
-    const text = state.doc
-      .getText(DESCRIPTION_TEXT_NAME)
-      .toString()
-      .slice(0, CARD_DESCRIPTION_MAX_LENGTH);
+    const full = state.doc.getText(DESCRIPTION_TEXT_NAME).toString();
+    if (excessToTrim(full.length) > 0) {
+      // The room trim should have run; a cut here means it did not. Never log the content.
+      log?.warn?.({ doc: state.name, length: full.length }, 'description over the limit was cut');
+    }
+    const text = full.slice(0, CARD_DESCRIPTION_MAX_LENGTH);
     state.chain = state.chain
       .catch(() => {})
       .then(async () => {

@@ -4,7 +4,10 @@ import * as awarenessProtocol from 'y-protocols/awareness';
 import * as syncProtocol from 'y-protocols/sync';
 import * as Y from 'yjs';
 import {
+  CARD_DESCRIPTION_MAX_LENGTH,
+  DESCRIPTION_TEXT_NAME,
   WS_CLOSE,
+  excessToTrim,
   WS_MESSAGE,
   can,
   roomName,
@@ -96,6 +99,26 @@ export interface ShutdownResult {
 /** Board rooms carry awareness and server-pushed events only; clients never write their document. */
 export function isReadOnly(room: Room, conn: Connection): boolean {
   return room.ref.type === 'board' || !can(conn.role, 'card:edit');
+}
+
+/** Origin of the server's own trim of an over-long description (KB-040). */
+export const TRIM_ORIGIN = Symbol('description-trim');
+
+/**
+ * Keeps the description within the limit in the live document (KB-040): the excess is deleted from
+ * the end in one server transaction, which is broadcast and persisted like any other update, so
+ * every client, the stored document and `Card.description` converge. Nothing happens at or below
+ * the limit, so the trim never repeats on its own update.
+ */
+export function trimDescription(room: Room): void {
+  if (room.ref.type !== 'card-description') return;
+  const text = room.doc.getText(DESCRIPTION_TEXT_NAME);
+  if (excessToTrim(text.length) === 0) return;
+  let keep = CARD_DESCRIPTION_MAX_LENGTH;
+  // Never cut between the two halves of a surrogate pair.
+  const last = text.toString().charCodeAt(keep - 1);
+  if (last >= 0xd800 && last <= 0xdbff) keep -= 1;
+  room.doc.transact(() => text.delete(keep, text.length - keep), TRIM_ORIGIN);
 }
 
 function send(conn: Connection, message: Uint8Array): void {
@@ -361,6 +384,7 @@ export class RoomManager {
         } else {
           throw new Error('Unknown sync message');
         }
+        if (subType !== syncProtocol.messageYjsSyncStep1) trimDescription(room);
         // A reply longer than the type varint carries a step 2.
         if (encoding.length(reply) > 1) send(conn, encoding.toUint8Array(reply));
         break;

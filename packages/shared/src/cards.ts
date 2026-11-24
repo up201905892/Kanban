@@ -5,6 +5,24 @@ export const CARD_TITLE_MAX_LENGTH = 200;
 export const CARD_DESCRIPTION_MAX_LENGTH = 20_000;
 /** Name of the `Y.Text` inside the `card:<id>:description` document. */
 export const DESCRIPTION_TEXT_NAME = 'description';
+
+/** From this length on the editor shows the "characters left" counter (KB-040). */
+export const DESCRIPTION_COUNTER_FROM = 19_000;
+
+/** How many characters past the limit must be removed from the end of the description (0 if none). */
+export function excessToTrim(length: number, limit: number = CARD_DESCRIPTION_MAX_LENGTH): number {
+  return Math.max(0, length - limit);
+}
+
+/** The visible counter text, or null while it is not shown yet. */
+export function descriptionCounterText(length: number): string | null {
+  if (length < DESCRIPTION_COUNTER_FROM) return null;
+  if (length >= CARD_DESCRIPTION_MAX_LENGTH) {
+    return `Description limit reached (${CARD_DESCRIPTION_MAX_LENGTH.toLocaleString('en-US')} characters)`;
+  }
+  const left = CARD_DESCRIPTION_MAX_LENGTH - length;
+  return `${left.toLocaleString('en-US')} ${left === 1 ? 'character' : 'characters'} left`;
+}
 /** Description changes by one person within this window are one activity event (G5). */
 export const DESCRIPTION_ACTIVITY_WINDOW_MS = 10 * 60 * 1000;
 
