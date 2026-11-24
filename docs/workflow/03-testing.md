@@ -1296,3 +1296,37 @@ Neither has an exception in the criteria (only the local `docker run` step does)
 **Observations (not failures):**
 1. After a 404 move the message still ends with "It is back in To do." although the tile is removed. The criterion says to keep the existing message; the developer already suggested a planner follow-up.
 2. Tombstones are per `QueryClient` (session), not per page; equivalent because ids are never reused.
+
+### KB-040 · Enforce the description length limit in the shared document
+
+**Report 1 — 2026-11-24 — Passed**
+
+- **Commit tested:** `5647afd` (in `develop` history; working tree clean before testing). Tester test commit: `test(api): KB-040 trimDescription unit tests` (adds `apps/api/src/modules/realtime/trim.test.ts`).
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 187, web 343, api 494, before the added tests) | ✔ |
+| E2E | `pnpm test:e2e` (60 passed) | ✔ |
+| Database | No migration or schema change | n.a. |
+| Real time | Real `ws` integration tests: concurrent 15,000 + 15,000 converge on 20,000 identical characters; one 50,000 raw update trimmed for all clients and after app rebuild | ✔ |
+| Accessibility | Counter is visible text linked by `aria-describedby`, not a live region; one polite announcement per own-text trim (asserted) | ✔ |
+
+**Acceptance criteria:**
+- [x] Server trims the excess from the end in one server-origin transaction after a member's update, broadcast by the room `update` listener and persisted like any update: read `trimDescription` and its call after every sync step 2 or update; integration tests for convergence in both documents, `Card.description` and a rebuilt app.
+- [x] Deterministic and idempotent, nothing at or below 20,000, viewer updates return earlier (integration test: viewer's 30,000 update discarded), no activity event written (the projection listener only marks dirty): my unit test checks a single server-origin update and no second trim; a surrogate pair is not split.
+- [x] Projection cut stays and logs a warning with document name and length only (`description.ts`); the concurrent test asserts no warning.
+- [x] Editor counter from 19,000 ("N characters left"), limit text at 20,000, `aria-describedby`, not live; trim announcement text exact: `cards-flow.test.tsx`, `trim.test.ts`, shared counter tests at 18,999, 19,000, 20,000.
+- [x] One shared constant `CARD_DESCRIPTION_MAX_LENGTH` used by trim, backstop, `maxLength` and counter.
+- [x] ADR 0004 section 12 amended with a new bullet (reason, trade-off, backstop), not rewritten.
+- [x] Common criteria G1, G7, G8, R1, R3, R4, R7, U4, U5: checks green, no new dependencies.
+
+**Required tests:** all exist and assert the specified behaviour (unit, API with real `ws` clients, web). E2E n/a per spec. Not trivial. Added gap tests in `trim.test.ts` (exact length, idempotency and origin, surrogate boundary, non-description rooms).
+
+**Failures:** none.
+
+**Observations (not failures):**
+1. The own-text announcement is a heuristic (documented in `trim.ts`): an ordinary tail deletion by someone else that leaves 20,000 characters can be announced too.
+2. A large update reaches every client in full before the trim update follows (documented).

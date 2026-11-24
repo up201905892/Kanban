@@ -47,7 +47,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Done |
 | KB-038 | Unassign a member's cards when they are demoted to viewer (D10) | Authentication and workspaces | Medium | KB-009, KB-013 | Done |
 | KB-039 | Card and column tombstones in the live board cache | Real time | Medium | KB-018 | Done |
-| KB-040 | Enforce the description length limit in the shared document | Real time | Medium | KB-019 | Ready for test |
+| KB-040 | Enforce the description length limit in the shared document | Real time | Medium | KB-019 | Passed |
 | KB-041 | Forward arguments through `pnpm test:e2e` | Quality and delivery | Medium | KB-003 | Planned |
 | KB-042 | Direct unit tests for `validateSessionToken` | Authentication and workspaces | Low | KB-005, KB-028 | Planned |
 | KB-043 | Re-check that the room's resource still exists after a WebSocket join | Real time | Medium | KB-033 | Planned |
@@ -1691,6 +1691,8 @@ Task template (copy for each new task):
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13; "quality debt first")
 - 2026-11-24 · developer · Planned → In development · started
 - 2026-11-24 · developer · In development → Ready for test · commit 5647afd
+- 2026-11-24 · tester · Ready for test → In test · started
+- 2026-11-24 · tester · In test → Passed · test report 1, all criteria verified, zero failures
 
 ### KB-041 · Forward arguments through `pnpm test:e2e`
 
