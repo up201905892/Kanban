@@ -287,6 +287,15 @@ Entry template:
 - **Documentation:** `docs/api.md` documents the side effect on the members endpoint; no new endpoints, messages or environment variables; no ADR required; no migrations; no new dependencies
 - **Lessons:** events are asserted on the in-process bus rather than a `ws` client (bus-to-socket path covered by `board-events.test.ts`); query invalidation uses the `['projects']` and `['cards']` prefixes because keys carry no workspace id. No TODO found in the task's code; no secret found. Milestone "Authentication and workspaces" not re-reached (KB-042 is Planned).
 
+### KB-039 · Card and column tombstones in the live board cache — done on 2026-11-24
+
+- **Approving test report:** Report 1 (2026-11-24), commit 8655423 (the later commits, c865300 and ea407e0, only change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** per-session bounded tombstone sets (1,000 most recent ids) for cards and columns, filled by `card_deleted` and `column_deleted` events, own successful DELETE and a 404 from a card read or mutation; create, update and move events for tombstoned ids are ignored (same object returned); fetched boards and optimistic rollbacks are filtered so a stale refetch cannot restore a deleted card or column; the open card dialog keeps "deleted by"; reducers stay pure.
+- **CHANGELOG:** "Fixed: A card or column that someone deleted no longer comes back on the board because of a late live update or a slow reload of the board; a card that no longer exists is removed from the board when an action on it fails (KB-039)."
+- **Documentation:** client-only change, so no `docs/api.md`, `.env.example` or ADR change; no migrations; no new dependencies
+- **Lessons:** after a 404 move the message still ends with "It is back in To do." although the tile is removed; suggestion for the planner: make the U6 message say the card no longer exists when the 404 tombstoned it. Tombstones are per `QueryClient` (session), equivalent to per page because ids are never reused. No TODO found in the task's code; no secret found. Milestone "Real time" not reached (KB-040 and KB-043 are still open).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->

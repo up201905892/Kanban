@@ -46,7 +46,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-036 | Card actions menu on the board tile (D9) | Board | Low | KB-015, D9 answered | Rejected |
 | KB-037 | Keep unsaved collaborative edits when the final flush fails | Real time | Medium | KB-017 | Done |
 | KB-038 | Unassign a member's cards when they are demoted to viewer (D10) | Authentication and workspaces | Medium | KB-009, KB-013 | Done |
-| KB-039 | Card and column tombstones in the live board cache | Real time | Medium | KB-018 | Passed |
+| KB-039 | Card and column tombstones in the live board cache | Real time | Medium | KB-018 | Done |
 | KB-040 | Enforce the description length limit in the shared document | Real time | Medium | KB-019 | Planned |
 | KB-041 | Forward arguments through `pnpm test:e2e` | Quality and delivery | Medium | KB-003 | Planned |
 | KB-042 | Direct unit tests for `validateSessionToken` | Authentication and workspaces | Low | KB-005, KB-028 | Planned |
@@ -1656,6 +1656,7 @@ Task template (copy for each new task):
 - 2026-11-24 · developer · In development → Ready for test · commit 8655423
 - 2026-11-24 · tester · Ready for test → In test · testing started
 - 2026-11-24 · tester · In test → Passed · report 1: all checks green, every criterion verified
+- 2026-11-24 · finisher · Passed → Done · definition of done met; CHANGELOG updated, no API, env or ADR change needed; Real time phase not complete (KB-040, KB-043 open), no milestone
 
 ### KB-040 · Enforce the description length limit in the shared document
 
