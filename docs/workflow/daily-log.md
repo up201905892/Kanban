@@ -16,6 +16,19 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-25
+
+- **Decisions for João:**
+  - Still waiting on you (no new lines in `approvals.md`): **KB-030** (NVDA spot check) and **KB-031** (Docker image build and backup drill; copy `docs/deploy/railway-deploy.yml` to `.github/workflows/railway-deploy.yml`). Details in the 2026-11-23 entry. KB-032 waits on KB-031.
+  - **KB-029 is paused `In development`.** The journey is written (`e2e/journeys/collaboration.spec.ts`, commit `6b38687`) but never ran green: the developer's environment had no PostgreSQL, while the tester's later had one. It needs a run with a database (`pnpm test:e2e -- e2e/journeys --repeat-each=10`, possible now that KB-041 is Done). No decision needed; the next run resumes it.
+  - Optional (from KB-039, 2026-11-24): after a 404 on a card move, the announcement still ends with "It is back in To do." although the card is removed.
+- **Done:** KB-041 (`pnpm test:e2e` forwards arguments)
+- **Tested:** KB-041 (Passed)
+- **Developed:** KB-041 (whole cycle today); KB-029 (blocked, still In development)
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` on npm)
+- **Rule violations found:** none
+- **Next step:** resume KB-029; then KB-043, KB-014, KB-026, KB-042.
+
 ## 2026-11-24
 
 - **Decisions for João:**
