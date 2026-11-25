@@ -770,3 +770,22 @@ Entry template:
   - The "own text" detection is a heuristic: a tail-only remote deletion that leaves 20,000 (or 19,999) characters and removes some of this client's own text is announced, even if it was an ordinary deletion by another person. Documented in `trim.ts`.
   - The trim runs once per applied update, so a large update first reaches every client in full and is then followed by the trim update.
   - Counter text uses `toLocaleString('en-US')` ("1,000 characters left").
+
+### KB-029 · End-to-end collaboration suite (two browsers)
+
+**Iteration 1 — 2026-11-25**
+
+- **Status at the end:** In development (blocked, not Ready for test: the journey could not be run in this environment)
+- **What was done:** Added `e2e/journeys/collaboration.spec.ts`, one journey with two browser contexts. A signs up through the form, creates a workspace and a project (key `JR`) in the UI and creates a member invite link; B signs up through the link and accepts. The board is seeded through the API with two cards assigned to B. Then: A moves JR-1 with the keyboard (Space, ArrowRight, Space) while B sets its priority in the open dialog; both type in the same description at the same time and converge; B goes offline, edits the description and adds a card while A also edits, B reconnects and both converge with exactly one new card (screens and server); A plans, starts and completes a sprint in the UI (keyboard add-to-sprint) and B sees the active-sprint banner appear and disappear; A demotes B to viewer through the KB-038 confirmation dialog, the assignee disappears from both boards (B live, A after opening the board), B's card dialog is read-only, no add-card buttons, and `PATCH /api/cards/:id` returns 403. No fixed sleeps: only auto-waiting assertions and `afterWrite`/`expect.poll`.
+- **Changed files:** `e2e/journeys/collaboration.spec.ts`
+- **Migrations:** none
+- **Commit(s):** see git log (`feat(web): KB-029 ...`)
+- **Acceptance criteria covered:** journey steps written. **Not verified:** the journey has never run green, the under-5-minutes check and `pnpm test:e2e -- --repeat-each=10` (zero failures) were not run.
+- **Blocker:** this environment has no PostgreSQL (no `DATABASE_URL`, no server binary, `docker` is not permitted). The api answers `Internal server error` on sign-up, so even the existing `e2e/smoke.spec.ts` fails here (confirmed). `pnpm build`, `pnpm lint` and `pnpm typecheck` are green; `pnpm test` and `pnpm test:e2e` could not be run meaningfully.
+- **Tests written by the developer:** E2E journey above. Unit and API: n/a.
+- **Local checks:** build ok · lint ok · typecheck ok · test not run · test:e2e not run (no database)
+- **New dependencies (G9):** none
+- **Notes for the next iteration:**
+  - Run in an environment with PostgreSQL: `pnpm build`, then `pnpm test:e2e -- e2e/journeys --repeat-each=10` (KB-041 is not Done, so forward arguments with `pnpm exec playwright test e2e/journeys --repeat-each=10`) and record the result here.
+  - Selectors reuse the ones in `members`, `offline`, `sprints` and `collab-description` specs, but were written without a run; expect small fixes (for example the priority change racing with the move, or the `Created offline` card name once numbered).
+  - Suggestion for the planner: KB-029 asks for `pnpm test:e2e -- --repeat-each=10`, which relies on KB-041; consider adding KB-041 as a dependency.

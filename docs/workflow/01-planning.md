@@ -36,7 +36,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-026 | Velocity of recent sprints | Reports and history | Low | KB-023 | Planned |
 | KB-027 | Adopt `@up201905892/ui` and replace local components | Design system | Medium | KB-004, external: `@up201905892/ui` published on npm | Proposed |
 | KB-028 | Performance with 500+ cards | Quality and delivery | Medium | KB-018 | Done |
-| KB-029 | End-to-end collaboration suite (two browsers) | Quality and delivery | Medium | KB-009, KB-021, KB-023, KB-034, KB-038, KB-039 | Planned |
+| KB-029 | End-to-end collaboration suite (two browsers) | Quality and delivery | Medium | KB-009, KB-021, KB-023, KB-034, KB-038, KB-039 | In development |
 | KB-030 | Accessibility audit and fixes | Quality and delivery | Medium | KB-020, KB-021, KB-024, KB-025 | Failed |
 | KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017, KB-037 | Failed |
 | KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Planned |
@@ -1306,6 +1306,7 @@ Task template (copy for each new task):
 - 2026-11-10 · planner · dependencies KB-034 and KB-039 added: the journey asserts convergence (R4, R6) and must pass 10 repeats, so the two known causes of client divergence in the live board (respaced siblings keep their `version`, and a late event re-adds a deleted card or column) are fixed first. No cycle: neither task depends on KB-029 · stays Proposed
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 - 2026-11-13 · planner · Planned (no status change) · D10 answered with option A (approvals.md, 2026-11-13): the demotion step now also asserts that B's cards are unassigned, so KB-038 is added as a dependency (no cycle: KB-038 does not depend on KB-029); estimate stays M
+- 2026-11-25 · developer · Planned → In development · started
 
 ### KB-030 · Accessibility audit and fixes
 
