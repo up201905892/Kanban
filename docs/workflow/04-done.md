@@ -305,6 +305,15 @@ Entry template:
 - **Documentation:** ADR 0004 section 12 amended (done in the task); no new endpoints or messages, so no `docs/api.md` change; no new environment variables; no migrations; no new dependencies
 - **Lessons:** the own-text trim announcement is a heuristic (an ordinary tail deletion by someone else that leaves 20,000 characters can be announced too); a large update reaches every client in full before the trim update follows. No TODO found in the task's code; no secret found. Milestone "Real time" not reached (KB-043 is still Planned).
 
+### KB-041 · Forward arguments through `pnpm test:e2e` — done on 2026-11-25
+
+- **Approving test report:** Report 1 (2026-11-25), commit 140c29a (the later commit, c708526, only changes workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** the root `test:e2e` script now runs `scripts/e2e.mjs`, which drops one leading `--` (pnpm 10 passes it literally and Playwright would treat what follows as file filters) and runs `playwright test <args>` with the same exit code; `playwright.config.ts` unchanged; no arguments behaves as before (61 E2E passed); unit test `scripts/e2e-args.test.ts` (4 cases) runs in the root `pnpm test`.
+- **CHANGELOG:** "Fixed: For people working on the project: `pnpm test:e2e` now passes options such as a test file, `--repeat-each` or `--retries` to Playwright, with or without a `--` before them, instead of running the whole suite and ignoring them (KB-041)."
+- **Documentation:** tooling change, so no `docs/api.md`, `.env.example` or ADR change; README and `docs/` already show only working forms; no migrations; no new dependencies
+- **Lessons:** only a leading `--` is dropped, a later one reaches Playwright unchanged (intended, tested). KB-029 can now use `pnpm test:e2e -- --repeat-each=10`. No TODO found in the task's code; no secret found. Milestone "Quality and delivery" not reached (KB-029, KB-030, KB-031, KB-032 and others are open).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
