@@ -1330,3 +1330,35 @@ Neither has an exception in the criteria (only the local `docker run` step does)
 **Observations (not failures):**
 1. The own-text announcement is a heuristic (documented in `trim.ts`): an ordinary tail deletion by someone else that leaves 20,000 characters can be announced too.
 2. A large update reaches every client in full before the trim update follows (documented).
+
+### KB-041 · Forward arguments through `pnpm test:e2e`
+
+**Report 1 — 2026-11-25 — Passed**
+
+- **Commit tested:** `140c29a` (in `develop` history; working tree clean before testing, apart from the status change in Planning). PostgreSQL was available in this run (migrations applied by the api tests), so database-dependent checks were really executed. No tester test commit.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (web 343, api 497, root `scripts` 4) | ✔ |
+| E2E | `pnpm test:e2e` with no arguments (61 passed) | ✔ |
+| Database | No migration or schema change | n.a. |
+| Real time | Not touched | n.a. |
+| Accessibility | Not touched (script change) | n.a. |
+
+**Acceptance criteria:**
+- [x] Root cause written in the development entry: pnpm 10 passes a literal `--` to the script, Playwright treats what follows as filters. Confirmed: running the script showed `node scripts/e2e.mjs -- e2e/members.spec.ts ...`, so `argv` does begin with `--`.
+- [x] Both forms forward arguments: `pnpm test:e2e -- e2e/members.spec.ts --list` and `pnpm test:e2e e2e/members.spec.ts --list` each gave `Total: 3 tests in 1 file`; with `--list --repeat-each=2` gave `Total: 6 tests in 1 file`. Real run `pnpm test:e2e -- e2e/members.spec.ts --repeat-each=2 --retries=0`: 6 passed, only that file. A nonexistent file filter with `--retries=0` fails with "No tests found" and exit code 1 (exit code is propagated).
+- [x] No arguments behaves as before: full suite, same config and web servers, 61 passed.
+- [x] Fix is in root `package.json` scripts plus a small script under `scripts/` with no new dependency; `playwright.config.ts` not changed (`git show --stat`).
+- [x] Docs: grep of README and `docs/` (outside the workflow records) finds no `npx playwright` workaround or `-- <args>` form.
+- [x] Common criteria G1, G9: checks green, no new dependencies.
+
+**Required tests:** unit test `scripts/e2e-args.test.ts` exists and covers no arguments, no leading `--`, leading `--`, and only the first `--` dropped (4 passed); not trivial. E2E commands repeated and the full run passes.
+
+**Failures:** none.
+
+**Observations (not failures):**
+1. Only a leading `--` is dropped; a `--` typed later is passed to Playwright unchanged (intended, tested).
