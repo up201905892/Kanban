@@ -789,3 +789,25 @@ Entry template:
   - Run in an environment with PostgreSQL: `pnpm build`, then `pnpm test:e2e -- e2e/journeys --repeat-each=10` (KB-041 is not Done, so forward arguments with `pnpm exec playwright test e2e/journeys --repeat-each=10`) and record the result here.
   - Selectors reuse the ones in `members`, `offline`, `sprints` and `collab-description` specs, but were written without a run; expect small fixes (for example the priority change racing with the move, or the `Created offline` card name once numbered).
   - Suggestion for the planner: KB-029 asks for `pnpm test:e2e -- --repeat-each=10`, which relies on KB-041; consider adding KB-041 as a dependency.
+
+### KB-041 · Forward arguments through `pnpm test:e2e`
+
+**Iteration 1 — 2026-11-25**
+
+- **Status at the end:** Ready for test
+- **Root cause:** pnpm 10 appends a literal `--` to the script when the user types `pnpm test:e2e -- <args>`, so the root script `playwright test` ran as `playwright test -- e2e/members.spec.ts --list`. Playwright treats everything after `--` as positional test filters, so options such as `--list`, `--repeat-each` and `--retries` were ignored and the whole suite ran (confirmed: the command ran the full suite). Without `--`, `pnpm test:e2e <args>` already worked.
+- **What was done:** the root script is now `node scripts/e2e.mjs`. The script drops one leading `--` (`normalizeArgs` in `scripts/e2e-args.mjs`) and runs `playwright test <args>` with inherited stdio and the same exit code. `playwright.config.ts` is not changed. The root `test` script also runs `vitest run scripts` for the helper's unit test. Repository docs: no place shows the `npx playwright test` workaround or the `-- <args>` form (README and `docs/deployment.md` only use `pnpm test:e2e --grep @smoke`, which works); the KB-029 note in this file is a record and is not edited.
+- **Changed files:** `package.json`, `scripts/e2e.mjs`, `scripts/e2e-args.mjs`, `scripts/e2e-args.test.ts`
+- **Migrations:** none
+- **Commit(s):** see git log (`feat(api): KB-041 ...`)
+- **Checks recorded (Playwright `--list`, no database needed):**
+  - `pnpm test:e2e -- e2e/members.spec.ts --list` gives `Total: 3 tests in 1 file`
+  - `pnpm test:e2e e2e/members.spec.ts --list` gives `Total: 3 tests in 1 file`
+  - `pnpm test:e2e -- e2e/members.spec.ts --list --repeat-each=2 --retries=0` gives `Total: 6 tests in 1 file` (listing only, not a real run)
+  - `pnpm test:e2e -- e2e/smoke.spec.ts -g "web app loads" --retries=0`: 1 passed, exit code 0 (needs no database).
+- **Tests written by the developer:** unit `scripts/e2e-args.test.ts` (no arguments, no leading `--`, leading `--`, only the first `--` dropped): 4 passed.
+- **Local checks:** lint ok · typecheck ok · root unit test ok · `pnpm build` not re-run (no package source changed) · `pnpm test` (api) and the full `pnpm test:e2e` could not be run: no PostgreSQL in this environment (the api fails on sign-up, so 50 specs fail here regardless of this change). With no arguments the script runs `playwright test` unchanged, with the same config and web servers.
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - Please run the full `pnpm test:e2e` and a real run of `pnpm test:e2e -- e2e/members.spec.ts --repeat-each=2 --retries=0` with a database.
+  - Suggestion for the planner: KB-029 can now use `pnpm test:e2e -- --repeat-each=10`.
