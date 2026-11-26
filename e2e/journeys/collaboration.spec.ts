@@ -210,6 +210,8 @@ test('two people run a whole project together: move, edit, offline, sprint and d
   const sprintDialog = a.getByRole('dialog', { name: 'Create sprint' });
   await sprintDialog.getByLabel('Name').fill('Sprint One');
   await sprintDialog.getByRole('button', { name: 'Create' }).click();
+  // The dialog traps focus while it is closing; wait for it before using the keyboard.
+  await expect(sprintDialog).toBeHidden();
   const section = a.getByRole('region', { name: 'Sprint One' });
   await expect(section).toBeVisible();
   for (const n of [1, 2]) {

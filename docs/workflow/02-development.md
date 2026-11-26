@@ -781,6 +781,19 @@ Entry template:
 - **Migrations:** none
 - **Commit(s):** see git log (`feat(web): KB-029 ...`)
 - **Acceptance criteria covered:** journey steps written. **Not verified:** the journey has never run green, the under-5-minutes check and `pnpm test:e2e -- --repeat-each=10` (zero failures) were not run.
+
+**Iteration 2 — 2026-11-26**
+
+- **Status at the end:** Ready for test
+- **What was done:** ran the journey for the first time with PostgreSQL. It passed on the first run. A 10-repeat run had 1 failure: after clicking Create in the sprint dialog the test pressed Enter on "Add to sprint" while the dialog was still closing and holding focus, so the card never moved. Fix: the test now waits for the Create sprint dialog to be hidden before using the keyboard (no sleeps). No application code changed.
+- **Changed files:** `e2e/journeys/collaboration.spec.ts`
+- **Migrations:** none
+- **Commit(s):** see git log (`fix(web): KB-029 ...`)
+- **Flakiness check (acceptance criterion):** `pnpm test:e2e -- e2e/journeys --repeat-each=10` gave 10 passed (1.3 min), run twice, the second time with `--retries=0`. One journey takes about 15 s, well under the 5 minute limit. Full `pnpm test:e2e`: 61 passed (1.7 min).
+- **Tests written by the developer:** E2E journey (two browsers, keyboard card move). Unit and API: n/a.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 187, web 343, api 497, root 4) · test:e2e ok (61)
+- **New dependencies (G9):** none
+- **Notes for the tester:** run `pnpm test:e2e -- e2e/journeys --repeat-each=10 --retries=0` with a database. The sprint dialog closing late (focus trap held during exit) is a possible small UI issue; not changed, out of scope.
 - **Blocker:** this environment has no PostgreSQL (no `DATABASE_URL`, no server binary, `docker` is not permitted). The api answers `Internal server error` on sign-up, so even the existing `e2e/smoke.spec.ts` fails here (confirmed). `pnpm build`, `pnpm lint` and `pnpm typecheck` are green; `pnpm test` and `pnpm test:e2e` could not be run meaningfully.
 - **Tests written by the developer:** E2E journey above. Unit and API: n/a.
 - **Local checks:** build ok · lint ok · typecheck ok · test not run · test:e2e not run (no database)
