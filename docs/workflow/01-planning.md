@@ -34,11 +34,11 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-024 | Card activity history | Reports and history | Medium | KB-013, KB-015 | Done |
 | KB-025 | Sprint burndown | Reports and history | Medium | KB-022 | Done |
 | KB-026 | Velocity of recent sprints | Reports and history | Low | KB-023 | Planned |
-| KB-027 | Adopt `@up201905892/ui` and replace local components | Design system | Medium | KB-004, external: `@up201905892/ui` published on npm | Proposed |
+| KB-027 | Adopt `@up201905892/ui` and replace local components | Design system | Medium | KB-004, KB-030, external: `@up201905892/ui` published on npm | Proposed |
 | KB-028 | Performance with 500+ cards | Quality and delivery | Medium | KB-018 | Done |
 | KB-029 | End-to-end collaboration suite (two browsers) | Quality and delivery | Medium | KB-009, KB-021, KB-023, KB-034, KB-038, KB-039 | In development |
-| KB-030 | Accessibility audit and fixes | Quality and delivery | Medium | KB-020, KB-021, KB-024, KB-025 | Failed |
-| KB-031 | Deploy preparation for Railway | Quality and delivery | Medium | KB-017, KB-037 | Failed |
+| KB-030 | Accessibility audit and fixes | Quality and delivery | Medium | KB-020, KB-021, KB-024, KB-025 | Proposed |
+| KB-031 | Deploy preparation for Render | Quality and delivery | Medium | KB-017, KB-037 | Proposed |
 | KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Planned |
 | KB-033 | Close real-time sockets on logout, session expiry and resource deletion | Real time | Medium | KB-016 | Done |
 | KB-034 | Bump card versions when positions are respaced | Board | High | KB-012, KB-015 | Done |
@@ -51,6 +51,12 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-041 | Forward arguments through `pnpm test:e2e` | Quality and delivery | Medium | KB-003 | Done |
 | KB-042 | Direct unit tests for `validateSessionToken` | Authentication and workspaces | Low | KB-005, KB-028 | Planned |
 | KB-043 | Re-check that the room's resource still exists after a WebSocket join | Real time | Medium | KB-033 | Planned |
+| KB-044 | Screen-reader spot check with NVDA + Chrome (done by João) | Quality and delivery | Medium | KB-030 | Proposed |
+| KB-045 | Verify the production image and run the backup drill (done by João) | Quality and delivery | Medium | KB-031 | Proposed |
+| KB-046 | Say that the card no longer exists after a 404 on a move | Board | Medium | KB-039 | Proposed |
+| KB-047 | Automated target-size check (WCAG 2.2 SC 2.5.8) | Quality and delivery | Low | KB-030 | Proposed |
+| KB-048 | Jump between columns with the keyboard | Board | Low | KB-028 | Proposed |
+| KB-049 | Move a picked-up card to the top or bottom of its column | Board | Low | KB-015, KB-028 | Proposed |
 
 **Priority rule used:** High = blocks at least one other High/Medium task on the path to the v1.0 release; Medium = MVP scope that blocks nothing (or only Medium tasks at the end of the plan); Low = MVP scope that is the first candidate to move to v1.1 if the schedule slips.
 
@@ -66,7 +72,9 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 
 **Estimate update (2026-11-20):** KB-041, KB-042 and KB-043 (all S) add 0.75 ideal day, from João's answers of 2026-11-20 (`approvals.md`). New plan total: 8 S + 24 M + 10 L = **51.0 ideal days** (56.0 if every L takes 3 days).
 
-**ADRs required** (files in `docs/adr/NNNN-<slug>.md`, next free number): auth and sessions (KB-005), authorization model (KB-007), ordering and conflict handling (KB-010), real-time architecture and Yjs↔DB authority (KB-016, extended by KB-017, KB-019, KB-033, KB-037, KB-040 and KB-043), deployment topology (KB-031).
+**Estimate update (2026-11-26):** from João's decisions of 2026-11-26 (`approvals.md`), KB-044 to KB-049 add 5 S (KB-044, KB-045, KB-046, KB-047, KB-049) + 1 M (KB-048) = 2.25 ideal days. New plan total: 13 S + 25 M + 10 L = **53.25 ideal days** (58.25 if every L takes 3 days). KB-044 and KB-045 are João's own time (manual checks), not agent time; without them the agent work is 52.75 ideal days. The KB-031 rework for Render (render.yaml, start-up migrations, documentation) is kept inside KB-031's M; about half a day on top of the original estimate, not counted in the total.
+
+**ADRs required** (files in `docs/adr/NNNN-<slug>.md`, next free number): auth and sessions (KB-005), authorization model (KB-007), ordering and conflict handling (KB-010), real-time architecture and Yjs↔DB authority (KB-016, extended by KB-017, KB-019, KB-033, KB-037, KB-040 and KB-043), deployment topology (KB-031; Render since the 2026-11-26 revision of D4).
 
 ## Technical decisions
 
@@ -85,7 +93,16 @@ Rationale: lightweight and fast, first-class WebSocket support (`@fastify/websoc
 Own email + password authentication: argon2id password hash, session table in PostgreSQL, opaque session token in an httpOnly cookie, following the Lucia guide / Copenhagen Book approach (not Auth.js, Lucia as a library, or Supabase Auth).
 Rationale: no external dependency or vendor for a core security path; sessions are revocable server-side (needed when a member is removed); the same session cookie authenticates the WebSocket upgrade; well-documented, auditable approach. Details recorded in the auth ADR (KB-005).
 
-### D4 · Deploy target — **Decided** (João, 2026-10-21)
+### D4 · Deploy target — **Decided** (João, 2026-10-21) · **Revised: Render** (João, 2026-11-26, `approvals.md`, Change KB-031)
+
+**Current decision (2026-11-26):** Render, free plan, because Railway is not an option. The topology stays the same: one long-running Docker container (built from the root `Dockerfile`) serves the API, the WebSocket endpoint and the built web app on one origin, plus a Render PostgreSQL database. Fixed by João's deploy (Answer KB-031, 2026-11-26): web service **`kanban`** (runtime Docker, branch `develop`, health check `/health/ready`) and PostgreSQL 17 database **`kanban-db`**; `render.yaml` must use these names. Consequences carried into KB-031:
+- **Exactly one instance** still applies (Yjs rooms live in memory); the free plan has one instance anyway.
+- **Migrations run at container start** (`prisma migrate deploy`), because the free plan has no pre-deploy command; `node` stays the process that receives SIGTERM, so the KB-017 graceful shutdown still runs on every redeploy and spin-down.
+- **Deploys:** Render auto-deploy on push, triggered only after CI checks pass; no GitHub Actions deploy workflow (the Railway workflow proposal is withdrawn).
+- **Accepted free-plan limits, documented rather than avoided:** the service sleeps after a period without traffic (the first request after that waits for a cold start, and clients reconnect through KB-021); the free database expires after a fixed period unless upgraded, and has no managed backups, so the `pg_dump` runbook is the only backup. The previous constraint "app sleeping disabled" no longer holds on this plan.
+- Until KB-031 adds start-up migrations, João runs migrations by hand from his machine (`pnpm db:migrate` against the external database URL), as he did for the first deploy.
+
+Original decision (2026-10-21), kept for the record:
 
 Railway: one long-running Docker container that serves the API, the WebSocket endpoint and the built web app (same origin), plus Railway managed PostgreSQL.
 Rationale: supports long-lived WebSocket connections in an always-on container (serverless platforms do not); one service and one database in the same project with private networking; Dockerfile-based builds keep the app portable. Constraint carried into the plan: **exactly one instance** (Yjs rooms live in memory) and app sleeping disabled. Agents prepare the files (KB-031); João connects the deploy. Affects KB-031, KB-032.
@@ -239,8 +256,17 @@ Lines from `approvals.md` already handled by the planner (prevents applying the 
 | 2026-11-13 | Approve | KB-014, KB-020, KB-023, KB-025, KB-026, KB-028, KB-029, KB-030, KB-031, KB-032 | 2026-11-13 |
 | 2026-11-20 | Answer | 2026-11-19 follow-ups (items 1 and 3 planned as KB-041 and KB-042; item 2, the keyboard jump shortcut, not requested and not planned) | 2026-11-20 |
 | 2026-11-20 | Answer | ADR 0004 §7 (planned as KB-043) | 2026-11-20 |
+| 2026-11-26 | Change | KB-030 (NVDA spot check removed from the criteria; follow-up KB-044 for João) | 2026-11-26 |
+| 2026-11-26 | Change | KB-031 (first line: image build and backup drill moved to follow-up KB-045 for João) | 2026-11-26 |
+| 2026-11-26 | Answer | 2026-11-24 follow-up (planned as KB-046) | 2026-11-26 |
+| 2026-11-26 | Answer | 2026-11-19 follow-ups (item 2 planned as KB-049; focus jumps with Home/End already exist since KB-028) | 2026-11-26 |
+| 2026-11-26 | Answer | KB-030 follow-ups (O2 planned as KB-047, O3 as KB-048, O4 added to KB-027) | 2026-11-26 |
+| 2026-11-26 | Change | KB-031 (second line: deploy to Render instead of Railway; task renamed; D4 revised) | 2026-11-26 |
+| 2026-11-26 | Answer | KB-031 (Render manual deploy: service names `kanban` and `kanban-db`, free plan, manual migrations applied to D4, KB-031 and KB-045; the image-build, app-works and backup-drill fields still hold template placeholders and were not treated as results) | 2026-11-26 |
 
 Note: the first row of the `approvals.md` table (`YYYY-MM-DD · Approve · KB-001 to KB-008`, in italics) is the usage example, not a decision; it is not applied. KB-001 to KB-004 and KB-010 were approved in the conversation on 2026-10-24.
+
+Note (2026-11-26): KB-030 and KB-031 were `Failed` when João's `Change` lines arrived. A `Change` revises an approved specification, and a task only becomes `Planned` with a decision from João that names it, so both went back to `Proposed` (`Failed` → `Proposed` is not one of the listed detours; it is recorded here and in both histories so the rule check does not flag it). To resume them, João adds `Approve | KB-030, KB-031` to `approvals.md`; they then become `Planned`, the developer applies the remaining changes of the revised specification and hands them over as `Ready for test`, and the tester retests them on the revised criteria.
 
 ## Specifications
 
@@ -1221,7 +1247,7 @@ Task template (copy for each new task):
 
 - **MVP phase:** Design system
 - **Priority:** Medium
-- **Depends on:** KB-004; **external dependency:** `@up201905892/ui` published on npm (Design System project). This task stays `Proposed` until the package is published.
+- **Depends on:** KB-004, KB-030; **external dependency:** `@up201905892/ui` published on npm (Design System project). This task stays `Proposed` until the package is published.
 - **Estimate:** M
 
 **Goal:** Replace the minimal local components with the published design-system library so the app gets a consistent, accessible visual identity.
@@ -1231,6 +1257,7 @@ Task template (copy for each new task):
 - [ ] Every local component in `apps/web/src/components/` that has a library equivalent is removed and its usages migrated; no duplicate implementations remain.
 - [ ] Components missing from the library are not fully reimplemented; each one is listed in "Decisions for João" in the daily log as a request to the Design System project.
 - [ ] All existing unit, E2E and axe tests pass (only selectors may change); web bundle size before/after recorded in the development entry.
+- [ ] Accessibility re-audit of the library components (open item O4 of `docs/accessibility-audit.md`): `e2e/accessibility.spec.ts` (axe sweep of every route and the keyboard-only path) passes, the target-size check of KB-047 passes if KB-047 is Done, and the audit file gets a dated "Re-audit after `@up201905892/ui`" section listing each replaced component with its result; O4 is marked closed with this task's ID. Any A/AA failure caused by a library component is reported as a request to the Design System project in "Decisions for João", not patched locally.
 - [ ] Common criteria: G1, G9, U3, U4, U9, U10.
 
 **Required tests:**
@@ -1243,6 +1270,7 @@ Task template (copy for each new task):
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
+- 2026-11-26 · planner · spec revised from João's answer on the KB-030 follow-ups (approvals.md, 2026-11-26: "O4 after KB-027"): added the accessibility re-audit criterion (O4) and the dependency KB-030 (the audit file and sweep spec come from it; no cycle) · stays Proposed (still waits for `@up201905892/ui` on npm)
 
 ### KB-028 · Performance with 500+ cards
 
@@ -1318,7 +1346,8 @@ Task template (copy for each new task):
 **Goal:** Verify the whole app against WCAG 2.2 AA and fix what blocks it, beyond the per-task automated checks.
 
 **Acceptance criteria:**
-- [ ] `docs/accessibility-audit.md`: WCAG 2.2 AA checklist per screen (log-in, sign-up, workspaces, members, invite, board, card dialog, backlog, reports), keyboard-only walkthrough with results, screen-reader spot check (NVDA + Chrome) of drag-and-drop and live announcements, text contrast ≥ 4.5:1.
+- [ ] `docs/accessibility-audit.md`: WCAG 2.2 AA checklist per screen (log-in, sign-up, workspaces, members, invite, board, card dialog, backlog, reports), keyboard-only walkthrough with results, text contrast ≥ 4.5:1. *(Revised 2026-11-26, Change KB-030: the NVDA + Chrome screen-reader spot check is no longer part of this task; it is KB-044, done by João.)*
+- [ ] The NVDA spot-check script for open item O1 stays in the audit file, and the open-items table points each item to where it is handled: O1 → KB-044 (João), O2 → KB-047, O3 → KB-048, O4 → KB-027. The audit's summary does not claim a screen-reader result.
 - [ ] The audit covers the D9 card pattern explicitly: Enter on a tile opens the card, Space on the tile or Space/Enter on the move handle picks it up, and "Move to…" in the card dialog is the single-pointer alternative to dragging (WCAG 2.2 SC 2.5.7); the result is written in the board section of the audit.
 - [ ] An axe sweep spec visits every route with zero serious/critical violations.
 - [ ] Every A/AA failure found is fixed in this task; anything else is listed in the audit with severity and added to "Decisions for João" in the daily log for planning.
@@ -1330,7 +1359,7 @@ Task template (copy for each new task):
 - E2E: axe sweep of all routes; keyboard-only critical path (create card → move → open → edit → close dialog) with no mouse.
 - Accessibility: as above.
 
-**Out of scope:** AAA criteria, fixes inside `@up201905892/ui` (reported to the Design System project).
+**Out of scope:** AAA criteria, fixes inside `@up201905892/ui` (reported to the Design System project), the NVDA + Chrome spot check (KB-044), the target-size measurement (KB-047), the "skip to column" navigation (KB-048).
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
@@ -1340,37 +1369,42 @@ Task template (copy for each new task):
 - 2026-11-23 · developer · In development → Ready for test · commit 69d4d5c
 - 2026-11-23 · tester · Ready for test → In test · testing started
 - 2026-11-23 · tester · In test → Failed · report 1: NVDA + Chrome spot check criterion not met; all automated checks green
+- 2026-11-26 · planner · Failed → Proposed · spec revised by João's Change (approvals.md, 2026-11-26): the NVDA + Chrome spot check is removed from the criteria and planned as KB-044 (done by João, script O1 in `docs/accessibility-audit.md`); added a criterion to point the audit's open items to KB-044, KB-047, KB-048 and KB-027 (from the Answer "KB-030 follow-ups" of the same day). Retest on the automated criteria only. A Change puts an approved task back to Proposed; João must approve it again (`Approve | KB-030`) before the developer resumes it. Estimate stays M (remaining work is a small documentation change)
 
-### KB-031 · Deploy preparation for Railway
+### KB-031 · Deploy preparation for Render
+
+*(Renamed on 2026-11-26 from "Deploy preparation for Railway", Change KB-031: Railway is not an option, D4 revised to Render.)*
 
 - **MVP phase:** Quality and delivery
 - **Priority:** Medium
 - **Depends on:** KB-017, KB-037
 - **Estimate:** M
-- **ADR required:** deployment topology (D4)
+- **ADR required:** deployment topology (D4) — update `docs/adr/0005-deployment-topology.md`
 
-**Goal:** Prepare everything João needs to deploy to Railway (D4) — container, configuration, documentation and a proposed GitHub Actions workflow — without any agent deploying or editing `.github/`.
+**Goal:** Prepare everything João needs to run the app on Render's free plan (D4, revised 2026-11-26): container, Render Blueprint, start-up migrations, configuration and documentation, matching the services João already created by hand (`kanban` and `kanban-db`), without any agent deploying or editing `.github/`. The Docker image build with its size and the `pg_dump`/`pg_restore` drill are done by João in KB-045, not here.
 
 **Acceptance criteria:**
-- [ ] Multi-stage `Dockerfile` at the root: pnpm via corepack (version from `packageManager`), Node 22, production dependencies only, non-root user; the api serves the built web app (static files + SPA fallback) on the same origin as `/api` and `/ws`; listens on Railway's `PORT`; `.dockerignore` present; image size recorded.
-- [ ] The process runs as `node …` (no shell wrapper), so SIGTERM reaches it and the KB-017 graceful shutdown runs on redeploy.
-- [ ] A process-level test covers real signal delivery, which KB-017 and KB-019 only tested at handler level. It starts the built api (`node apps/api/dist/…`) as a child process against the test database, has a `ws` client edit a card description, sends a real `SIGTERM` to the child before the batch window ends, and asserts exit code 0, the client closed with `1012`, and the edit present in `YDocumentUpdate` and in `Card.description`.
-- [ ] `railway.json` (config as code): Dockerfile builder, healthcheck path `/health/ready`, pre-deploy command running `prisma migrate deploy`, restart policy on failure, 1 replica.
-- [ ] Production hardening: `trustProxy` for Railway's proxy, `Secure` cookies, `WEB_ORIGIN` set to the public Railway/custom domain, security headers (`@fastify/helmet`, CSP compatible with the app and its WebSocket), request body limit.
-- [ ] `trustProxy` comes from a validated config variable (e.g. `TRUST_PROXY` as a hop count, default off so local and test runs ignore `X-Forwarded-*`), added to `.env.example` and `docs/deployment.md` per G6; when it is on, `request.ip` (the KB-005 rate-limit key) is the client address from `X-Forwarded-For`, not the proxy's.
-- [ ] The argon2 dummy hash used for unknown-email logins (KB-005) is computed once at start-up, before the server starts listening, instead of lazily on the first unknown-email login. This way the first such login after a deploy takes about as long as any other (tester observation on KB-005).
-- [ ] `docs/deployment.md`: variables table (name, required, example, where it comes from — e.g. `DATABASE_URL` as a reference to the Railway PostgreSQL service), Railway setup steps (service from Dockerfile, PostgreSQL plugin, private networking, app sleeping disabled, exactly one replica because Yjs rooms are in memory), backups (Railway database backups where the plan allows plus a tested `pg_dump`/`pg_restore` runbook), rollback steps.
-- [ ] `docs/deploy/railway-deploy.yml` (proposed workflow for João to copy into `.github/workflows/`): manual dispatch and/or tag push, runs after CI succeeds, deploys with the Railway CLI using a `RAILWAY_TOKEN` repository secret and the service name as a variable; no secrets in the file. A request to copy it is added to "Decisions for João" in the daily log.
-- [ ] Local verification documented: `docker build` and `docker run` against the compose database serve the app at `http://localhost:8080`, and `pnpm test:e2e --grep @smoke` with `BASE_URL` pointing at the container passes (if agents lack permission for `docker build`, the step is handed to João in the daily log).
-- [ ] Common criteria: G1, G6, G7.
+- [ ] Multi-stage `Dockerfile` at the root: pnpm via corepack (version from `packageManager`), Node 22, production dependencies only, non-root user; the api serves the built web app (static files + SPA fallback) on the same origin as `/api` and `/ws`; listens on the `PORT` that Render injects; `.dockerignore` present. *(Image build and size: moved to KB-045.)*
+- [ ] **Migrations at container start, `node` keeps the signal.** The image's start command is a Node entry (for example `node dist/start.js`, exec form, no shell wrapper) that first runs `prisma migrate deploy` as a child process and, only if it exits 0, starts the server in the same Node process. A failing migration makes the process exit non-zero without listening (Render then keeps the previous deploy). A SIGTERM received while the migration runs stops the child and exits non-zero; a SIGTERM after the server listens runs the KB-017 graceful shutdown and exits 0. Running it against an up-to-date database applies nothing and starts normally, so João's manual `pnpm db:migrate` and the start-up step can coexist.
+- [ ] A process-level test covers real signal delivery through the start entry (extends the existing child-process test, which KB-017 and KB-019 only covered at handler level): it starts the built start entry as a child process against the test database, has a `ws` client edit a card description, sends a real `SIGTERM` before the batch window ends, and asserts exit code 0, the client closed with `1012`, and the edit present in `YDocumentUpdate` and in `Card.description`. Further process-level cases: a pending migration is applied before `/health/ready` answers `200`; an unreachable database makes the start entry exit non-zero without listening.
+- [ ] **`render.yaml` (Blueprint) replaces `railway.json`**, which is deleted. It declares the web service `kanban` (runtime Docker, the root `Dockerfile`, plan free, branch `develop`, health check path `/health/ready`, no more than one instance, auto-deploy only after CI checks pass — Blueprint field `autoDeployTrigger: checksPass`, checked against Render's current Blueprint reference and noted in the development entry if it differs) and the database `kanban-db` (PostgreSQL 17, plan free). `DATABASE_URL` comes from `kanban-db` (`fromDatabase`, internal connection string); `SESSION_SECRET` is generated by Render (`generateValue`); `WEB_ORIGIN` and `TRUST_PROXY` are listed (with `sync: false` where João must fill the value); no secret values in the file. The names match exactly what João created (Answer KB-031, 2026-11-26), so applying the Blueprint adopts the existing services instead of creating duplicates; `docs/deployment.md` says how to link the Blueprint to the existing services.
+- [ ] No GitHub Actions deploy workflow: deploys use Render's auto-deploy after CI. `docs/deploy/railway-deploy.yml` stays deleted, and no request to copy a workflow is left open (the earlier request in the daily log is withdrawn in the development entry).
+- [ ] Production hardening (kept from the first version, retargeted to Render): `trustProxy` for Render's proxy, `Secure` cookies, `WEB_ORIGIN` set to the public Render URL (`https://<service>.onrender.com`, the value Render also exposes as `RENDER_EXTERNAL_URL`) or a custom domain, security headers (`@fastify/helmet`, CSP compatible with the app and its WebSocket), request body limit.
+- [ ] `trustProxy` comes from a validated config variable (`TRUST_PROXY` as a hop count, default off so local and test runs ignore `X-Forwarded-*`), in `.env.example` and `docs/deployment.md` per G6; when it is on, `request.ip` (the KB-005 rate-limit key) is the client address from `X-Forwarded-For`, not the proxy's. `docs/deployment.md` gives the recommended value for Render with the reason, and says how João confirms it in KB-045 (the client address in the request logs is his public IP).
+- [ ] The argon2 dummy hash used for unknown-email logins (KB-005) is computed once at start-up, before the server starts listening (kept from the first version).
+- [ ] `docs/deployment.md` rewritten for Render: variables table (name, required, example, where it comes from — `DATABASE_URL` from `kanban-db`); Blueprint and manual setup steps for `kanban` and `kanban-db` (branch `develop`, health check, one instance, auto-deploy after CI checks pass); migrations (automatic at start since this task; by hand with `pnpm db:migrate` and the external database URL until then and for emergencies); **free-plan limits**: the service sleeps after a period without traffic, the first request then waits for a cold start, the shutdown before sleeping goes through the graceful shutdown and clients reconnect through KB-021; the free database expires after a fixed period unless upgraded (state Render's current period and what to do before it: upgrade, or `pg_dump` and restore into a new database) and has no managed backups, so the `pg_dump`/`pg_restore` runbook is the only backup; password reset with the operator CLI run from João's machine against the external database URL (the free plan has no shell into the service); rollback steps (redeploy a previous deploy in Render; migrations are forward-only). The "Verify the image locally" and backup-drill sections stay as instructions for KB-045.
+- [ ] ADR 0005 updated, not rewritten: Decision says Render free plan with the service names above; Railway moves to "Alternatives considered" with the reason (not an option); Consequences list the free-plan limits, start-up migrations instead of a pre-deploy command, and auto-deploy after CI instead of a workflow; it references D4 (revised 2026-11-26).
+- [ ] No Railway leftovers: outside `docs/workflow/`, `CHANGELOG.md` and the "Alternatives considered" section of ADR 0005, `grep -ri railway` over the repository (excluding `node_modules`) finds nothing.
+- [ ] Verification without Docker (kept from the first version, re-run): the production layout (`pnpm --filter @kanban/api deploy --prod --legacy`, then the start entry with `WEB_DIST_DIR`, `NODE_ENV=production` and the test database) serves the app, and `BASE_URL=<that url> pnpm test:e2e --grep @smoke` passes. The steps are recorded in the development entry so the tester can repeat them.
+- [ ] Common criteria: G1, G6, G7, G9 (`yaml` may be added as a dev dependency for the Blueprint test).
 
 **Required tests:**
-- Unit: config rejects a production environment without `Secure`-compatible settings (e.g. `WEB_ORIGIN` not https); `TRUST_PROXY` accepts a non-negative integer, defaults to off and rejects invalid values; the dummy hash is ready right after `buildApp()` resolves, before any login request.
-- API: static web files and SPA fallback served by the api; `/api/*` unknown routes still return A1 404 (not the SPA); security headers present; with `TRUST_PROXY` on, logins with two different `X-Forwarded-For` addresses use separate rate-limit buckets; with it off, a changing `X-Forwarded-For` header does not get around the limit (still `429`).
+- Unit: config rejects a production environment without `Secure`-compatible settings (e.g. `WEB_ORIGIN` not https); `TRUST_PROXY` accepts a non-negative integer, defaults to off and rejects invalid values; the dummy hash is ready right after `buildApp()` resolves, before any login request; `render.yaml` parses and has the service `kanban` (Docker, free, branch `develop`, health check `/health/ready`, at most one instance, auto-deploy after checks pass) and the database `kanban-db` (PostgreSQL 17), with `DATABASE_URL` taken from `kanban-db` and no literal secret values.
+- API: static web files and SPA fallback served by the api; `/api/*` unknown routes still return A1 404 (not the SPA); security headers present; with `TRUST_PROXY` on, logins with two different `X-Forwarded-For` addresses use separate rate-limit buckets; with it off, a changing `X-Forwarded-For` header does not get around the limit (still `429`). Process-level: the start-entry cases in the criteria above.
 - E2E: `@smoke` tag on the sign-up → create workspace flow, runnable against `BASE_URL`.
 - Accessibility: n/a.
 
-**Out of scope:** running any deploy, editing `.github/`, custom domain and DNS, multiple instances, monitoring/alerting service.
+**Out of scope:** running any deploy, editing `.github/`, building the Docker image, recording its size and running the backup drill (KB-045, João), custom domain and DNS, paid Render plans, multiple instances, monitoring/alerting service.
 
 **History:**
 - 2026-10-21 · planner · created as Proposed
@@ -1383,6 +1417,8 @@ Task template (copy for each new task):
 - 2026-11-23 · developer · In development → Ready for test · commit 7894e44
 - 2026-11-23 · tester · Ready for test → In test · testing started
 - 2026-11-23 · tester · In test → Failed · report 1: image size not recorded and image never built; pg_dump/pg_restore runbook untested
+- 2026-11-26 · planner · Failed → Proposed · spec revised by two Change lines from João (approvals.md, 2026-11-26): (1) the Docker image build with its size and the `pg_dump`/`pg_restore` drill move to KB-045, done by João; (2) deploy to Render instead of Railway on the free plan: `render.yaml` replaces `railway.json`, `prisma migrate deploy` runs at container start with `node` still receiving SIGTERM, Render auto-deploy after CI replaces the proposed GitHub workflow, free-plan sleeping and database expiry documented, ADR 0005 and `docs/deployment.md` updated; task renamed to "Deploy preparation for Render"; D4 revised. Retest on the remaining criteria. A Change puts an approved task back to Proposed; João must approve it again (`Approve | KB-031`) before the developer resumes it. Estimate stays M (about half a day of rework on top)
+- 2026-11-26 · planner · Proposed (no status change) · João's Answer KB-031 (approvals.md, 2026-11-26) applied: he deployed by hand on Render free, web service `kanban` (Docker, branch `develop`, health check `/health/ready`) and PostgreSQL 17 `kanban-db`, migrations run from his machine with `pnpm db:migrate`; `render.yaml` must use these names (now in the criteria). The same line still has unfilled template fields ("Image build on Render: <ok / failed: ...>", "App works: <yes / problems: ...>", "Backup drill: <done / not done>"); they are not treated as results and are asked back to João in the daily log
 
 ### KB-032 · README with demo
 
@@ -1788,3 +1824,172 @@ Task template (copy for each new task):
 **History:**
 - 2026-11-20 · planner · created as Proposed · follow-up from KB-033 (ADR 0004 section 7 "Still limited"; daily log 2026-11-18)
 - 2026-11-20 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-20, Answer "ADR 0004 §7": "Plan a follow-up: re-check the project still exists on room join")
+
+### KB-044 · Screen-reader spot check with NVDA + Chrome (done by João)
+
+- **MVP phase:** Quality and delivery
+- **Priority:** Medium
+- **Depends on:** KB-030
+- **Estimate:** S (João's time, about 15 minutes plus recording)
+- **Performed by:** João (manual). Agents cannot run a screen reader, so the developer never starts this task on its own.
+
+**Goal:** Close open item O1 of `docs/accessibility-audit.md`: confirm with a real screen reader that keyboard drag and drop and the live announcements work as the automated tests say, before the v1.0 release sign-off. Split out of KB-030 by João's Change of 2026-11-26.
+
+**How it moves through the workflow:** after approval it is `Planned`. João runs the script and reports the result with a line `Answer | KB-044 | <result per step, NVDA and Chrome versions, date>` in `approvals.md` (or edits the O1 section of the audit file himself). Only then does the developer take it: records the result in the audit file if João did not, writes the development entry quoting João's line, and moves it to `Ready for test`; the tester checks the record against the criteria below.
+
+**Acceptance criteria:**
+- [ ] Every step of the "NVDA spot-check script (for O1)" in `docs/accessibility-audit.md` has a recorded result (ok, or what NVDA actually said), with the NVDA and Chrome versions and the date, in the O1 section of the audit file.
+- [ ] O1 in the open-items table is marked closed with this task's ID, or, if any step failed, stays open with the failure described.
+- [ ] Every A/AA failure found is not fixed here: it is listed in "Decisions for João" in the daily log as a candidate task for the planner.
+- [ ] The result comes from João (his `approvals.md` line or his own commit to the audit file); agents do not invent or infer results.
+
+**Required tests:**
+- Unit: n/a.
+- API: n/a.
+- E2E: n/a (manual check).
+- Accessibility: the NVDA + Chrome script itself.
+
+**Out of scope:** other screen readers (JAWS, VoiceOver), fixing what the check finds (separate tasks), the target-size check (KB-047).
+
+**History:**
+- 2026-11-26 · planner · created as Proposed · from João's Change KB-030 (approvals.md, 2026-11-26): the NVDA + Chrome spot check leaves KB-030 and becomes a follow-up done by João (script O1 in `docs/accessibility-audit.md`)
+
+### KB-045 · Verify the production image and run the backup drill (done by João)
+
+- **MVP phase:** Quality and delivery
+- **Priority:** Medium
+- **Depends on:** KB-031
+- **Estimate:** S (João's time, about one hour)
+- **Performed by:** João (manual). Agents have no permission for `docker build`, `pg_dump` or `pg_restore` in this environment, so the developer never starts this task on its own.
+
+**Goal:** Do the two checks that KB-031 could not do in the agents' environment (moved out of it by João's Change of 2026-11-26): build and run the production image and record its size, and prove that the backup runbook works. On the Render free plan the `pg_dump`/`pg_restore` runbook is the only backup of `kanban-db`, so it must be tested before real data goes in.
+
+**How it moves through the workflow:** after approval it is `Planned`. João follows `docs/deployment.md` ("Verify the image locally" and "Backups") and reports with a line `Answer | KB-045 | <image size, smoke result, drill result and date>` in `approvals.md` (or edits `docs/deployment.md` himself). Only then does the developer take it: copies the results into `docs/deployment.md` if João did not, writes the development entry quoting João's line, and moves it to `Ready for test`; the tester checks the record.
+
+**Acceptance criteria:**
+- [ ] Image: `docker build -t kanban .` succeeds from a clean clone of the commit that closed KB-031; the image size is recorded in `docs/deployment.md` (replacing the "not recorded yet" line) with the date and commit. A successful build on Render of the same commit counts for the build, but the size still comes from a local `docker images`.
+- [ ] Container smoke: the image started against the compose database (migrations applied by the start entry from KB-031) serves the app at `http://localhost:8080`, `BASE_URL=http://localhost:8080 pnpm test:e2e --grep @smoke` passes, and `docker stop` ends with exit code 0 and a `shutting down` log line.
+- [ ] Backup drill: a `pg_dump --format=custom` of `kanban-db` (external URL, client tools version 17) is restored with `pg_restore` into an empty throwaway database; the `_prisma_migrations` row count and the row counts of `User`, `Card` and `YDocumentUpdate` match the source. Date, sizes and counts are written in the "Backups" section of `docs/deployment.md`, replacing the "not run" note.
+- [ ] Render check: in the `kanban` service logs, the client address of a request João makes is his public IP, not a Render internal address (confirms the `TRUST_PROXY` value documented by KB-031); the result is recorded next to the variable in `docs/deployment.md`.
+- [ ] Anything that fails is not fixed here: it is listed in "Decisions for João" in the daily log as a candidate task.
+
+**Required tests:**
+- Unit: n/a.
+- API: n/a.
+- E2E: the `@smoke` run against the container (above).
+- Accessibility: n/a.
+
+**Out of scope:** scheduled or automated backups, restoring into production, paid Render plans, performance of the deployed service.
+
+**History:**
+- 2026-11-26 · planner · created as Proposed · from João's two Change lines on KB-031 (approvals.md, 2026-11-26): the Docker image build (size check) and the `pg_dump`/`pg_restore` drill become a follow-up done by João. His Answer KB-031 of the same day leaves the "Image build on Render" and "Backup drill" fields unfilled, so nothing of this task is recorded as done yet
+
+### KB-046 · Say that the card no longer exists after a 404 on a move
+
+- **MVP phase:** Board
+- **Priority:** Medium
+- **Depends on:** KB-039
+- **Estimate:** S
+
+**Goal:** When a card move fails because the card no longer exists (404, the card was deleted by someone else), the board removes the tile (KB-039) but the assertive announcement still ends with "It is back in To do.", which is false and misleading for screen-reader users. Make the message match what happened. Planned from João's answer to the 2026-11-24 follow-up (KB-039 development entry, test report observation 1 and done record).
+
+**Acceptance criteria:**
+- [ ] When a move fails with `404 NOT_FOUND` and the card is tombstoned, the assertive message is `Could not move Card <KEY-n> '<title>': it no longer exists.` (or equivalent wording that names the card and says it no longer exists) and does not contain "It is back in". Focus moves to a sensible place (the column's next tile, or the column heading when it is empty), never to `body`.
+- [ ] Every path that announces a failed move uses this rule: pointer drop, keyboard drop, "Move to…" in the card dialog (the dialog closes and the same message is announced), and a move queued offline and replayed after reconnect (KB-021) when the replay returns 404.
+- [ ] Failures other than 404 keep the existing rollback message ("Could not move … : <API message>. It is back in <column>.") and the U6 rollback.
+- [ ] The message is said once (no duplicate from a board event or the refetch that follows).
+- [ ] Common criteria: G1, U5, U6.
+
+**Required tests:**
+- Unit: `cards-flow.test.tsx` (or the board test that covers rollbacks) updated: a 404 on a keyboard move announces the new message once and removes the tile; a `500` keeps the old message and the card returns to its column; the dialog "Move to…" path on 404.
+- API: n/a (no server change).
+- E2E: two browser contexts on the same board. B goes offline (`context.setOffline(true)`, so the delete event cannot cancel the drag first), A deletes a card, B moves that card with the keyboard and comes back online; the replayed move gets 404; B's assertive region has the "no longer exists" message and no "It is back in", the tile is gone and focus is on a tile or column heading. If the offline replay path cannot be made deterministic, the developer may instead answer B's move request with a Playwright route returning the real A1 404 body, and records why in the development entry.
+- Accessibility: the E2E above, done with the keyboard.
+
+**Out of scope:** changing other failure messages, restoring deleted cards.
+
+**History:**
+- 2026-11-26 · planner · created as Proposed · from João's Answer "2026-11-24 follow-up" (approvals.md, 2026-11-26): "Plan the fix: after a 404 on a card move, do not announce 'It is back in To do.'"
+
+### KB-047 · Automated target-size check (WCAG 2.2 SC 2.5.8)
+
+- **MVP phase:** Quality and delivery
+- **Priority:** Low
+- **Depends on:** KB-030
+- **Estimate:** S
+
+**Goal:** Close open item O2 of `docs/accessibility-audit.md`: target sizes were only reviewed in the stylesheet, never measured in a browser. Add a Playwright check that measures the interactive targets, fix any that fail, and keep the check as a regression test (it is re-run after KB-027).
+
+**Acceptance criteria:**
+- [ ] A Playwright spec (for example `e2e/target-size.spec.ts`) measures, with `boundingBox()`, every visible interactive element (links, buttons, inputs, selects, and elements with a `role` of button, link, menuitem, tab or option) on the log-in page, the workspace list, the members page, the board (tile link, move handle, column menu, add-card and add-column controls), the open card dialog, the backlog and the reports page, at the default viewport and at 360 px width.
+- [ ] Each target is at least 24 by 24 CSS px, or meets the SC 2.5.8 spacing exception (a 24 px circle centred on it does not overlap another target or its circle), or is an inline link in a sentence (exception). Exceptions are listed in the spec with the reason, never as a blanket skip.
+- [ ] Every target that fails is fixed in this task with CSS only (U8, no new components); fixes are listed in the development entry.
+- [ ] The audit file's O2 row and the board table row "Target size (SC 2.5.8)" are updated with the measured result and this task's ID; O2 is marked closed.
+- [ ] Common criteria: G1, U8, U9, U10.
+
+**Required tests:**
+- Unit: the spacing-exception helper (if extracted as a pure function) with overlapping, touching and separate targets.
+- API: n/a.
+- E2E: the spec above, part of `pnpm test:e2e`; existing specs still pass.
+- Accessibility: this task is the check.
+
+**Out of scope:** AAA target size (SC 2.5.5, 44 px), touch-device testing, the NVDA check (KB-044).
+
+**History:**
+- 2026-11-26 · planner · created as Proposed · from João's Answer "KB-030 follow-ups" (approvals.md, 2026-11-26): "Plan O2 (24 px target size)"
+
+### KB-048 · Jump between columns with the keyboard
+
+- **MVP phase:** Board
+- **Priority:** Low
+- **Depends on:** KB-028
+- **Estimate:** M
+
+**Goal:** Close open item O3 of `docs/accessibility-audit.md`: each tile has two Tab stops (D9), so on a large board a keyboard-only user must Tab through every card of a column to reach the next one. Give keyboard users a direct way to reach any column.
+
+**Acceptance criteria:**
+- [ ] A "Jump to column" navigation at the start of the board (a `nav` with an accessible name, visible at least when it has focus, reached right after the board heading): one link per column with its name and card count ("Done, 12 cards"). Activating a link moves focus to that column's first card tile, or to the column heading when the column is empty, scrolling it into view in the horizontal board container.
+- [ ] On a focused card tile (not while a card is picked up), ArrowLeft and ArrowRight move focus to the tile at the same index in the previous or next column (the last tile when that column is shorter; the column heading when it is empty), scrolling it into view, including in virtualized columns (KB-028). At the first or last column nothing happens. While a card is picked up the arrow keys keep their drag meaning (no change to KB-015).
+- [ ] The existing ArrowUp/ArrowDown/Home/End focus navigation inside a column is unchanged.
+- [ ] The keys are explained in the board's existing keyboard help text (or a short visually hidden description linked to the tiles with `aria-describedby`), and in `docs/accessibility-audit.md`; the O3 row is marked closed with this task's ID.
+- [ ] Works on the 600-card seeded board (`pnpm db:seed:large`) with no extra re-render of unrelated tiles (KB-028 render counter still passes).
+- [ ] Common criteria: G1, U3, U4, U9, U10.
+
+**Required tests:**
+- Unit: the target-index rule (same index, clamped to the shorter column, empty column → heading, edges) as a pure function.
+- API: n/a.
+- E2E: on the seeded large board, from the 300th card of column 1, ArrowRight focuses a tile in column 2; "Jump to column" → the last column focuses its first tile; picked-up card: ArrowRight still moves the card, not the focus; axe on the board.
+- Accessibility: the E2E above with the keyboard only.
+
+**Out of scope:** search or "go to card by reference", a configurable shortcut map, changes to the drag keys (KB-049 adds Home/End while held).
+
+**History:**
+- 2026-11-26 · planner · created as Proposed · from João's Answer "KB-030 follow-ups" (approvals.md, 2026-11-26): "Plan … O3 (skip to column)"
+
+### KB-049 · Move a picked-up card to the top or bottom of its column
+
+- **MVP phase:** Board
+- **Priority:** Low
+- **Depends on:** KB-015, KB-028
+- **Estimate:** S
+
+**Goal:** In long columns, moving a card to the top or bottom with the keyboard takes one arrow press per position. Add Home and End while a card is picked up. This is item (2) of the 2026-11-19 follow-ups ("jump to card" / "Move to top/bottom"). The "jump" half already exists for focus: Home and End on a tile move focus to the first or last card of its column since KB-028, so this task covers moving.
+
+**Acceptance criteria:**
+- [ ] While a card is picked up with the keyboard (KB-015, D9), Home moves it to the first position and End to the last position of the column it is currently over (with the dnd-kit keyboard coordinates extended for these keys, the virtualized column scrolled so the card stays visible). Each press is announced politely like an arrow step ("Card KB-7 … position 1 of 320 in To do"). Space drops it as today; Escape cancels and returns it to where it was picked up.
+- [ ] The drop persists through the normal move API with a fractional index before the first or after the last card (KB-010); no respacing beyond what the ordering ADR already allows.
+- [ ] When the card is already first (Home) or last (End), nothing moves and the current position is announced again.
+- [ ] The keyboard instructions announced on pick-up (and the board's help text) mention Home and End.
+- [ ] Home and End on a tile that is not picked up keep moving focus (KB-028 behaviour unchanged); this is covered by a test.
+- [ ] Common criteria: G1, U3, U5, R6.
+
+**Required tests:**
+- Unit: the Home/End branch of the keyboard coordinate logic (first, last, already at the edge, empty target column).
+- API: n/a (existing move endpoint).
+- E2E: on the seeded large board, pick up the 300th card with the keyboard, press Home, drop; after reload it is first in its column, and the announcement said position 1; End on the first card moves it last; a second browser sees the new position (R6).
+- Accessibility: the E2E above with the keyboard only.
+
+**Out of scope:** Home/End to change column, PageUp/PageDown steps, a "Move to top/bottom" button on the tile (the card dialog's "Move to…" already offers any position).
+
+**History:**
+- 2026-11-26 · planner · created as Proposed · from João's Answer "2026-11-19 follow-ups" (approvals.md, 2026-11-26): "Plan (2) 'jump to card' / 'Move to top/bottom' keyboard shortcut"; the focus jump already exists (Home/End on a tile, KB-028), so the task covers moving a held card
