@@ -1362,3 +1362,37 @@ Neither has an exception in the criteria (only the local `docker run` step does)
 
 **Observations (not failures):**
 1. Only a leading `--` is dropped; a `--` typed later is passed to Playwright unchanged (intended, tested).
+
+### KB-029 · End-to-end collaboration suite (two browsers)
+
+**Report 1 — 2026-11-26 — Failed**
+
+- **Commit tested:** `da6fb1f` (in `develop` history; no uncommitted changes apart from the status change in Planning). PostgreSQL was available, so database-dependent checks really ran. No tester test commit.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 187, web 343, api 497, root 4) | ✔ |
+| E2E full | `pnpm test:e2e` (61 passed, 1.6 min) | ✔ |
+| E2E flakiness | `pnpm test:e2e -- e2e/journeys --repeat-each=10 --retries=0`, first run | ✘ 1 failed, 9 passed (1.2 min) |
+| E2E flakiness (reruns) | same command: 10 passed; `--repeat-each=30`: 30 passed; `--repeat-each=20 --workers=2`: 20 passed | ✔ |
+| Database | No migration or schema change | n.a. |
+| Real time | Covered by the journey (see criteria) | see below |
+| Accessibility | Card move with the keyboard (Space, ArrowRight, Space) present in the journey, lines 115-120 | ✔ |
+
+**Acceptance criteria:**
+- [x] Journey in `e2e/journeys/collaboration.spec.ts` with two browser contexts: sign-up, workspace, project, invite, B joins through the link, keyboard move while B edits, concurrent description edit, B offline then reconnect, sprint start and close, demotion through the KB-038 dialog with read-only UI (`aria-readonly`) and API 403, assignee cleared in both browsers. Verified by reading the spec and by green runs.
+- [x] No fixed sleeps: grep for `waitForTimeout`, `setTimeout`, `sleep` finds nothing. One journey takes about 7-15 s, far below 5 minutes.
+- [ ] `pnpm test:e2e -- --repeat-each=10` with zero failures: NOT met. The first 10-repeat run (with `--retries=0`, right after the full suite) had 1 failure of 10; three further runs (10, 30, 20 repeats) were green. About 1 failure in 90 runs overall, so the journey is still flaky. I did not capture the failure message (output was truncated by the filter); the failing test is the single journey, `collaboration.spec.ts:36`.
+- [x] Common criteria G1, R4, R5, R6: checks green; convergence asserted by the journey.
+
+**Required tests:** E2E journey exists, tests the requested behaviour and is not trivial. Unit and API n/a. Accessibility: keyboard move present.
+
+**Failures:**
+1. Flakiness: `pnpm test:e2e -- e2e/journeys --repeat-each=10 --retries=0` produced 1 failed / 9 passed on the first run. Steps: run the full `pnpm test:e2e`, then immediately the command above. Expected: 10 passed. Actual: 1 failed (`collaboration.spec.ts:36`, cause not captured). Likely file: `e2e/journeys/collaboration.spec.ts` (timing around the sprint dialog, offline reconnect or demotion steps; the developer already found one similar race). Suggest the developer reruns with `--repeat-each=30 --retries=0 --reporter=line` and keeps traces on failure.
+
+**Observations (not failures):**
+1. The 02-development entry, iteration 2, still contains a stale "Blocker" line (no PostgreSQL) that is no longer true.
+2. The sprint dialog holds focus while closing (developer's note); possible small UI issue.
