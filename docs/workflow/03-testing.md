@@ -1425,3 +1425,36 @@ Neither has an exception in the criteria (only the local `docker run` step does)
 **Failures:** none.
 
 **Observations (not failures):** the sprint dialog holding focus while closing is still unchanged (out of scope).
+
+## KB-043 · Re-check that the room's resource still exists after a WebSocket join
+
+**Report 1 — 2026-11-26 — Passed**
+
+- **Commit tested:** `f7ca027` (in `develop` history; the only uncommitted change was the status change in Planning). PostgreSQL available. No tester test commit.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (api 501, root 4, all green) | ✔ |
+| E2E | `pnpm test:e2e` (61 passed, 1.7 min) | ✔ |
+| Database | No migration or schema change | n.a. |
+| Real time | `beforeJoin` seam tests with real `ws` clients; code review of `routes.ts` and `rooms.join` | ✔ |
+| Accessibility | No UI change | n.a. |
+
+**Acceptance criteria:**
+- [x] Re-check after registration: `check()` calls `authorize(..., 'workspace:read')` before the join and again after `rooms.join`; 404/403 give `4403`; the role is refreshed from the result. Verified in the diff.
+- [x] Closed socket leaves through the normal path; the project-deleted test waits for `rooms.size === 0`, the card test for the card room to be unloaded. Pending messages are queued until the re-check passes (`open` is set only afterwards).
+- [x] Unchanged joins behave as before (test "nothing changed" stays open and syncs); one extra policy call per join, none per message (replaces the membership query). The KB-033 membership-removed race test passes.
+- [x] Workspace deletion covered by a test (closes with `4403`).
+- [x] ADR 0004 section 7 amended, not rewritten (join race bullet, new "Resource re-check" bullet, "Still limited" bullet).
+- [x] Common criteria G1, G7, G8, R2 (404 and 403 both give `4403`).
+
+**Required tests:** all four listed API cases present (project deleted: board and card sockets; card soft-deleted: only its socket closes, board socket stays open; workspace deleted; nothing changed) and non-trivial. E2E, unit and accessibility n/a.
+
+**Failures:** none.
+
+**Observations (not failures):**
+1. `rooms.join` sends sync step 1 and the current awareness states before the re-check, so a socket that is about to be closed can receive them. This is the pre-existing KB-033 order and the criterion only requires no data after the close; no test asserts that nothing was received after the close.
+2. The Playwright web server log shows a stack trace during the run, but all 61 tests pass.
