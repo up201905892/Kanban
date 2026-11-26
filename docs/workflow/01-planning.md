@@ -1335,6 +1335,7 @@ Task template (copy for each new task):
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 - 2026-11-13 · planner · Planned (no status change) · D10 answered with option A (approvals.md, 2026-11-13): the demotion step now also asserts that B's cards are unassigned, so KB-038 is added as a dependency (no cycle: KB-038 does not depend on KB-029); estimate stays M
 - 2026-11-25 · developer · Planned → In development · started
+- 2026-11-26 · developer · In development → Ready for test · commit da6fb1f
 
 ### KB-030 · Accessibility audit and fixes
 
