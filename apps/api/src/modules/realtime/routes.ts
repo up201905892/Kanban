@@ -240,16 +240,21 @@ export function realtimeRoutes({
             }
             const resource: ResourceRef =
               ref.type === 'board' ? { type: 'board', id: ref.id } : { type: 'card', id: ref.id };
-            let ctx;
-            try {
-              ctx = await authorize(prisma, session.user, resource, 'workspace:read');
-            } catch (err) {
-              if (err instanceof AppError && (err.statusCode === 404 || err.statusCode === 403)) {
-                // Missing room and non-member look the same.
-                socket.close(WS_CLOSE.forbidden, 'Forbidden');
-                return;
+            // Missing room and non-member look the same (404/403 both end as 4403).
+            const check = async () => {
+              try {
+                return await authorize(prisma, session.user, resource, 'workspace:read');
+              } catch (err) {
+                if (err instanceof AppError && (err.statusCode === 404 || err.statusCode === 403)) {
+                  return null;
+                }
+                throw err;
               }
-              throw err;
+            };
+            const ctx = await check();
+            if (!ctx) {
+              socket.close(WS_CLOSE.forbidden, 'Forbidden');
+              return;
             }
             if (!can(ctx.role, 'workspace:read') || socket.readyState !== socket.OPEN) {
               socket.close(WS_CLOSE.forbidden, 'Forbidden');
@@ -268,19 +273,16 @@ export function realtimeRoutes({
             };
             conn = joining;
             if (!(await rooms.join(ref, joining))) return;
-            // Race (ADR 0004 section 7): a membership removed after the authorization above but
-            // before the connection was registered missed the bus. Re-check now that it is registered.
-            const membership = await prisma.membership.findUnique({
-              where: {
-                workspaceId_userId: { workspaceId: ctx.workspaceId, userId: session.user.id },
-              },
-              select: { role: true },
-            });
-            if (!membership) {
-              socket.close(WS_CLOSE.forbidden, 'Membership removed');
+            // Race (ADR 0004 section 7): a membership removed, or a project, card or workspace
+            // deleted, after the authorization above but before the connection was registered
+            // missed the bus. Re-check with the same policy now that it is registered; this also
+            // refreshes the role. The close runs the normal leave path.
+            const again = await check();
+            if (!again || !can(again.role, 'workspace:read')) {
+              socket.close(WS_CLOSE.forbidden, 'No longer available');
               return;
             }
-            joining.role = membership.role;
+            joining.role = again.role;
             open = true;
             for (const data of pending.splice(0)) process(data);
           } catch (err) {
