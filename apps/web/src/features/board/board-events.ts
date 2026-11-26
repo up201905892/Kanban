@@ -76,6 +76,30 @@ export function applyBoardEvent(
   }
 }
 
+/**
+ * Merges a freshly fetched board with the cached one. A fetch can be answered from a database read
+ * that is older than a real-time event already applied (the response overtakes nothing, the event
+ * overtakes the response); then the card in the cache has a higher `version` and is kept, so a
+ * stale refetch never undoes a newer move or edit. Everything else comes from the fetch.
+ */
+export function mergeFetchedBoard(
+  fetched: BoardResponse,
+  cached: BoardResponse | undefined,
+): BoardResponse {
+  if (!cached) return fetched;
+  const newer = new Map(cached.cards.map((c) => [c.id, c]));
+  let changed = false;
+  const cards = fetched.cards.map((card) => {
+    const kept = newer.get(card.id);
+    if (kept && kept.version > card.version) {
+      changed = true;
+      return kept;
+    }
+    return card;
+  });
+  return changed ? { ...fetched, cards } : fetched;
+}
+
 const summaryFields = (card: CardSummary) => ({
   columnId: card.columnId,
   title: card.title,

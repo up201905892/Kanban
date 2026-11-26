@@ -2,7 +2,7 @@ import type { BoardEvent, BoardResponse, Card, CardSummary, Column, Sprint } fro
 import { forgetMutationIds, isOwnMutation, newMutationId } from '../../lib/api/mutation-ids';
 import { parseBoardMessage } from '../../lib/realtime/board-socket';
 import { encodeBoardEvent } from '../../test-utils/websocket';
-import { applyBoardEvent, applyCardEvent, remoteChangeOf } from './board-events';
+import { applyBoardEvent, applyCardEvent, mergeFetchedBoard, remoteChangeOf } from './board-events';
 
 const id = (n: number) => `0192f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const BOARD = id(1);
@@ -280,5 +280,22 @@ describe('parseBoardMessage', () => {
     expect(parseBoardMessage(new Uint8Array([]))).toBeNull();
     const garbage = new TextEncoder().encode('{"type":"x","data":{"type":"nope"}}');
     expect(parseBoardMessage(new Uint8Array([4, garbage.length, ...garbage]))).toBeNull();
+  });
+});
+
+describe('mergeFetchedBoard (stale refetch)', () => {
+  it('keeps a cached card that is newer than the fetched one', () => {
+    const cached = board();
+    cached.cards = [card(1, id(102), { version: 3 }), card(2, id(102))];
+    const fetched = board();
+    const merged = mergeFetchedBoard(fetched, cached);
+    expect(merged.cards[0]).toEqual(cached.cards[0]);
+    expect(merged.cards[1]).toBe(fetched.cards[1]);
+  });
+
+  it('returns the fetched board when nothing is newer or nothing is cached', () => {
+    const fetched = board();
+    expect(mergeFetchedBoard(fetched, undefined)).toBe(fetched);
+    expect(mergeFetchedBoard(fetched, board())).toBe(fetched);
   });
 });

@@ -9,6 +9,7 @@ import {
 } from '@kanban/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, request } from '../../../lib/api';
+import { mergeFetchedBoard } from '../board-events';
 import { applyColumnDelete, applyColumnUpdate, sortColumns } from '../ordering';
 import { filterTombstoned, tombstoneColumn, tombstonesOf } from '../tombstones';
 
@@ -19,10 +20,14 @@ export function useBoard(projectId: string) {
   return useQuery({
     queryKey: boardKey(projectId),
     // A refetch that started before a deletion must not bring the card or column back (KB-039).
+    // A response older than an event already applied must not undo it either (card `version`).
     queryFn: async ({ signal }) =>
-      filterTombstoned(
-        await apiClient.get(`/api/projects/${projectId}/board`, boardResponseSchema, signal),
-        tombstonesOf(queryClient),
+      mergeFetchedBoard(
+        filterTombstoned(
+          await apiClient.get(`/api/projects/${projectId}/board`, boardResponseSchema, signal),
+          tombstonesOf(queryClient),
+        ),
+        queryClient.getQueryData<BoardResponse>(boardKey(projectId)),
       ),
   });
 }
