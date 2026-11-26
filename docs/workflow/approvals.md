@@ -28,6 +28,7 @@ How to use it: add one line per decision (on GitHub, on the `develop` branch, ev
 | 2026-11-26 | Answer | 2026-11-24 follow-up | Plan the fix: after a 404 on a card move, do not announce "It is back in To do." |
 | 2026-11-26 | Answer | 2026-11-19 follow-ups | Plan (2) "jump to card" / "Move to top/bottom" keyboard shortcut |
 | 2026-11-26 | Answer | KB-030 follow-ups | Plan O2 (24 px target size) and O3 (skip to column); O4 after KB-027 |
+| 2026-11-26 | Change | KB-031 | Deploy to Render instead of Railway (Railway is not an option), free plan: replace railway.json with render.yaml (web service from the Dockerfile + Render PostgreSQL), run prisma migrate deploy at container start while keeping node as the process that receives SIGTERM, use Render auto-deploy after CI passes instead of a GitHub workflow, document sleeping after inactivity and the free database expiry, update ADR 0005 and docs/deployment.md. Move the Docker image build and the pg_dump/pg_restore drill to a separate follow-up task done by João. Rename the task accordingly |
 
 Possible decisions:
 
