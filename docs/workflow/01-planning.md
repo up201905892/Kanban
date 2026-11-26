@@ -50,7 +50,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-040 | Enforce the description length limit in the shared document | Real time | Medium | KB-019 | Done |
 | KB-041 | Forward arguments through `pnpm test:e2e` | Quality and delivery | Medium | KB-003 | Done |
 | KB-042 | Direct unit tests for `validateSessionToken` | Authentication and workspaces | Low | KB-005, KB-028 | Planned |
-| KB-043 | Re-check that the room's resource still exists after a WebSocket join | Real time | Medium | KB-033 | Passed |
+| KB-043 | Re-check that the room's resource still exists after a WebSocket join | Real time | Medium | KB-033 | Done |
 | KB-044 | Screen-reader spot check with NVDA + Chrome (done by João) | Quality and delivery | Medium | KB-030 | Proposed |
 | KB-045 | Verify the production image and run the backup drill (done by João) | Quality and delivery | Medium | KB-031 | Proposed |
 | KB-046 | Say that the card no longer exists after a 404 on a move | Board | Medium | KB-039 | Proposed |
@@ -1836,6 +1836,7 @@ Task template (copy for each new task):
 - 2026-11-26 · developer · In development → Ready for test · commit f7ca027
 - 2026-11-26 · tester · Ready for test → In test · testing started
 - 2026-11-26 · tester · In test → Passed · report 1, all checks and criteria verified
+- 2026-11-26 · finisher · Passed → Done · definition of done met; CHANGELOG updated, ADR 0004 section 7 amended by the task, no API or env change needed; Real time phase complete, milestone recorded
 
 ### KB-044 · Screen-reader spot check with NVDA + Chrome (done by João)
 

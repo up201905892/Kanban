@@ -323,6 +323,15 @@ Entry template:
 - **Documentation:** client-only fix, so no `docs/api.md`, `.env.example` or ADR change; no migrations; no new dependencies
 - **Lessons:** the sprint dialog keeps focus while closing (not changed, out of scope; possible suggestion for the planner). The iteration 2 "Blocker" line in 02-development.md is stale (corrected in iteration 3). No TODO found in the task's code; no secret found. Milestone "Quality and delivery" not reached (KB-030, KB-031, KB-032 and others are open).
 
+### KB-043 · Re-check that the room's resource still exists after a WebSocket join — done on 2026-11-26
+
+- **Approving test report:** Report 1 (2026-11-26), commit f7ca027 (the later commits only change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** after the connection is registered in the room, the server re-runs the shared policy `authorize(..., 'workspace:read')` (replacing the membership-only query); a deleted project, soft-deleted card or deleted workspace gives 404/403 and closes the socket with `4403` through the normal leave path, so an emptied room is stored and unloaded; messages queued meanwhile are processed only after the re-check; one extra policy call per join, none per message.
+- **CHANGELOG:** "Fixed: Live connections no longer stay open on something that was deleted while they were connecting: if a project, card or workspace is deleted at the moment someone joins its live room, that connection is now closed instead of staying attached (KB-043)."
+- **Documentation:** ADR 0004 section 7 amended (done in the task); no new endpoints or messages, so no `docs/api.md` change; no new environment variables; no migrations; no new dependencies
+- **Lessons:** `rooms.join` still sends sync step 1 and awareness states before the re-check (pre-existing KB-033 order); no test asserts that nothing is received after the close; possible suggestion for the planner. No TODO found in the task's code; no secret found.
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
@@ -330,3 +339,4 @@ Entry template:
 - Foundations done — 2026-10-27 (KB-001, KB-002, KB-003, KB-004)
 - Authentication and workspaces done — 2026-11-02 (KB-005, KB-006, KB-007, KB-008, KB-009)
 - Sprints done — 2026-11-17 (KB-022, KB-023)
+- Real time done — 2026-11-26 (KB-016, KB-017, KB-018, KB-019, KB-020, KB-021, KB-033, KB-037, KB-039, KB-040, KB-043)

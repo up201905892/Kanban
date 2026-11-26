@@ -46,6 +46,7 @@ All notable changes to this project are recorded here, in the format of [Keep a 
 
 ### Fixed
 
+- Live connections no longer stay open on something that was deleted while they were connecting: if a project, card or workspace is deleted at the moment someone joins its live room, that connection is now closed instead of staying attached (KB-043).
 - A card that someone moves no longer jumps back to its old column when your board reloads at the same moment: a reload that is older than a live change no longer overwrites it (KB-029).
 - For people working on the project: `pnpm test:e2e` now passes options such as a test file, `--repeat-each` or `--retries` to Playwright, with or without a `--` before them, instead of running the whole suite and ignoring them (KB-041).
 - A card or column that someone deleted no longer comes back on the board because of a late live update or a slow reload of the board; a card that no longer exists is removed from the board when an action on it fails (KB-039).
