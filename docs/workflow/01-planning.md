@@ -36,7 +36,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-026 | Velocity of recent sprints | Reports and history | Low | KB-023 | Planned |
 | KB-027 | Adopt `@up201905892/ui` and replace local components | Design system | Medium | KB-004, KB-030, external: `@up201905892/ui` published on npm | Proposed |
 | KB-028 | Performance with 500+ cards | Quality and delivery | Medium | KB-018 | Done |
-| KB-029 | End-to-end collaboration suite (two browsers) | Quality and delivery | Medium | KB-009, KB-021, KB-023, KB-034, KB-038, KB-039 | Ready for test |
+| KB-029 | End-to-end collaboration suite (two browsers) | Quality and delivery | Medium | KB-009, KB-021, KB-023, KB-034, KB-038, KB-039 | Passed |
 | KB-030 | Accessibility audit and fixes | Quality and delivery | Medium | KB-020, KB-021, KB-024, KB-025 | Proposed |
 | KB-031 | Deploy preparation for Render | Quality and delivery | Medium | KB-017, KB-037 | Proposed |
 | KB-032 | README with demo | Quality and delivery | Medium | KB-028, KB-031 | Planned |
@@ -1340,6 +1340,8 @@ Task template (copy for each new task):
 - 2026-11-26 · tester · In test → Failed · report 1: journey flaky, 1 of 10 failed with --repeat-each=10 --retries=0 (later runs green)
 - 2026-11-26 · developer · Failed → In development · fixing the flakiness from report 1
 - 2026-11-26 · developer · In development → Ready for test · commit 27a1fb0
+- 2026-11-26 · tester · Ready for test → In test · testing started (report 2)
+- 2026-11-26 · tester · In test → Passed · report 2: all checks green, 50/50 and 10/10 journey repeats with --retries=0
 
 ### KB-030 · Accessibility audit and fixes
 

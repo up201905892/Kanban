@@ -1396,3 +1396,32 @@ Neither has an exception in the criteria (only the local `docker run` step does)
 **Observations (not failures):**
 1. The 02-development entry, iteration 2, still contains a stale "Blocker" line (no PostgreSQL) that is no longer true.
 2. The sprint dialog holds focus while closing (developer's note); possible small UI issue.
+
+**Report 2 — 2026-11-26 — Passed**
+
+- **Commit tested:** `27a1fb0` (in `develop` history; the only uncommitted change was the status change in Planning). PostgreSQL available. No tester test commit.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 187, web 345, api 497, root 4) | ✔ |
+| E2E full | `pnpm test:e2e` (61 passed, 1.6 min) | ✔ |
+| E2E flakiness | `pnpm test:e2e -- e2e/journeys --repeat-each=50 --retries=0 --workers=4` | ✔ 50 passed (6.0 min) |
+| E2E flakiness (spec command) | `pnpm test:e2e -- e2e/journeys --repeat-each=10 --retries=0` | ✔ 10 passed (1.3 min) |
+| Database | No migration or schema change | n.a. |
+| Real time | Journey asserts convergence (move vs edit, shared description, offline reconnect); the fix guards stale refetches | ✔ |
+| Accessibility | Keyboard card move in the journey | ✔ |
+
+**Acceptance criteria:**
+- [x] Journey with two browsers covering all listed steps (unchanged since report 1, verified by reading and green runs); the fix `mergeFetchedBoard` is a genuine application fix for the race (a stale refetch undoing a newer `card_moved`), with two unit tests that test it non-trivially.
+- [x] No fixed sleeps (grep finds none); one journey about 8-15 s, far below 5 minutes.
+- [x] `--repeat-each=10` zero failures: 10/10, plus 50/50 under 4 workers with `--retries=0`. Together with the developer's 110 passes, report 1's flake is resolved (statistical evidence).
+- [x] Common criteria G1, R4, R5, R6.
+
+**Required tests:** E2E journey present and non-trivial; keyboard move present; unit and API n/a.
+
+**Failures:** none.
+
+**Observations (not failures):** the sprint dialog holding focus while closing is still unchanged (out of scope).
