@@ -803,6 +803,20 @@ Entry template:
   - Selectors reuse the ones in `members`, `offline`, `sprints` and `collab-description` specs, but were written without a run; expect small fixes (for example the priority change racing with the move, or the `Created offline` card name once numbered).
   - Suggestion for the planner: KB-029 asks for `pnpm test:e2e -- --repeat-each=10`, which relies on KB-041; consider adding KB-041 as a dependency.
 
+**Iteration 3 — 2026-11-26**
+
+- **Status at the end:** Ready for test
+- **Correction to iteration 2:** the "Blocker" line above (no PostgreSQL) is stale and no longer true. PostgreSQL is available as a service, `pnpm test` and `pnpm test:e2e` were run, and the "local checks" line of that iteration that says "not run" is superseded by the one just above it (all green). The records above are kept as written.
+- **Root cause (application bug, not the test):** reproduced with `--repeat-each=40 --workers=4 --retries=0` (1 failure; `--repeat-each=30` at default workers was green). The failing assertion was B's `In progress` column staying empty after A moved JR-1, while B's board showed the priority change (Urgent) in `To do`. B sends a priority PATCH at the same time as A's move. After the PATCH, B refetches the board; if that read happens before A's move commits but the response arrives after the `card_moved` event was applied, the refetch replaced the cache with the older board and undid the move. `applyBoardEvent` already ignored stale events by `version`, but fetched boards were not guarded. Real users can hit this too.
+- **Fix:** `mergeFetchedBoard` in `apps/web/src/features/board/board-events.ts`: a fetched board keeps any cached card whose `version` is higher than the fetched one. Used in the `useBoard` query function (`features/board/api/board.ts`). Two unit tests added. The journey spec is unchanged.
+- **Changed files:** `apps/web/src/features/board/board-events.ts`, `apps/web/src/features/board/board-events.test.ts`, `apps/web/src/features/board/api/board.ts`
+- **Migrations:** none
+- **Commit(s):** `27a1fb0`
+- **Flakiness check:** after the fix, `--repeat-each=60 --workers=4 --retries=0`: 60 passed (7.0 min); `pnpm test:e2e -- e2e/journeys --repeat-each=50 --retries=0`: 50 passed (5.9 min); full `pnpm test:e2e`: 61 passed. Total 110 consecutive passes at `--retries=0`. The root cause was seen once in 40 runs before the fix, so this is strong but statistical evidence.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 187, web 345, api 497, root 4) · test:e2e ok (61)
+- **New dependencies (G9):** none
+- **Notes for the tester:** rerun `pnpm test:e2e -- e2e/journeys --repeat-each=50 --retries=0` (also `--workers=4` to add load). The sprint dialog holding focus while closing is still unchanged (out of scope).
+
 ### KB-041 · Forward arguments through `pnpm test:e2e`
 
 **Iteration 1 — 2026-11-25**
