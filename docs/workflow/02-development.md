@@ -838,3 +838,18 @@ Entry template:
 - **Notes for the tester:**
   - Please run the full `pnpm test:e2e` and a real run of `pnpm test:e2e -- e2e/members.spec.ts --repeat-each=2 --retries=0` with a database.
   - Suggestion for the planner: KB-029 can now use `pnpm test:e2e -- --repeat-each=10`.
+
+### KB-043 · Re-check that the room's resource still exists after a WebSocket join
+
+**Iteration 1 — 2026-11-26**
+
+- **Status at the end:** Ready for test
+- **What was done:** in `apps/api/src/modules/realtime/routes.ts` the authorization is a local `check()` (policy `authorize(..., 'workspace:read')`, 404/403 mapped to "not allowed"). It runs before the join as before and again after the connection is registered in the room, replacing the membership-only query. A failed re-check closes with `4403` through the normal leave path (the emptied room is stored and unloaded); the role is refreshed from the result; messages queued meanwhile are processed only after the re-check. One extra policy call per join, none per message. Workspace deletion is covered because it removes the memberships.
+- **ADR:** `docs/adr/0004-real-time-architecture.md` section 7 amended (join race bullet, new "Resource re-check" bullet, "Still limited" bullet).
+- **Changed files:** `apps/api/src/modules/realtime/routes.ts`, `apps/api/src/modules/realtime/realtime.test.ts`, `docs/adr/0004-real-time-architecture.md`
+- **Migrations:** none
+- **Commit(s):** `f7ca027`
+- **Tests written by the developer:** API (real `ws` clients, `beforeJoin` seam): project deleted in the window closes a board and a card socket with 4403 and leaves no room; card soft-deleted closes only its description socket while the board socket stays open; workspace deleted closes with 4403; nothing changed keeps the socket open and syncing. The KB-033 membership-removed race test still passes.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 187, web 345, api 501, root 4) · E2E not required (n/a)
+- **New dependencies (G9):** none
+- **Notes for the tester:** none beyond the criteria; no client changes.

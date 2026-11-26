@@ -50,7 +50,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-040 | Enforce the description length limit in the shared document | Real time | Medium | KB-019 | Done |
 | KB-041 | Forward arguments through `pnpm test:e2e` | Quality and delivery | Medium | KB-003 | Done |
 | KB-042 | Direct unit tests for `validateSessionToken` | Authentication and workspaces | Low | KB-005, KB-028 | Planned |
-| KB-043 | Re-check that the room's resource still exists after a WebSocket join | Real time | Medium | KB-033 | Planned |
+| KB-043 | Re-check that the room's resource still exists after a WebSocket join | Real time | Medium | KB-033 | Ready for test |
 | KB-044 | Screen-reader spot check with NVDA + Chrome (done by João) | Quality and delivery | Medium | KB-030 | Proposed |
 | KB-045 | Verify the production image and run the backup drill (done by João) | Quality and delivery | Medium | KB-031 | Proposed |
 | KB-046 | Say that the card no longer exists after a 404 on a move | Board | Medium | KB-039 | Proposed |
@@ -1832,6 +1832,8 @@ Task template (copy for each new task):
 **History:**
 - 2026-11-20 · planner · created as Proposed · follow-up from KB-033 (ADR 0004 section 7 "Still limited"; daily log 2026-11-18)
 - 2026-11-20 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-20, Answer "ADR 0004 §7": "Plan a follow-up: re-check the project still exists on room join")
+- 2026-11-26 · developer · Planned → In development · started
+- 2026-11-26 · developer · In development → Ready for test · commit f7ca027
 
 ### KB-044 · Screen-reader spot check with NVDA + Chrome (done by João)
 
