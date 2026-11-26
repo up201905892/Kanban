@@ -16,6 +16,20 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-26
+
+- **Decisions for João:**
+  - **Approve to resume:** KB-030 and KB-031 went back to `Proposed` after your Changes (a Change sends a task back for approval). Add `Approve | KB-030, KB-031` to `approvals.md` to resume them. KB-032 waits on KB-031.
+  - **Unfilled answer:** your `Answer | KB-031` line of 2026-11-26 still has template placeholders ("Image build on Render: <ok / failed...>", "App works: <yes / problems...>", "Backup drill: <done / not done>"). They were not treated as results. Add a new `Answer | KB-031` line with the real values, or report them under KB-045.
+  - The request to copy `railway-deploy.yml` into `.github/workflows/` is withdrawn (Render auto-deploys after CI).
+- **Done:** KB-029 (two-browser collaboration suite), KB-043 (re-check the resource after a WebSocket join)
+- **Tested:** KB-029 (Failed on flakiness, 1 in 90 runs; Passed on report 2), KB-043 (Passed)
+- **Developed:** KB-029 (resumed; the flake was a real client bug, a stale board refetch undoing a newer card move, fixed with `mergeFetchedBoard`), KB-043
+- **Planning:** applied your 2026-11-26 decisions; new tasks KB-044 to KB-049 (all `Proposed`)
+- **Proposals awaiting approval:** KB-027 (waits for `@up201905892/ui` on npm), KB-030, KB-031, KB-044 (NVDA spot check, yours), KB-045 (image build and backup drill, yours), KB-046, KB-047, KB-048, KB-049
+- **Rule violations found:** none (KB-030 and KB-031 going `Failed` → `Proposed` is explained in their histories)
+- **Next step:** KB-014, KB-026 and KB-042 are `Planned` and get developed next. Minor, not planned: the sprint dialog holds focus briefly while closing, and `cardKey` has the same stale-overwrite exposure as the board query.
+
 ## 2026-11-25
 
 - **Decisions for João:**
