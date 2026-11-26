@@ -46,6 +46,7 @@ All notable changes to this project are recorded here, in the format of [Keep a 
 
 ### Fixed
 
+- A card that someone moves no longer jumps back to its old column when your board reloads at the same moment: a reload that is older than a live change no longer overwrites it (KB-029).
 - For people working on the project: `pnpm test:e2e` now passes options such as a test file, `--repeat-each` or `--retries` to Playwright, with or without a `--` before them, instead of running the whole suite and ignoring them (KB-041).
 - A card or column that someone deleted no longer comes back on the board because of a late live update or a slow reload of the board; a card that no longer exists is removed from the board when an action on it fails (KB-039).
 - Picking up a card with the keyboard or mouse no longer sometimes announces a move to the same position, which could replace the "Picked up" announcement for screen reader users (KB-035).

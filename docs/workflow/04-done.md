@@ -314,6 +314,15 @@ Entry template:
 - **Documentation:** tooling change, so no `docs/api.md`, `.env.example` or ADR change; README and `docs/` already show only working forms; no migrations; no new dependencies
 - **Lessons:** only a leading `--` is dropped, a later one reaches Playwright unchanged (intended, tested). KB-029 can now use `pnpm test:e2e -- --repeat-each=10`. No TODO found in the task's code; no secret found. Milestone "Quality and delivery" not reached (KB-029, KB-030, KB-031, KB-032 and others are open).
 
+### KB-029 · End-to-end collaboration suite (two browsers) — done on 2026-11-26
+
+- **Approving test report:** Report 2 (2026-11-26), commit 27a1fb0 (the later commits, e9ff2a3 and 205ab56, only change workflow records; no production code changed after it)
+- **Development iterations:** 3 (report 1 Failed on flakiness)
+- **Delivered:** `e2e/journeys/collaboration.spec.ts`, one two-browser journey (sign-up, workspace, project, invite link, keyboard card move while the other edits, concurrent description edit, offline and reconnect, sprint start and close, demotion through the KB-038 dialog with read-only UI, API 403 and cleared assignees); no fixed sleeps; about 8-15 s per run; 10/10 and 50/50 repeats at `--retries=0`. The flake was a real application race, fixed by `mergeFetchedBoard`: a fetched board keeps cached cards with a higher `version`.
+- **CHANGELOG:** "Fixed: A card that someone moves no longer jumps back to its old column when your board reloads at the same moment: a reload that is older than a live change no longer overwrites it (KB-029)."
+- **Documentation:** client-only fix, so no `docs/api.md`, `.env.example` or ADR change; no migrations; no new dependencies
+- **Lessons:** the sprint dialog keeps focus while closing (not changed, out of scope; possible suggestion for the planner). The iteration 2 "Blocker" line in 02-development.md is stale (corrected in iteration 3). No TODO found in the task's code; no secret found. Milestone "Quality and delivery" not reached (KB-030, KB-031, KB-032 and others are open).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
