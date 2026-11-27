@@ -882,3 +882,26 @@ Entry template:
   - I did not run a manual contrast check of the 8 tints; axe reports no serious or critical violations.
   - Suggestion for the planner: filtering the board by label is out of scope here (as the task says) and would be a natural follow-up task; a live label list on the settings page would need a socket there.
 - **Blocker:** none
+
+### KB-026 · Velocity of recent sprints
+
+**Iteration 1 — 2026-11-27**
+
+- **Status at the end:** Ready for test
+- **What was done:**
+  - Shared: `packages/shared/src/velocity.ts` (`velocityResponseSchema` with at most 6 sprints, `averageCompleted` rounded to one decimal and 0 for none, `velocitySummary` text).
+  - API: `GET /api/projects/:pid/velocity` in the sprints module (`velocity.ts`, route in `routes.ts`). Authorization through the policy with `workspace:read` (any role; a non-member gets the same 404 as a missing project). It reads the last 6 closed sprints by `closedAt` descending and returns them oldest first with the stored `committedPoints` and `completedPoints` (null counts as 0), plus the average completed. No migration: KB-022 and KB-023 already store both numbers.
+  - Web: `features/reports/VelocityView.tsx` (Recharts bar chart, text summary, table alternative with a keyboard toggle "Show velocity as table", empty state "Close a sprint to see velocity", error state with retry) and the `useVelocity` TanStack Query hook (`refetchOnMount: 'always'`, so a sprint closed just before is shown). `ReportsPage` renders it in a "Velocity" section below the burndown.
+- **Changed files:** `packages/shared/src/{velocity.ts,velocity.test.ts,index.ts}`; `apps/api/src/modules/sprints/{velocity.ts,velocity.test.ts,routes.ts}`; `apps/web/src/features/reports/{VelocityView.tsx,velocity-flow.test.tsx,burndown-flow.test.tsx,api/velocity.ts,api/index.ts}`; `apps/web/src/routes/ReportsPage.tsx`; `e2e/velocity.spec.ts`
+- **Migrations:** none
+- **Commit(s):** `947e9b7`
+- **Tests written by the developer:**
+  - Unit (shared): average with 0, 1 and 6 sprints; schema limit; summary text. Web flow: summary, chart, table by keyboard, empty state.
+  - API (real PostgreSQL): empty when only planned or active sprints exist; 8 closed sprints give the last 6 in chronological order with the average; 404 non-member identical to a missing project; 401.
+  - E2E (`e2e/velocity.spec.ts`): empty state, then after closing a sprint the table shows 8 committed and 5 completed; keyboard toggle; axe (serious and critical) in both states.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 215, web 366, api 523, root 4) · test:e2e ok (64 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - Decisions the spec left open: the toggle label is "Show velocity as table" so it differs from the burndown toggle on the same page. "Last 6" is ordered by close time. The reports page does not subscribe to sprint events, so velocity updates on the next visit (refetch on mount), not live.
+  - The burndown flow test fixture got a velocity stub because the reports page now requests it.
+- **Blocker:** none
