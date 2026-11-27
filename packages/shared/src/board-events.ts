@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { columnSchema } from './board.js';
 import { cardSummarySchema } from './cards.js';
+import { labelSchema } from './labels.js';
 import { sprintSchema } from './sprints.js';
 
 /** Request header a client sets on every mutation so it can recognise the echo of its own change. */
@@ -57,6 +58,25 @@ export const boardEventSchema = z.discriminatedUnion('type', [
     type: z.literal('sprint_updated'),
     ...baseFields,
     entity: sprintSchema,
+    version: z.null(),
+  }),
+  /** A project label was created, renamed or recoloured. Labels are not versioned (always applied). */
+  z.strictObject({
+    type: z.literal('label_created'),
+    ...baseFields,
+    entity: labelSchema,
+    version: z.null(),
+  }),
+  z.strictObject({
+    type: z.literal('label_updated'),
+    ...baseFields,
+    entity: labelSchema,
+    version: z.null(),
+  }),
+  z.strictObject({
+    type: z.literal('label_deleted'),
+    ...baseFields,
+    entity: z.strictObject({ id: z.uuid(), name: z.string() }),
     version: z.null(),
   }),
   z.strictObject({

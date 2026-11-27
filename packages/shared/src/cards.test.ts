@@ -82,6 +82,7 @@ describe('cardSchema', () => {
       priority: 'none',
       estimate: null,
       sprintId: null,
+      labelIds: [],
       description: '',
       createdById: id,
       createdAt: '2026-11-05T10:00:00.000Z',
@@ -158,6 +159,10 @@ describe('activityEventDataSchema', () => {
       { type: 'estimate_changed', data: { from: null, to: 5 } },
       { type: 'sprint_added', data: { sprintId: id, sprintName: 'Sprint 1' } },
       { type: 'sprint_removed', data: { sprintId: id, sprintName: 'Sprint 1' } },
+      {
+        type: 'labels_changed',
+        data: { added: [{ id, name: 'Bug' }], removed: [] },
+      },
       {
         type: 'sprint_removed',
         data: { sprintId: id, sprintName: 'Sprint 1', reason: 'sprint_closed' },

@@ -71,6 +71,7 @@ export function useCreateCard(projectId: string) {
             priority: 'none' as const,
             estimate: null,
             sprintId: null,
+            labelIds: [],
           },
         ],
       };

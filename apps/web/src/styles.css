@@ -288,6 +288,78 @@ main,
   font-weight: 600;
 }
 
+/* Labels (KB-014): the name is the information, the colour a secondary cue (dark text on a light tint). */
+.card-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.label-chip {
+  display: inline-block;
+  padding: 0 0.5rem;
+  border: 2px solid #555;
+  border-radius: 4px;
+  background: #eee;
+  color: #111;
+  font-size: 0.75rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.label-red {
+  background: #ffd9d9;
+  border-color: #b3261e;
+}
+.label-orange {
+  background: #ffe6cc;
+  border-color: #b85c00;
+}
+.label-yellow {
+  background: #fff6bf;
+  border-color: #8a6d00;
+}
+.label-green {
+  background: #d5f2d9;
+  border-color: #1e7a2e;
+}
+.label-teal {
+  background: #cdf1ee;
+  border-color: #0b7a75;
+}
+.label-blue {
+  background: #d6e6ff;
+  border-color: #1a56b8;
+}
+.label-purple {
+  background: #e8dbff;
+  border-color: #6a3fb5;
+}
+.label-gray {
+  background: #e4e4e4;
+  border-color: #555;
+}
+
+.label-list,
+.label-settings-list {
+  list-style: none;
+  padding: 0;
+}
+
+.label-list li,
+.label-settings-list li {
+  margin-bottom: 0.25rem;
+}
+
+.label-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
 .card-fields dt {
   font-weight: 600;
 }

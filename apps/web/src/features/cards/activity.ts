@@ -51,6 +51,19 @@ export function describeActivity(entry: ActivityEntry, names: ActivityNames): st
       return entry.data.reason === 'sprint_closed'
         ? `${entry.data.sprintName} was closed and this card went back to the backlog`
         : `${who} removed this card from ${entry.data.sprintName}`;
+    case 'labels_changed': {
+      const names = (list: { name: string }[]) => list.map((l) => quote(l.name)).join(', ');
+      const noun = (list: unknown[]) => (list.length === 1 ? 'label' : 'labels');
+      const parts = [
+        entry.data.added.length > 0
+          ? `added ${noun(entry.data.added)} ${names(entry.data.added)}`
+          : '',
+        entry.data.removed.length > 0
+          ? `removed ${noun(entry.data.removed)} ${names(entry.data.removed)}`
+          : '',
+      ].filter((part) => part !== '');
+      return `${who} ${parts.join(' and ')}`;
+    }
     default: {
       const unhandled: never = entry;
       return String(unhandled);

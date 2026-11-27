@@ -1,4 +1,5 @@
 import type { BoardEvent, BoardResponse, Card, CardSummary, Column } from '@kanban/shared';
+import { removeLabel, upsertLabel } from '../labels/labels';
 import { sortSprints } from '../sprints/planning';
 import type { Tombstones } from './tombstones';
 
@@ -73,6 +74,11 @@ export function applyBoardEvent(
         event.entity.status === 'closed' ? others : sortSprints([...others, event.entity]);
       return { ...board, sprints };
     }
+    case 'label_created':
+    case 'label_updated':
+      return upsertLabel(board, event.entity);
+    case 'label_deleted':
+      return removeLabel(board, event.entity.id);
   }
 }
 
@@ -109,6 +115,7 @@ const summaryFields = (card: CardSummary) => ({
   priority: card.priority,
   estimate: card.estimate,
   sprintId: card.sprintId,
+  labelIds: card.labelIds,
 });
 
 /**

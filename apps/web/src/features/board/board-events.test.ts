@@ -28,6 +28,7 @@ const card = (n: number, columnId = id(101), extra: Partial<CardSummary> = {}): 
   priority: 'none',
   estimate: null,
   sprintId: null,
+  labelIds: [],
   ...extra,
 });
 
@@ -36,6 +37,7 @@ const board = (): BoardResponse => ({
   columns: [column(1), column(2), column(3, { isDone: true })],
   cards: [card(1), card(2, id(102))],
   sprints: [],
+  labels: [],
 });
 
 const base = { boardId: BOARD, actorId: ACTOR, at: '2026-11-10T10:00:00.000Z' };

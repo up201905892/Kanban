@@ -26,6 +26,7 @@ const card = (n: number, extra: Record<string, unknown> = {}) => ({
   priority: 'none',
   estimate: null,
   sprintId: null,
+  labelIds: [],
   ...extra,
 });
 
@@ -46,6 +47,7 @@ function server(cards: ReturnType<typeof card>[]) {
         columns: [{ id: COLUMN, boardId: BID, name: 'To do', position: 'a0', isDone: true }],
         cards: [...cards].sort(compareByPosition),
         sprints: [],
+        labels: [],
       }),
   };
 }

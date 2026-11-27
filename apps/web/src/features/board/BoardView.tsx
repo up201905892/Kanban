@@ -822,6 +822,7 @@ export function BoardView({
                       cards={cardsShown(column.id)}
                       canDrag={canEditCards}
                       members={members}
+                      labels={board.data.labels}
                       heldId={heldId}
                       registerReveal={registerReveal}
                     />
@@ -871,6 +872,7 @@ export function BoardView({
             canEdit={canEditCards}
             columns={columns}
             members={members}
+            labels={board.data.labels}
             onMove={moveTo}
             onClose={() => closeCard(board.data.cards.find((c) => c.number === openCardNumber))}
             onDelete={removeCard}

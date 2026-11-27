@@ -18,6 +18,7 @@ import { cardRoutes } from './modules/cards/routes.js';
 import { createRealtime, realtimeRoutes, type RealtimeOptions } from './modules/realtime/routes.js';
 import { createDescriptionPersistence } from './modules/realtime/description.js';
 import { createPrismaDocumentStore, createYjsPersistence } from './modules/realtime/persistence.js';
+import { labelRoutes } from './modules/labels/routes.js';
 import { projectRoutes } from './modules/projects/routes.js';
 import { sprintRoutes } from './modules/sprints/routes.js';
 import { workspaceRoutes } from './modules/workspaces/routes.js';
@@ -144,6 +145,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     void app.register(boardRoutes({ prisma: options.prisma }));
     void app.register(cardRoutes({ prisma: options.prisma }));
     void app.register(sprintRoutes({ prisma: options.prisma }));
+    void app.register(labelRoutes({ prisma: options.prisma }));
     // Documents live in PostgreSQL unless a test injects another persistence hook (KB-017).
     const realtimeOptions: RealtimeOptions = {
       ...options.realtime,

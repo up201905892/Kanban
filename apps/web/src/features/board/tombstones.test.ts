@@ -24,6 +24,7 @@ const card = (n: number, columnId = id(101), version = 1): CardSummary => ({
   priority: 'none',
   estimate: null,
   sprintId: null,
+  labelIds: [],
 });
 
 const board = (): BoardResponse => ({
@@ -31,6 +32,7 @@ const board = (): BoardResponse => ({
   columns: [column(1), column(2)],
   cards: [card(1), card(2, id(102))],
   sprints: [],
+  labels: [],
 });
 
 const base = { boardId: BOARD, actorId: id(2), at: '2026-11-24T10:00:00.000Z' };

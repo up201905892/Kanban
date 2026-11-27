@@ -6,9 +6,11 @@ import {
   type Card,
   type CardSummary,
   type Column,
+  type Label,
   type Member,
 } from '@kanban/shared';
 import { Button, Dialog, ErrorState, Select, Spinner, useAnnounce } from '../../components';
+import { LabelPicker } from '../labels/LabelPicker';
 import { usePresence } from '../presence/PresenceContext';
 import { othersOnCard } from '../presence/view-model';
 import { useCard, useUpdateCard } from './api';
@@ -29,6 +31,8 @@ export interface CardDialogProps {
   columns: Column[];
   /** Members of the workspace: the assignee choices and names. */
   members: Member[];
+  /** Every label of the project. */
+  labels: Label[];
   /** "Move to...": the non-drag way to move the card. */
   onMove: (card: CardSummary, columnId: string, placement: 'top' | 'bottom') => void;
   /** The number from the address, for the "not found" message. */
@@ -46,6 +50,7 @@ export function CardDialog({
   canEdit,
   columns,
   members,
+  labels,
   onMove,
   number,
   onClose,
@@ -74,6 +79,7 @@ export function CardDialog({
       canEdit={canEdit}
       columns={columns}
       members={members}
+      labels={labels}
       onMove={onMove}
       onClose={onClose}
       onDelete={onDelete}
@@ -88,6 +94,7 @@ interface CardDetailProps {
   canEdit: boolean;
   columns: Column[];
   members: Member[];
+  labels: Label[];
   onMove: (card: CardSummary, columnId: string, placement: 'top' | 'bottom') => void;
   onClose: () => void;
   onDelete: (card: CardSummary) => void;
@@ -100,6 +107,7 @@ function CardDetail({
   canEdit,
   columns,
   members,
+  labels,
   onMove,
   onClose,
   onDelete,
@@ -158,6 +166,13 @@ function CardDetail({
         <>
           <TitleSection projectId={projectId} card={card.data} canEdit={canEdit} />
           <CardFields projectId={projectId} card={card.data} members={members} canEdit={canEdit} />
+          <LabelPicker
+            projectId={projectId}
+            cardId={summary.id}
+            labelIds={summary.labelIds}
+            labels={labels}
+            canEdit={canEdit}
+          />
           <DescriptionSection card={card.data} canEdit={canEdit} />
         </>
       )}

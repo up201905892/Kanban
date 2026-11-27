@@ -14,7 +14,9 @@ const card = {
   priority: 'none',
   estimate: null,
   sprintId: null,
+  labelIds: [id(40)],
 };
+const label = { id: id(40), projectId: id(3), name: 'Bug', color: 'red' };
 const sprint = {
   id: id(30),
   projectId: id(3),
@@ -40,6 +42,9 @@ describe('boardEventSchema', () => {
       { type: 'card_updated', ...base, entity: card, version: 3, clientMutationId: id(99) },
       { type: 'card_moved', ...base, entity: card, version: 3 },
       { type: 'sprint_updated', ...base, entity: sprint, version: null },
+      { type: 'label_created', ...base, entity: label, version: null },
+      { type: 'label_updated', ...base, entity: label, version: null },
+      { type: 'label_deleted', ...base, entity: { id: id(40), name: 'Bug' }, version: null },
       {
         type: 'card_deleted',
         ...base,
@@ -77,6 +82,21 @@ describe('boardEventSchema', () => {
         version: 3,
         clientMutationId: 'nope',
       }).success,
+    ).toBe(false);
+  });
+
+  it('rejects a label event with a colour outside the palette or a version', () => {
+    expect(
+      boardEventSchema.safeParse({
+        type: 'label_created',
+        ...base,
+        entity: { ...label, color: 'pink' },
+        version: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      boardEventSchema.safeParse({ type: 'label_updated', ...base, entity: label, version: 2 })
+        .success,
     ).toBe(false);
   });
 

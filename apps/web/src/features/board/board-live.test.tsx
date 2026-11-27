@@ -25,6 +25,7 @@ interface Cd {
   priority: string;
   estimate: number | null;
   sprintId: string | null;
+  labelIds: string[];
 }
 
 const columns = [
@@ -47,6 +48,7 @@ const card = (n: number, extra: Partial<Cd> = {}): Cd => ({
   priority: 'none',
   estimate: null,
   sprintId: null,
+  labelIds: [],
   ...extra,
 });
 
@@ -75,6 +77,7 @@ function server(role: string, cards: Cd[]) {
         columns,
         cards: [...cards].sort(compareByPosition),
         sprints: [],
+        labels: [],
       });
     },
     ...Object.fromEntries(

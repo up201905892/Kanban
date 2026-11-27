@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { labelRefSchema } from './labels.js';
 
 export const CARD_TITLE_MIN_LENGTH = 1;
 export const CARD_TITLE_MAX_LENGTH = 200;
@@ -73,6 +74,8 @@ export const cardSummarySchema = z.object({
   estimate: z.number().int().nullable(),
   /** The planned, active or (finished work) closed sprint of the card; null for the backlog. */
   sprintId: z.uuid().nullable(),
+  /** Ids of the project labels on the card (at most 10), in a stable order. */
+  labelIds: z.array(z.uuid()),
 });
 export type CardSummary = z.infer<typeof cardSummarySchema>;
 
@@ -151,6 +154,7 @@ export const ACTIVITY_TYPES = [
   'estimate_changed',
   'sprint_added',
   'sprint_removed',
+  'labels_changed',
 ] as const;
 
 /**
@@ -204,6 +208,10 @@ export const activityEventDataSchema = z.discriminatedUnion('type', [
       /** Set when the system removed the card (KB-023 closes the sprint). */
       reason: z.literal('sprint_closed').optional(),
     }),
+  }),
+  z.object({
+    type: z.literal('labels_changed'),
+    data: z.object({ added: z.array(labelRefSchema), removed: z.array(labelRefSchema) }),
   }),
 ]);
 export type ActivityEventData = z.infer<typeof activityEventDataSchema>;

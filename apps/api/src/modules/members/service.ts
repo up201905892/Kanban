@@ -6,7 +6,7 @@ import { publishMembershipChange } from '../../lib/membership-events.js';
 import { authorize } from '../authz/index.js';
 import { lockBoard } from '../boards/lock.js';
 import { recordActivity } from '../cards/activity.js';
-import { toCardSummary } from '../cards/service.js';
+import { toCardSummary, withLabels } from '../cards/service.js';
 
 interface MemberRow {
   userId: string;
@@ -132,6 +132,7 @@ async function unassignCards(
     const row = await tx.card.update({
       where: { id },
       data: { assigneeId: null, version: { increment: 1 } },
+      include: withLabels,
     });
     await recordActivity(tx, id, actorId, {
       type: 'assignee_changed',
