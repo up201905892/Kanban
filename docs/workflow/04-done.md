@@ -332,6 +332,16 @@ Entry template:
 - **Documentation:** ADR 0004 section 7 amended (done in the task); no new endpoints or messages, so no `docs/api.md` change; no new environment variables; no migrations; no new dependencies
 - **Lessons:** `rooms.join` still sends sync step 1 and awareness states before the re-check (pre-existing KB-033 order); no test asserts that nothing is received after the close; possible suggestion for the planner. No TODO found in the task's code; no secret found.
 
+### KB-014 · Labels — done on 2026-11-27
+
+- **Approving test report:** Report 1 (2026-11-27), commit b214fc6 (the later commits only change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** project labels (name 1 to 30 characters unique per project without regard to case, 8 palette tokens) and card labels (max 10) with migration `add_labels` (composite PK, cascades, unique index on `lower(name)`, CHECKs); `POST/GET /api/projects/:pid/labels`, `PATCH/DELETE /api/labels/:id`, `PUT /api/cards/:id/labels` (owner and member manage, viewers read; cross-project label is `400 INVALID_LABEL`, duplicate name `409 LABEL_NAME_TAKEN`, same set twice is a no-op); activity `labels_changed`, board events `label_created`, `label_updated`, `label_deleted` and `card_updated`, published after commit; chips on tiles, picker in the card dialog, management in project settings.
+- **CHANGELOG:** "Added: Cards can now carry labels: owners and members create, rename, recolour and delete project labels in the project settings (a name of up to 30 characters and one of 8 colours), and give a card up to 10 labels from a checkbox list in the card dialog; labels show on the card tiles with their name as text, viewers can see them, everyone sees changes live on the board, and the card history records which labels were added or removed (KB-014)."
+- **Documentation:** `docs/api.md` updated by the finisher (five label endpoints, `labelIds` and `labels` in the board response, `label_*` board events, `card_updated` sources); no new environment variables; no ADR required; one new migration; no new dependencies
+- **Test note:** the tester did not run `prisma migrate reset --force`: Prisma's AI-safety guard requires explicit user consent for it and none was given, so it was not bypassed. The tester used `prisma migrate status` on the test database instead (11 migrations, up to date), reviewed the migration SQL, and all tests passed on that database. João can run the reset himself to confirm a clean apply from scratch.
+- **Lessons:** the project settings page does not open the board socket, so label changes by others appear there after the next refetch (the board and card dialog update live); `PATCH` and `DELETE` live at `/api/labels/:id`; the 8 tints had no manual contrast check (axe is clean). Possible suggestions for the planner: filter the board by label; a live label list on the settings page; a manual contrast check of the palette. No TODO found in the task's code; no secret found. Milestone "Board" not reached (KB-046, KB-048 and KB-049 are still Proposed).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
