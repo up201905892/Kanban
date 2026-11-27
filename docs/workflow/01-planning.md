@@ -21,7 +21,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-011 | Board and configurable columns | Board | High | KB-008, KB-010 | Done |
 | KB-012 | Cards: create, view, edit and delete | Board | High | KB-011 | Done |
 | KB-013 | Card fields: assignee, priority and estimate | Board | Medium | KB-009, KB-012 | Done |
-| KB-014 | Labels | Board | Low | KB-012, KB-018 | Ready for test |
+| KB-014 | Labels | Board | Low | KB-012, KB-018 | In test |
 | KB-015 | Drag and drop and keyboard moving of cards | Board | High | KB-012 | Done |
 | KB-016 | WebSocket server with the y-websocket protocol and room authorization | Real time | High | KB-007, KB-009 | Done |
 | KB-017 | Yjs document persistence in PostgreSQL | Real time | Medium | KB-016 | Done |
@@ -813,6 +813,7 @@ Task template (copy for each new task):
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13); dependencies KB-012 and KB-018 are Done
 - 2026-11-27 · developer · Planned → In development · started
 - 2026-11-27 · developer · In development → Ready for test · commit b214fc6
+- 2026-11-27 · tester · Ready for test → In test · testing started
 
 ### KB-015 · Drag and drop and keyboard moving of cards
 

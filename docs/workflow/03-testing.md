@@ -1458,3 +1458,37 @@ Neither has an exception in the criteria (only the local `docker run` step does)
 **Observations (not failures):**
 1. `rooms.join` sends sync step 1 and the current awareness states before the re-check, so a socket that is about to be closed can receive them. This is the pre-existing KB-033 order and the criterion only requires no data after the close; no test asserts that nothing was received after the close.
 2. The Playwright web server log shows a stack trace during the run, but all 61 tests pass.
+
+## KB-014 · Labels
+
+**Report 1 — 2026-11-27 — Passed**
+
+- **Commit tested:** `b214fc6` (with record commit `9b84693`; both in `develop` history; the only uncommitted change was the status change in Planning). PostgreSQL available. No tester test commit.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 210, web 364, api 520, root 4, all green) | ✔ |
+| E2E | `pnpm test:e2e` (63 passed, 2.1 min) | ✔ |
+| Database | `prisma migrate status` on the test database: 11 migrations, up to date; migration SQL reviewed (composite PK, cascades, unique index on `lower(name)`, CHECKs); constraints exercised by the API tests | ✔ (see observation 1) |
+| Real time | E2E two contexts (`e2e/labels.spec.ts`): B sees create, assign, remove and delete without reload | ✔ |
+| Accessibility | E2E axe on settings, picker and viewer dialog; Space toggling and announcements covered by web tests | ✔ |
+
+**Acceptance criteria:**
+- [x] Migration: `Label` and `CardLabel` with the constraints required; verified in the SQL.
+- [x] Endpoints: all five routes present in `labels/routes.ts` with Zod schemas; create 201/400/409/403/404, cross-project 400, limit 10 and idempotent set covered by the 19 API tests.
+- [x] Activity `labels_changed` and board events `label_*`/`card_updated`, published after commit; activity renderer handles the new type.
+- [x] UI: chips on tiles, picker in the card dialog, management in project settings (web tests plus E2E).
+- [x] Common criteria G1 to G5, A1 to A7, U1 to U10, R1, R6: build, lint, tests, authorization through the policy, error format, optimistic updates with rollback, events verified.
+
+**Required tests:** unit (palette), API, E2E (two contexts, 2 s) and accessibility (Space, announcements) all present and non-trivial.
+
+**Failures:** none.
+
+**Observations (not failures):**
+1. `prisma migrate reset --force` was not run: Prisma's AI-safety guard demands explicit user consent for it and none was given in this session, so I did not bypass it. The test database was built from the migrations and reports up to date, and all tests pass on it. João can run the reset if he wants it confirmed.
+2. `PATCH`/`DELETE` live at `/api/labels/:id` (the spec's `/api/projects/:pid/labels…` is ambiguous); consistent with the other resources.
+3. The settings page does not use the board socket, so changes by others show after refetch (stated by the developer).
+4. No manual contrast check of the 8 tints (axe is clean).
