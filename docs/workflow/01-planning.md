@@ -33,7 +33,7 @@ Statuses: `Proposed` → `Planned` → `In development` → `Ready for test` →
 | KB-023 | Close a sprint | Sprints | Medium | KB-022 | Done |
 | KB-024 | Card activity history | Reports and history | Medium | KB-013, KB-015 | Done |
 | KB-025 | Sprint burndown | Reports and history | Medium | KB-022 | Done |
-| KB-026 | Velocity of recent sprints | Reports and history | Low | KB-023 | Ready for test |
+| KB-026 | Velocity of recent sprints | Reports and history | Low | KB-023 | Passed |
 | KB-027 | Adopt `@up201905892/ui` and replace local components | Design system | Medium | KB-004, KB-030, external: `@up201905892/ui` published on npm | Proposed |
 | KB-028 | Performance with 500+ cards | Quality and delivery | Medium | KB-018 | Done |
 | KB-029 | End-to-end collaboration suite (two browsers) | Quality and delivery | Medium | KB-009, KB-021, KB-023, KB-034, KB-038, KB-039 | Done |
@@ -1249,6 +1249,8 @@ Task template (copy for each new task):
 - 2026-11-13 · planner · Proposed → Planned · approved by João (approvals.md, 2026-11-13)
 - 2026-11-27 · developer · Planned → In development · started
 - 2026-11-27 · developer · In development → Ready for test · commit 947e9b7
+- 2026-11-27 · tester · Ready for test → In test · testing started
+- 2026-11-27 · tester · In test → Passed · report 1, all checks green
 
 ### KB-027 · Adopt `@up201905892/ui` and replace local components
 

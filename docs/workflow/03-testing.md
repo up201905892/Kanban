@@ -1492,3 +1492,34 @@ Neither has an exception in the criteria (only the local `docker run` step does)
 2. `PATCH`/`DELETE` live at `/api/labels/:id` (the spec's `/api/projects/:pid/labels…` is ambiguous); consistent with the other resources.
 3. The settings page does not use the board socket, so changes by others show after refetch (stated by the developer).
 4. No manual contrast check of the 8 tints (axe is clean).
+
+## KB-026 · Velocity of recent sprints
+
+**Report 1 — 2026-11-27 — Passed**
+
+- **Commit tested:** `947e9b7` (with record commit `3bba776`; both in `develop` history; the only uncommitted change was the status change in Planning). PostgreSQL available. No tester test commit.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 215, web 366, api 523, root 4, all green) | ✔ |
+| E2E | `pnpm test:e2e` (64 passed, 2.1 min) | ✔ |
+| Database | No migration in this task; reads stored `committedPoints`/`completedPoints` | ✔ (n/a) |
+| Real time | Not touched (page refetches on mount, stated by the developer) | n/a |
+| Accessibility | E2E axe (serious/critical) in empty and filled states; keyboard toggle by Enter; web flow test for table toggle | ✔ |
+
+**Acceptance criteria:**
+- [x] `GET /api/projects/:pid/velocity`: `sprints/velocity.ts` takes the last 6 closed sprints by `closedAt` desc, returns them oldest first with name, committed, completed and the average (API test with 8 closed sprints).
+- [x] Reports page: bar chart, text summary, table alternative with keyboard toggle, empty state "Close a sprint to see velocity" (web flow test and E2E).
+- [x] Common criteria: build, lint, tests, policy authorization (`workspace:read`), error format, axe clean.
+
+**Required tests:** unit average for 0, 1 and 6 sprints; API order, limit, 404 non-member, 401; E2E closing a sprint then table shows 8 and 5, plus axe; keyboard toggle. All present and non-trivial.
+
+**Failures:** none.
+
+**Observations (not failures):**
+1. `prisma migrate reset --force` was not run (Prisma AI-safety guard needs explicit user consent); no migration in this task.
+2. The response also carries a sprint `id` (extra to the spec); harmless.
+3. Velocity is not live; it updates on the next visit.
