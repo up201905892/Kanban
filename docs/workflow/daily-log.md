@@ -16,6 +16,18 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-27
+
+- **Decisions for João:**
+  - **Approve to resume:** still pending `Approve | KB-030, KB-031` (both `Proposed` after your Changes). KB-032 waits on KB-031. The 2026-11-26 `Answer | KB-031` line still has template placeholders; add a new line with the real values.
+  - **Optional check:** the testers could not run `prisma migrate reset --force` (Prisma's AI-safety guard needs your consent). For KB-014 (new migration `add_labels`) they used `prisma migrate status` instead (11 migrations applied). Run the reset yourself if you want a clean-apply confirmation.
+- **Done:** KB-014 (labels), KB-026 (velocity of recent sprints; milestone "Reports and history" reached)
+- **Tested:** KB-014 (Passed), KB-026 (Passed)
+- **Developed:** KB-014, KB-026 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-027, KB-030, KB-031, KB-044 to KB-049 (no new proposals: the backlog of `Proposed` tasks is already large). Ideas from the agents, not planned: filter the board by label; live label list and live velocity.
+- **Rule violations found:** none
+- **Next step:** KB-042 is the only `Planned` task left with its dependencies `Done`; it is developed next. Approving the `Proposed` tasks is what unblocks further work.
+
 ## 2026-11-26
 
 - **Decisions for João:**
