@@ -14,7 +14,14 @@ import type { PresenceContextValue } from '../presence/PresenceContext';
 import { toPresentPeople, type PresentPerson } from '../presence/view-model';
 import { activityKey, cardKey } from '../cards/api';
 import { boardKey } from './api';
-import { applyBoardEvent, applyCardEvent, remoteChangeOf, type RemoteChange } from './board-events';
+import {
+  applyBoardEvent,
+  applyCardEvent,
+  isTombstoned,
+  remoteChangeOf,
+  type RemoteChange,
+} from './board-events';
+import { tombstonesOf } from './tombstones';
 
 export interface RemoteChangeContext {
   change: RemoteChange;
@@ -81,16 +88,21 @@ export function useBoardEvents(
       };
     }
 
+    const tombstones = tombstonesOf(queryClient);
     const handle = (event: BoardEvent) => {
+      // Record deletions first, also our own echo: a later event for the id must not bring it back.
+      if (event.type === 'card_deleted') tombstones.cards.add(event.entity.id);
+      else if (event.type === 'column_deleted') tombstones.columns.add(event.entity.id);
       if (isOwnMutation(event.clientMutationId)) return;
       const before = queryClient.getQueryData<BoardResponse>(key);
       if (!before) return;
-      const after = applyBoardEvent(before, event);
+      const after = applyBoardEvent(before, event, tombstones);
       if (after !== before) {
         queryClient.setQueryData<BoardResponse>(key, after);
         const change = remoteChangeOf(before, event);
         if (change) callback.current?.({ change, before, after });
       }
+      if (isTombstoned(event, tombstones)) return;
       if (
         event.type === 'card_created' ||
         event.type === 'card_updated' ||

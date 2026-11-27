@@ -1119,3 +1119,407 @@ Report template:
 **Failures:** none.
 
 **Observations (not failures):** `pnpm test:e2e -- <files> --repeat-each` does not forward the arguments (as the developer noted); `npx playwright test` was used.
+
+### KB-037 · Keep unsaved collaborative edits when the final flush fails
+
+**Report 1 — 2026-11-20 — Passed**
+
+- **Commit tested:** `2e6fe52` (in `develop` history; working tree clean apart from the status update)
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared, web 323, api 453) | ✔ |
+| E2E | `pnpm test:e2e` (56 passed) | ✔ |
+| Targeted run | `vitest run` on `retention*`, `persistence*`, `description*` (49 passed) | ✔ |
+| Authorization / API validation | No route, schema or contract change | n.a. |
+| Database | No migration; no schema change | n.a. |
+| Real time | Integration tests with real `ws` clients over the real PostgreSQL store wrapped to fail on demand: second client joins a retained room and sees the edit, the edit survives an app rebuild, retry after the last client left | ✔ |
+| Accessibility | n.a. (no UI) | n.a. |
+
+**Acceptance criteria:**
+- [x] Failed final append keeps the room and retries with 1 s, 2 s, 4 s ... cap 30 s, then compacts and drops: code review of `rooms.ts` (`retain`, `scheduleRetry`, `retryStore`, `leave`) and unit tests "retains the room ... third attempt", "caps the retry delay".
+- [x] Joining a retained room serves the in-memory doc and calls `resume`; the room unloads again on the last leave: code review of `join`, unit test and the integration test with a second client.
+- [x] Projection follows the same rule (`description.ts` `store` rethrows, retry with backoff, deleted card ends the retry): unit tests "retries a projection ..." and "stops retrying ... card was deleted".
+- [x] Compaction-only failure does not keep the room (`compactSafely`): unit test.
+- [x] Error log per failed attempt with `doc` and `attempt` and no content; one warning after 5 minutes: code review and unit test "logs the retention warning once".
+- [x] Shutdown deadline (option, not environment variable): exit 1 with each document named when never recovered, exit 0 with the edit in the database when recovered: two integration tests; `gracefulShutdown` reviewed.
+- [x] Timers `unref()`ed (retry, warning, persistence timers), `retainedRooms()` accessor exists and is used by tests. At the deadline unsaved rooms are dropped so no timer survives.
+- [x] ADR 0004 section 9 amended (failure semantics, backoff, memory implication, exit code 1) and CHANGELOG entry: read the diff.
+- [x] Common criteria G1, G4, G7, G8, R7: all checks green.
+
+**Required tests:** all listed unit and API tests exist in `retention.test.ts` and `retention.integration.test.ts`, assert the specified behaviour (timings with fake timers, real `ws` clients, rebuild on the same database) and are not trivial. E2E and accessibility n/a as specified.
+
+**Tests added by the tester:** none.
+
+**Failures:** none.
+
+**Observations (not failures):** the "no timer keeps the process alive" unit test only inspects timers created after its spy, as the developer noted; the other timers were verified by reading the code.
+
+### KB-038 · Unassign a member's cards when they are demoted to viewer (D10)
+
+**Report 1 — 2026-11-20 — Passed**
+
+- **Commit tested:** `00e7f7e` (in `develop` history; working tree clean apart from the status update). Tester test commit: `0845ec6`.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (web 324, api 459, shared) | ✔ |
+| E2E | `pnpm test:e2e` (57 passed) | ✔ |
+| Authorization / API validation | 403 for a member, 409 last owner, 404 unknown member, 400 invalid role: all leave assignments and `version` untouched and publish nothing | ✔ |
+| Database | No migration or schema change. `prisma migrate reset --force` was blocked by the Prisma AI-safety guard (needs explicit user consent, unavailable in autonomous mode), so it was not run; the test database reports 10 migrations, none pending | n.a. |
+| Real time | Board events observed on the in-process bus: one `card_updated` per unassigned card after commit, none on 403/409/404/400 or rollback. Bus-to-socket path is covered by `board-events.test.ts` | ✔ |
+| Accessibility | E2E with axe on the Members page with the dialog open; Escape returns focus to the select; polite announcement (code review and unit test) | ✔ |
+
+**Acceptance criteria:**
+- [x] Demotion unassigns live cards in the same transaction, boards locked in id order, `version` + 1, `assignee_changed` with the owner as actor: code review of `unassignCards` / `changeMemberRoleTx` and API test "unassigns only live cards" (deleted card untouched).
+- [x] One shared helper for removal/leave and demotion; events published after commit only: code review; rollback test with an injected trigger failure shows role, assignments and events unchanged.
+- [x] Other role changes and viewer to viewer write nothing: API test.
+- [x] Refused changes (409, 403, 404) leave everything untouched; other workspaces untouched: API tests (404 and 400 added by the tester).
+- [x] UI confirmation text, Cancel/Escape keep the role and return focus, queries invalidated, polite announcement: code review, web unit tests, E2E.
+- [x] `docs/api.md` and `CHANGELOG.md` updated: read the diff.
+- [x] Common criteria: all checks green.
+
+**Required tests:** all exist and assert the specified behaviour. Deviation noted: events are checked on the in-process bus rather than a `ws` client (acceptable, the bus-to-socket path has its own test).
+
+**Tests added by the tester:** `fields.test.ts`: 404 for an unknown member and 400 for an invalid role (commit `0845ec6`).
+
+**Failures:** none.
+
+**Observations (not failures):** invalidation uses the `['projects']` and `['cards']` prefixes, broader than the workspace (query keys carry no workspace id).
+
+### KB-030 · Accessibility audit and fixes
+
+**Report 1 — 2026-11-23 — Failed**
+
+- **Commit tested:** `69d4d5c` (in `develop` history; working tree clean apart from the status update). Tester test commits: none.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 185, web 326, api 460) | ✔ |
+| E2E | `pnpm test:e2e` (59 passed, includes `accessibility.spec.ts`) | ✔ |
+| Database | No migration or schema change; not applicable | n.a. |
+| API / real time | Not touched (web, docs and E2E only) | n.a. |
+| Accessibility | Axe sweep (WCAG A/AA tags, serious/critical fail) over all routes, 360 px reflow, keyboard-only critical path; read the audit file | see below |
+
+**Acceptance criteria:**
+- [ ] `docs/accessibility-audit.md` with per-screen checklists, keyboard walkthrough, contrast, and an NVDA + Chrome spot check: **NOT MET.** Checklists, walkthrough and contrast are present, but the screen-reader spot check was not performed (audit line 13 and open item O1). The criterion requires it, so it is unmet.
+- [x] D9 card pattern covered explicitly in the board section (audit "Card pattern (D9)", SC 2.5.7): read the file; backed by `move-cards.spec.ts`.
+- [x] Axe sweep spec visits every route with zero serious/critical violations: spec reviewed and passing.
+- [x] A/AA failures fixed (F1 to F3), other items listed with severity (O1 to O3): read the audit. The "Decisions for João" entry in the daily log was not verified as part of this task (daily log is not tester-owned).
+- [ ] Common criteria G1, U3-U5, U9, U10: checks green, but the task as a whole is not complete.
+
+**Required tests:** E2E axe sweep and keyboard-only critical path exist and assert the specified behaviour; not trivial.
+
+**Failures:**
+1. Criterion 1: the NVDA + Chrome spot check of drag-and-drop and live announcements is absent. Steps: open `docs/accessibility-audit.md`, line 13 says "Not performed". Expected: a recorded spot check result. Actual: only a script for João (O1). Likely file: `docs/accessibility-audit.md`. A criterion cannot be passed on a documented intention; either João performs the session and records it, or the planner revises the criterion (for example, to make the session a João-owned follow-up) and the task is retested.
+
+**Observations (not failures):** SC 2.5.8 target sizes reviewed in CSS only (O2); the `[vite] ws proxy ECONNRESET` log noise is pre-existing.
+
+### KB-031 · Deploy preparation for Railway
+
+**Report 1 — 2026-11-23 — Failed**
+
+- **Commit tested:** `7894e44` (in `develop` history; working tree clean apart from the status update). Tester test commits: none.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 185, web 326, api 490, includes `deploy.test.ts` and the child-process `process-shutdown.integration.test.ts`) | ✔ |
+| E2E | `pnpm test:e2e` (60 passed, includes `@smoke`) | ✔ |
+| Database | No migration or schema change. `prisma migrate reset --force` was blocked by Prisma's consent guard in this unattended run; not worked around. Migrations are applied by the test setup, which passed. | n.a. |
+| Docker | `docker build` denied by the permission system; not worked around | not run |
+| Real time / accessibility | Real-time shutdown covered by the process-level test; no UI change | ✔ / n.a. |
+
+**Acceptance criteria:**
+- [ ] Multi-stage Dockerfile, non-root, `PORT`, `.dockerignore`, **image size recorded:** Dockerfile and `.dockerignore` read and consistent with the spec (corepack, Node 22, prod deps via `pnpm deploy --prod`, user `node`, `PORT=8080`). The image was never built, so it is unverified, and the size is not recorded (`docs/deployment.md` line 73 says "not recorded yet"). **NOT MET.**
+- [x] Exec-form `node` CMD, no shell wrapper: Dockerfile line 50.
+- [x] Process-level SIGTERM test: exists, starts `dist/server.js`, real signal, asserts exit 0, 1012 closes, edit stored and projected (via snapshot plus rows, deviation explained and acceptable); passes.
+- [x] `railway.json`: Dockerfile builder, `/health/ready`, pre-deploy `prisma migrate deploy`, restart on failure, 1 replica.
+- [x] Hardening (helmet and CSP, `trustProxy`, body limit, https-only production origin): `deploy.test.ts` and `config.test.ts` pass.
+- [x] `TRUST_PROXY` validated, in `.env.example` and docs; rate-limit buckets tested on and off.
+- [x] Dummy hash warmed in `onReady`: test passes.
+- [ ] `docs/deployment.md` with a **tested** `pg_dump`/`pg_restore` runbook: variables, setup, backups and rollback are written, but the dump/restore drill was not run, so the runbook is untested. **NOT MET.**
+- [x] `docs/deploy/railway-deploy.yml`: present, no secrets. The "Decisions for João" request in the daily log is not present yet (the daily log is not tester-owned; noted, not counted on its own).
+- [x] Local verification documented; running it is handed to João (the criterion allows this when agents lack permission). The `@smoke` spec exists and passes against the dev server.
+- [ ] Common criteria G1, G6, G7: checks green, but the task is not complete.
+
+**Required tests:** all exist and assert the specified behaviour; not trivial.
+
+**Failures:**
+1. Image size not recorded and the image never built or run. Expected: a recorded size and a verified build. Actual: `docs/deployment.md` line 73 placeholder. Likely files: `Dockerfile`, `docs/deployment.md`.
+2. The `pg_dump`/`pg_restore` runbook is untested. Expected: a tested runbook. Actual: documented only (`docs/deployment.md` backups section).
+
+Neither has an exception in the criteria (only the local `docker run` step does). Either an environment with Docker and a scratch database runs the build and the drill and records the results, or the planner revises the criteria (for example, moving the size record and the drill to a João-owned follow-up) and the task is retested.
+
+**Observations (not failures):** a body over the limit answers `400 VALIDATION_ERROR` rather than 413 (existing error mapping). `/ws/<anything>` with a plain GET answers 403.
+
+### KB-039 · Card and column tombstones in the live board cache
+
+**Report 1 — 2026-11-24 — Passed**
+
+- **Commit tested:** `8655423` (in `develop` history; working tree clean). Tester test commits: none.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 185, web 337, api 490) | ✔ |
+| E2E | `pnpm test:e2e` (60 passed) | ✔ |
+| Database | No migration or schema change (client-only task) | n.a. |
+| Real time | Covered by fake-WebSocket integration tests (late events, reconnect refetch); two-browser E2E is n/a per spec | ✔ |
+| Accessibility | No announcement for ignored events (asserted); deleted-card dialog state kept (asserted) | ✔ |
+
+**Acceptance criteria:**
+- [x] Tombstone sets for cards and columns, filled by `card_deleted` and `column_deleted` events (own echo too) and by own successful DELETE (204); bounded to 1,000 most recent: read `tombstones.ts`, `useBoardEvents.ts`, `board.ts`, `cards.ts`; bound tested in `tombstones.test.ts`.
+- [x] Create, update and move events for tombstoned ids are ignored and the same object is returned; version filter and own-echo suppression unchanged: `isTombstoned` in `board-events.ts`, unit and web tests.
+- [x] Refetched board data is filtered (`useBoard`, rollbacks in `useBoardMutation` and `useUpdateCard`); the open card dialog keeps "This card was deleted by <name>": `board-live.test.tsx` reconnect-refetch and dialog tests.
+- [x] A 404 from card read or mutation tombstones the card and removes its tile; the existing U6 message is announced once (the text was asserted exactly): `cards-flow.test.tsx`.
+- [x] Reducers pure, tombstones passed as a parameter (no module state; registry is a WeakMap used only by hooks).
+- [x] Common criteria G1, G8, U5, U6, R6: checks green, no new dependencies, no new announcements.
+
+**Required tests:** all exist and assert the specified behaviour (unit: late update, move, create, column update, filtering, bound, unrelated ids; web: late events, stale refetch, 404 move announced once). Not trivial.
+
+**Failures:** none.
+
+**Observations (not failures):**
+1. After a 404 move the message still ends with "It is back in To do." although the tile is removed. The criterion says to keep the existing message; the developer already suggested a planner follow-up.
+2. Tombstones are per `QueryClient` (session), not per page; equivalent because ids are never reused.
+
+### KB-040 · Enforce the description length limit in the shared document
+
+**Report 1 — 2026-11-24 — Passed**
+
+- **Commit tested:** `5647afd` (in `develop` history; working tree clean before testing). Tester test commit: `test(api): KB-040 trimDescription unit tests` (adds `apps/api/src/modules/realtime/trim.test.ts`).
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 187, web 343, api 494, before the added tests) | ✔ |
+| E2E | `pnpm test:e2e` (60 passed) | ✔ |
+| Database | No migration or schema change | n.a. |
+| Real time | Real `ws` integration tests: concurrent 15,000 + 15,000 converge on 20,000 identical characters; one 50,000 raw update trimmed for all clients and after app rebuild | ✔ |
+| Accessibility | Counter is visible text linked by `aria-describedby`, not a live region; one polite announcement per own-text trim (asserted) | ✔ |
+
+**Acceptance criteria:**
+- [x] Server trims the excess from the end in one server-origin transaction after a member's update, broadcast by the room `update` listener and persisted like any update: read `trimDescription` and its call after every sync step 2 or update; integration tests for convergence in both documents, `Card.description` and a rebuilt app.
+- [x] Deterministic and idempotent, nothing at or below 20,000, viewer updates return earlier (integration test: viewer's 30,000 update discarded), no activity event written (the projection listener only marks dirty): my unit test checks a single server-origin update and no second trim; a surrogate pair is not split.
+- [x] Projection cut stays and logs a warning with document name and length only (`description.ts`); the concurrent test asserts no warning.
+- [x] Editor counter from 19,000 ("N characters left"), limit text at 20,000, `aria-describedby`, not live; trim announcement text exact: `cards-flow.test.tsx`, `trim.test.ts`, shared counter tests at 18,999, 19,000, 20,000.
+- [x] One shared constant `CARD_DESCRIPTION_MAX_LENGTH` used by trim, backstop, `maxLength` and counter.
+- [x] ADR 0004 section 12 amended with a new bullet (reason, trade-off, backstop), not rewritten.
+- [x] Common criteria G1, G7, G8, R1, R3, R4, R7, U4, U5: checks green, no new dependencies.
+
+**Required tests:** all exist and assert the specified behaviour (unit, API with real `ws` clients, web). E2E n/a per spec. Not trivial. Added gap tests in `trim.test.ts` (exact length, idempotency and origin, surrogate boundary, non-description rooms).
+
+**Failures:** none.
+
+**Observations (not failures):**
+1. The own-text announcement is a heuristic (documented in `trim.ts`): an ordinary tail deletion by someone else that leaves 20,000 characters can be announced too.
+2. A large update reaches every client in full before the trim update follows (documented).
+
+### KB-041 · Forward arguments through `pnpm test:e2e`
+
+**Report 1 — 2026-11-25 — Passed**
+
+- **Commit tested:** `140c29a` (in `develop` history; working tree clean before testing, apart from the status change in Planning). PostgreSQL was available in this run (migrations applied by the api tests), so database-dependent checks were really executed. No tester test commit.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (web 343, api 497, root `scripts` 4) | ✔ |
+| E2E | `pnpm test:e2e` with no arguments (61 passed) | ✔ |
+| Database | No migration or schema change | n.a. |
+| Real time | Not touched | n.a. |
+| Accessibility | Not touched (script change) | n.a. |
+
+**Acceptance criteria:**
+- [x] Root cause written in the development entry: pnpm 10 passes a literal `--` to the script, Playwright treats what follows as filters. Confirmed: running the script showed `node scripts/e2e.mjs -- e2e/members.spec.ts ...`, so `argv` does begin with `--`.
+- [x] Both forms forward arguments: `pnpm test:e2e -- e2e/members.spec.ts --list` and `pnpm test:e2e e2e/members.spec.ts --list` each gave `Total: 3 tests in 1 file`; with `--list --repeat-each=2` gave `Total: 6 tests in 1 file`. Real run `pnpm test:e2e -- e2e/members.spec.ts --repeat-each=2 --retries=0`: 6 passed, only that file. A nonexistent file filter with `--retries=0` fails with "No tests found" and exit code 1 (exit code is propagated).
+- [x] No arguments behaves as before: full suite, same config and web servers, 61 passed.
+- [x] Fix is in root `package.json` scripts plus a small script under `scripts/` with no new dependency; `playwright.config.ts` not changed (`git show --stat`).
+- [x] Docs: grep of README and `docs/` (outside the workflow records) finds no `npx playwright` workaround or `-- <args>` form.
+- [x] Common criteria G1, G9: checks green, no new dependencies.
+
+**Required tests:** unit test `scripts/e2e-args.test.ts` exists and covers no arguments, no leading `--`, leading `--`, and only the first `--` dropped (4 passed); not trivial. E2E commands repeated and the full run passes.
+
+**Failures:** none.
+
+**Observations (not failures):**
+1. Only a leading `--` is dropped; a `--` typed later is passed to Playwright unchanged (intended, tested).
+
+### KB-029 · End-to-end collaboration suite (two browsers)
+
+**Report 1 — 2026-11-26 — Failed**
+
+- **Commit tested:** `da6fb1f` (in `develop` history; no uncommitted changes apart from the status change in Planning). PostgreSQL was available, so database-dependent checks really ran. No tester test commit.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 187, web 343, api 497, root 4) | ✔ |
+| E2E full | `pnpm test:e2e` (61 passed, 1.6 min) | ✔ |
+| E2E flakiness | `pnpm test:e2e -- e2e/journeys --repeat-each=10 --retries=0`, first run | ✘ 1 failed, 9 passed (1.2 min) |
+| E2E flakiness (reruns) | same command: 10 passed; `--repeat-each=30`: 30 passed; `--repeat-each=20 --workers=2`: 20 passed | ✔ |
+| Database | No migration or schema change | n.a. |
+| Real time | Covered by the journey (see criteria) | see below |
+| Accessibility | Card move with the keyboard (Space, ArrowRight, Space) present in the journey, lines 115-120 | ✔ |
+
+**Acceptance criteria:**
+- [x] Journey in `e2e/journeys/collaboration.spec.ts` with two browser contexts: sign-up, workspace, project, invite, B joins through the link, keyboard move while B edits, concurrent description edit, B offline then reconnect, sprint start and close, demotion through the KB-038 dialog with read-only UI (`aria-readonly`) and API 403, assignee cleared in both browsers. Verified by reading the spec and by green runs.
+- [x] No fixed sleeps: grep for `waitForTimeout`, `setTimeout`, `sleep` finds nothing. One journey takes about 7-15 s, far below 5 minutes.
+- [ ] `pnpm test:e2e -- --repeat-each=10` with zero failures: NOT met. The first 10-repeat run (with `--retries=0`, right after the full suite) had 1 failure of 10; three further runs (10, 30, 20 repeats) were green. About 1 failure in 90 runs overall, so the journey is still flaky. I did not capture the failure message (output was truncated by the filter); the failing test is the single journey, `collaboration.spec.ts:36`.
+- [x] Common criteria G1, R4, R5, R6: checks green; convergence asserted by the journey.
+
+**Required tests:** E2E journey exists, tests the requested behaviour and is not trivial. Unit and API n/a. Accessibility: keyboard move present.
+
+**Failures:**
+1. Flakiness: `pnpm test:e2e -- e2e/journeys --repeat-each=10 --retries=0` produced 1 failed / 9 passed on the first run. Steps: run the full `pnpm test:e2e`, then immediately the command above. Expected: 10 passed. Actual: 1 failed (`collaboration.spec.ts:36`, cause not captured). Likely file: `e2e/journeys/collaboration.spec.ts` (timing around the sprint dialog, offline reconnect or demotion steps; the developer already found one similar race). Suggest the developer reruns with `--repeat-each=30 --retries=0 --reporter=line` and keeps traces on failure.
+
+**Observations (not failures):**
+1. The 02-development entry, iteration 2, still contains a stale "Blocker" line (no PostgreSQL) that is no longer true.
+2. The sprint dialog holds focus while closing (developer's note); possible small UI issue.
+
+**Report 2 — 2026-11-26 — Passed**
+
+- **Commit tested:** `27a1fb0` (in `develop` history; the only uncommitted change was the status change in Planning). PostgreSQL available. No tester test commit.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 187, web 345, api 497, root 4) | ✔ |
+| E2E full | `pnpm test:e2e` (61 passed, 1.6 min) | ✔ |
+| E2E flakiness | `pnpm test:e2e -- e2e/journeys --repeat-each=50 --retries=0 --workers=4` | ✔ 50 passed (6.0 min) |
+| E2E flakiness (spec command) | `pnpm test:e2e -- e2e/journeys --repeat-each=10 --retries=0` | ✔ 10 passed (1.3 min) |
+| Database | No migration or schema change | n.a. |
+| Real time | Journey asserts convergence (move vs edit, shared description, offline reconnect); the fix guards stale refetches | ✔ |
+| Accessibility | Keyboard card move in the journey | ✔ |
+
+**Acceptance criteria:**
+- [x] Journey with two browsers covering all listed steps (unchanged since report 1, verified by reading and green runs); the fix `mergeFetchedBoard` is a genuine application fix for the race (a stale refetch undoing a newer `card_moved`), with two unit tests that test it non-trivially.
+- [x] No fixed sleeps (grep finds none); one journey about 8-15 s, far below 5 minutes.
+- [x] `--repeat-each=10` zero failures: 10/10, plus 50/50 under 4 workers with `--retries=0`. Together with the developer's 110 passes, report 1's flake is resolved (statistical evidence).
+- [x] Common criteria G1, R4, R5, R6.
+
+**Required tests:** E2E journey present and non-trivial; keyboard move present; unit and API n/a.
+
+**Failures:** none.
+
+**Observations (not failures):** the sprint dialog holding focus while closing is still unchanged (out of scope).
+
+## KB-043 · Re-check that the room's resource still exists after a WebSocket join
+
+**Report 1 — 2026-11-26 — Passed**
+
+- **Commit tested:** `f7ca027` (in `develop` history; the only uncommitted change was the status change in Planning). PostgreSQL available. No tester test commit.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (api 501, root 4, all green) | ✔ |
+| E2E | `pnpm test:e2e` (61 passed, 1.7 min) | ✔ |
+| Database | No migration or schema change | n.a. |
+| Real time | `beforeJoin` seam tests with real `ws` clients; code review of `routes.ts` and `rooms.join` | ✔ |
+| Accessibility | No UI change | n.a. |
+
+**Acceptance criteria:**
+- [x] Re-check after registration: `check()` calls `authorize(..., 'workspace:read')` before the join and again after `rooms.join`; 404/403 give `4403`; the role is refreshed from the result. Verified in the diff.
+- [x] Closed socket leaves through the normal path; the project-deleted test waits for `rooms.size === 0`, the card test for the card room to be unloaded. Pending messages are queued until the re-check passes (`open` is set only afterwards).
+- [x] Unchanged joins behave as before (test "nothing changed" stays open and syncs); one extra policy call per join, none per message (replaces the membership query). The KB-033 membership-removed race test passes.
+- [x] Workspace deletion covered by a test (closes with `4403`).
+- [x] ADR 0004 section 7 amended, not rewritten (join race bullet, new "Resource re-check" bullet, "Still limited" bullet).
+- [x] Common criteria G1, G7, G8, R2 (404 and 403 both give `4403`).
+
+**Required tests:** all four listed API cases present (project deleted: board and card sockets; card soft-deleted: only its socket closes, board socket stays open; workspace deleted; nothing changed) and non-trivial. E2E, unit and accessibility n/a.
+
+**Failures:** none.
+
+**Observations (not failures):**
+1. `rooms.join` sends sync step 1 and the current awareness states before the re-check, so a socket that is about to be closed can receive them. This is the pre-existing KB-033 order and the criterion only requires no data after the close; no test asserts that nothing was received after the close.
+2. The Playwright web server log shows a stack trace during the run, but all 61 tests pass.
+
+## KB-014 · Labels
+
+**Report 1 — 2026-11-27 — Passed**
+
+- **Commit tested:** `b214fc6` (with record commit `9b84693`; both in `develop` history; the only uncommitted change was the status change in Planning). PostgreSQL available. No tester test commit.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 210, web 364, api 520, root 4, all green) | ✔ |
+| E2E | `pnpm test:e2e` (63 passed, 2.1 min) | ✔ |
+| Database | `prisma migrate status` on the test database: 11 migrations, up to date; migration SQL reviewed (composite PK, cascades, unique index on `lower(name)`, CHECKs); constraints exercised by the API tests | ✔ (see observation 1) |
+| Real time | E2E two contexts (`e2e/labels.spec.ts`): B sees create, assign, remove and delete without reload | ✔ |
+| Accessibility | E2E axe on settings, picker and viewer dialog; Space toggling and announcements covered by web tests | ✔ |
+
+**Acceptance criteria:**
+- [x] Migration: `Label` and `CardLabel` with the constraints required; verified in the SQL.
+- [x] Endpoints: all five routes present in `labels/routes.ts` with Zod schemas; create 201/400/409/403/404, cross-project 400, limit 10 and idempotent set covered by the 19 API tests.
+- [x] Activity `labels_changed` and board events `label_*`/`card_updated`, published after commit; activity renderer handles the new type.
+- [x] UI: chips on tiles, picker in the card dialog, management in project settings (web tests plus E2E).
+- [x] Common criteria G1 to G5, A1 to A7, U1 to U10, R1, R6: build, lint, tests, authorization through the policy, error format, optimistic updates with rollback, events verified.
+
+**Required tests:** unit (palette), API, E2E (two contexts, 2 s) and accessibility (Space, announcements) all present and non-trivial.
+
+**Failures:** none.
+
+**Observations (not failures):**
+1. `prisma migrate reset --force` was not run: Prisma's AI-safety guard demands explicit user consent for it and none was given in this session, so I did not bypass it. The test database was built from the migrations and reports up to date, and all tests pass on it. João can run the reset if he wants it confirmed.
+2. `PATCH`/`DELETE` live at `/api/labels/:id` (the spec's `/api/projects/:pid/labels…` is ambiguous); consistent with the other resources.
+3. The settings page does not use the board socket, so changes by others show after refetch (stated by the developer).
+4. No manual contrast check of the 8 tints (axe is clean).
+
+## KB-026 · Velocity of recent sprints
+
+**Report 1 — 2026-11-27 — Passed**
+
+- **Commit tested:** `947e9b7` (with record commit `3bba776`; both in `develop` history; the only uncommitted change was the status change in Planning). PostgreSQL available. No tester test commit.
+
+| Check | Command or method | Result |
+| --- | --- | --- |
+| Build | `pnpm build` | ✔ |
+| Lint | `pnpm lint` | ✔ |
+| Types | `pnpm typecheck` | ✔ |
+| Unit and API | `pnpm test` (shared 215, web 366, api 523, root 4, all green) | ✔ |
+| E2E | `pnpm test:e2e` (64 passed, 2.1 min) | ✔ |
+| Database | No migration in this task; reads stored `committedPoints`/`completedPoints` | ✔ (n/a) |
+| Real time | Not touched (page refetches on mount, stated by the developer) | n/a |
+| Accessibility | E2E axe (serious/critical) in empty and filled states; keyboard toggle by Enter; web flow test for table toggle | ✔ |
+
+**Acceptance criteria:**
+- [x] `GET /api/projects/:pid/velocity`: `sprints/velocity.ts` takes the last 6 closed sprints by `closedAt` desc, returns them oldest first with name, committed, completed and the average (API test with 8 closed sprints).
+- [x] Reports page: bar chart, text summary, table alternative with keyboard toggle, empty state "Close a sprint to see velocity" (web flow test and E2E).
+- [x] Common criteria: build, lint, tests, policy authorization (`workspace:read`), error format, axe clean.
+
+**Required tests:** unit average for 0, 1 and 6 sprints; API order, limit, 404 non-member, 401; E2E closing a sprint then table shows 8 and 5, plus axe; keyboard toggle. All present and non-trivial.
+
+**Failures:** none.
+
+**Observations (not failures):**
+1. `prisma migrate reset --force` was not run (Prisma AI-safety guard needs explicit user consent); no migration in this task.
+2. The response also carries a sprint `id` (extra to the spec); harmless.
+3. Velocity is not live; it updates on the next visit.

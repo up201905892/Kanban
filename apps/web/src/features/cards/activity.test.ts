@@ -74,6 +74,10 @@ const cases: Record<ActivityEntry['type'], [ActivityEntry, string]> = {
     entry('sprint_removed', { sprintId: S1, sprintName: 'Sprint 1' }),
     'Ana removed this card from Sprint 1',
   ],
+  labels_changed: [
+    entry('labels_changed', { added: [{ id: S1, name: 'Bug' }], removed: [] }),
+    'Ana added label “Bug”',
+  ],
 };
 
 describe('describeActivity', () => {
@@ -92,6 +96,21 @@ describe('describeActivity', () => {
     expect(describeActivity(entry('assignee_changed', { from: U2, to: U1 }), names)).toBe(
       'Ana reassigned this card from Bo to a former member',
     );
+  });
+
+  it('describes added and removed labels together', () => {
+    expect(
+      describeActivity(
+        entry('labels_changed', {
+          added: [
+            { id: S1, name: 'Bug' },
+            { id: C1, name: 'UI' },
+          ],
+          removed: [{ id: C2, name: 'Old' }],
+        }),
+        names,
+      ),
+    ).toBe('Ana added labels “Bug”, “UI” and removed label “Old”');
   });
 
   it('names a deleted column and the system removal on sprint close', () => {

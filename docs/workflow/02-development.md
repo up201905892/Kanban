@@ -652,3 +652,256 @@ Entry template:
   - `pnpm test:e2e -- <files> --repeat-each=20` as written in the criterion did not apply the file filter or flags here (it ran the whole suite once, 56 tests); I ran `npx playwright test <files> --repeat-each=20 --retries=0` instead. Use that form to reproduce.
   - The `isOwnSpot` unit test covers the decision function; the dnd-kit event itself is not reproducible in jsdom, so the E2E repeat run is the regression check.
   - Suggestions for the planner: the `pnpm test:e2e -- args` forwarding could be fixed (root `package.json` script), outside this task's scope.
+
+### KB-037 · Keep unsaved collaborative edits when the final flush fails
+
+**Iteration 1 — 2026-11-20**
+
+- **Status at the end:** Ready for test
+- **What was done:** A failed final store no longer loses edits. `RoomPersistence.store` now rejects when the Yjs append or the `Card.description` projection failed (a compaction failure after a successful append is only logged, in `compactSafely`). `RoomManager.leave()` keeps such a room (`room.retained`, listed by `retainedRooms()`) and retries `store` after 1 s, 2 s, 4 s ... capped at 30 s, then compacts and drops the room. A client that joins a retained room gets the in-memory document; a new optional hook `RoomPersistence.resume` hands the pending writes back to the normal batching path (both layers implement it). While a room has no client the room manager owns the retry, so the persistence layers clear their own retry timer when `store` fails; in a live room their timers retry with the same backoff (`backoffMs`, failure counter per document). Each failed attempt logs `{ doc, attempt }` (never content); a room retained for 5 minutes logs one warning. `RoomManager.shutdown()` is memoized, retries within a deadline (10 s default) and returns `{ unsaved }`; `gracefulShutdown` logs each unsaved document by name and returns exit code 1 (0 only when all were saved). Retry/warning/deadline timings are `RoomManagerOptions` (`RealtimeOptions.rooms`), and `retryInitialMs`/`retryMaxMs` on both persistence layers, not environment variables. All timers are `unref()`ed. ADR 0004 section 9 amended and CHANGELOG entry added.
+- **Changed files:** `apps/api/src/modules/realtime/{rooms.ts,persistence.ts,description.ts,routes.ts}`, `apps/api/src/app.ts`, `apps/api/src/lib/graceful-shutdown.ts`, `apps/api/src/modules/realtime/{retention.test.ts,retention.integration.test.ts}`, `apps/api/src/modules/realtime/persistence.integration.test.ts` (only the `start` helper signature), `docs/adr/0004-real-time-architecture.md`, `CHANGELOG.md`
+- **Migrations:** none
+- **Commit(s):** `2e6fe52` feat(api): KB-037 keep unsaved collaborative edits when the final flush fails
+- **Acceptance criteria covered:** retain and retry with backoff, join of a retained room, projection retry and deleted-card stop, compaction-only failure, error and warning logs, shutdown deadline with exit codes 0 and 1, `unref` timers and `retainedRooms()`, ADR amended (all in `retention.test.ts` and `retention.integration.test.ts`); G1, G4, G7, G8, R7.
+- **Tests written by the developer:** unit `retention.test.ts` (fake store, fake Prisma, fake timers: three attempts with backoff, 30 s cap, join during retention, compaction failure, 5-minute warning once, timers unref'd, shutdown unsaved / recovered, projection retry and deleted card); API `retention.integration.test.ts` (real `ws` clients over the real PostgreSQL store wrapped to fail on demand: second client sees the edit and it survives an app rebuild, retry after the last client left, shutdown exit 1 naming the document, shutdown exit 0 with the edit stored).
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 185, web 323, api 453) · test:e2e ok (56 passed; E2E not required by the task)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - `RealtimeService.shutdown()` now returns `Promise<ShutdownResult>` instead of `void`; the `onClose` hook calls it again and gets the memoized result, so closing the app never waits a second deadline.
+  - The unref test in `retention.test.ts` only inspects timers created after its spy; the process-level behaviour is the best check (no hang after a failed shutdown).
+  - At the deadline the unsaved rooms are dropped (docs destroyed) so no timer survives.
+  - The projection retry test uses a fake Prisma; the real-database projection path is unchanged in logic.
+  - Suggestions for the planner: none.
+
+### KB-038 · Unassign a member's cards when they are demoted to viewer (D10)
+
+**Iteration 1 — 2026-11-20**
+
+- **Status at the end:** Ready for test
+- **What was done:** `changeMemberRole` now calls the shared `unassignCards` helper (the one removal and leaving use) inside the role-change transaction when an owner or member becomes a viewer. Boards are locked in id order, each live card gets `version` + 1 and an `assignee_changed { from, to: null }` event with the owner as actor, and the `card_updated` board events are published after the commit only (nothing on 403, 404, 409 or rollback). Other role changes and viewer to viewer touch no cards. UI: choosing "Viewer" for an owner or member in the Members page opens a "Change to viewer" confirmation with the specified text; Cancel and Escape keep the role (the select is controlled) and Dialog returns focus to the select; on success the board (`['projects']`) and card (`['cards']`) queries are invalidated and "<name> is now viewer and their cards were unassigned" is announced politely. `docs/api.md` and `CHANGELOG.md` updated.
+- **Changed files:** `apps/api/src/modules/members/service.ts`, `apps/api/src/modules/cards/fields.test.ts`, `apps/web/src/routes/MembersPage.tsx`, `apps/web/src/features/members/api/members.ts`, `apps/web/src/features/members/members-flow.test.tsx`, `e2e/members.spec.ts`, `docs/api.md`, `CHANGELOG.md`
+- **Migrations:** none
+- **Commit(s):** `00e7f7e` feat(api): KB-038 unassign a member's cards when they are demoted to viewer
+- **Acceptance criteria covered:** all; G1, G4, G5, G8, A1, A4, A5, A7, U1, U3-U7, U9, R6.
+- **Tests written by the developer:** API (in `fields.test.ts`): live card only unassigned with version and actor, demoted owner, no-op and other role changes write nothing, 409 and 403 change nothing, other workspace untouched, injected failure (temporary DB trigger on `activity_events`) rolls back role and assignments; web unit: confirmation text, Escape restores role and focus, confirm sends the PATCH and announces; E2E: confirmation with axe, Escape returns focus, confirm, then the board tile shows no assignee; the existing last-owner E2E and unit test now confirm the dialog first.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 185, web 324, api 459) · test:e2e ok (57 tests; members spec re-run after fixing the new test)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - Event publication is asserted by subscribing to the in-process board event bus (`onBoardEvent`) rather than a real `ws` client; the bus-to-socket path is already covered by `board-events.test.ts`.
+  - Playwright's `selectOption` does not focus the select, so the E2E focuses it first, as a keyboard user would; focus return relies on `Dialog` restoring the previously focused element.
+  - The board and card invalidation is by the prefixes `['projects']` and `['cards']` (query keys carry no workspace id), so it is slightly broader than the workspace.
+  - Suggestions for the planner: none.
+
+### KB-030 · Accessibility audit and fixes
+
+**Iteration 1 — 2026-11-23**
+
+- **Status at the end:** Ready for test
+- **What was done:** Wrote `docs/accessibility-audit.md` (method, contrast table, per-screen WCAG 2.2 AA checklists for log-in, sign-up, workspaces, members, invite, board, card dialog, backlog and reports, explicit D9 card-pattern section for SC 2.5.7, fixed failures, open items, NVDA script). Added `e2e/accessibility.spec.ts`: an axe sweep (WCAG A/AA tags including contrast, serious and critical fail) over every route logged out and logged in, including the card dialog, an invalid and a valid invite, 404 and two page-level error states, plus a 360 px no-horizontal-scroll check on the same routes and a page-title check; and a keyboard-only critical path (create card, move, open, edit title, close with focus returning to the tile). Fixes: F1 page-level error states now render the page `h1` (`ErrorState` gets `headingLevel`; used by every page that an error replaces); F2 the members table scrolls in its own focusable labelled region so the page does not scroll at 360 px; F3 `useHeadingTitle` in `RootLayout` sets `document.title` to "<h1> - Kanban" (SC 2.4.2).
+- **Changed files:** `docs/accessibility-audit.md`, `e2e/accessibility.spec.ts`, `apps/web/src/components/ErrorState.tsx`, `apps/web/src/components/components.test.tsx`, `apps/web/src/features/auth/RequireAuth.tsx`, `apps/web/src/routes/{BacklogPage,InvitePage,MembersPage,ProjectPage,ProjectSettingsPage,ReportsPage,WorkspacePage,WorkspaceSettingsPage,RootLayout}.tsx`, `apps/web/src/routes/useHeadingTitle.ts`, `apps/web/src/routes/useHeadingTitle.test.tsx`, `apps/web/src/styles.css`
+- **Migrations:** none
+- **Commit(s):** `69d4d5c` feat(web): KB-030 accessibility audit, axe sweep and fixes
+- **Acceptance criteria covered:** audit file, D9 section, axe sweep, A/AA fixes with the rest listed; G1, U3-U5, U9, U10. **Not met: the NVDA + Chrome spot check** (criterion 1), because no screen reader exists in the autonomous environment; the audit contains the script and lists it as open item O1 for João.
+- **Tests written by the developer:** E2E `accessibility.spec.ts` (2 tests); unit `ErrorState` heading level and `useHeadingTitle`.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 185, web 326, api 460) · test:e2e ok (59 passed)
+- **New dependencies (G9):** none (`@axe-core/playwright` already present)
+- **Notes for the tester:**
+  - Axe found no serious or critical violations beyond what F1 to F3 cover; F1 was a moderate axe rule (`page-has-heading-one`) that the spec's own heading wait surfaced, and the sweep waits for an `h1` on every route.
+  - The sweep is long (two passes over 11 routes); it sets a 120 s timeout. The `[vite] ws proxy EPIPE` lines in the log appear when pages close with sockets open; they are pre-existing noise.
+  - The first local E2E run failed with signup 500s because the local database was behind on migrations (`pnpm db:migrate` fixed it); not a code issue.
+  - SC 2.5.8 target sizes were reviewed in CSS only, not measured (audit item O2).
+  - Suggestions for the planner: a Playwright bounding-box check for 24 px target sizes (O2); a "skip to column" shortcut for long boards (O3); an NVDA session owned by João (O1).
+
+### KB-031 · Deploy preparation for Railway
+
+**Iteration 1 — 2026-11-23**
+
+- **Status at the end:** Ready for test
+- **What was done:** The api now serves the built web app (`WEB_DIST_DIR`): real files, `/assets/*` with an immutable cache, and an SPA fallback to `index.html` for other `GET`/`HEAD` page paths, implemented in the not-found handler (`lib/web-static.ts`) so no route needs an auth exception; `/api`, `/ws`, `/health*`, other methods and missing files with an extension keep the A1 JSON 404. Hardening: `@fastify/helmet` with a same-origin CSP plus the explicit `ws(s)://` origin (HSTS and upgrade-insecure-requests only for an https `WEB_ORIGIN`), 1 MiB body limit, `TRUST_PROXY` hop count (default 0, off; implemented as a hop predicate because Fastify's types reject a number), production config refuses a non-https `WEB_ORIGIN` (http allowed for localhost and 127.0.0.1 so the image can be tried locally). The argon2 dummy hash is computed in an `onReady` hook (`warmDummyHash`). Added the multi-stage `Dockerfile` (corepack pnpm, `pnpm deploy --prod --legacy`, Prisma schema engine fetched at build, OpenSSL, user `node`, `CMD ["node","dist/server.js"]`), `.dockerignore`, `railway.json`, `docs/deploy/railway-deploy.yml` (proposed), `docs/deployment.md`, ADR 0005, `.env.example` entries, a `@smoke` E2E and `BASE_URL` support in `playwright.config.ts`. `prisma` moved from devDependencies to dependencies (the pre-deploy command needs its CLI in the image).
+- **Changed files:** `Dockerfile`, `.dockerignore`, `railway.json`, `.env.example`, `CHANGELOG.md`, `playwright.config.ts`, `e2e/smoke.spec.ts`, `apps/api/package.json`, `pnpm-lock.yaml`, `apps/api/src/{app.ts,server.ts,config.ts,config.test.ts,deploy.test.ts,process-shutdown.integration.test.ts}`, `apps/api/src/lib/web-static.ts`, `apps/api/src/modules/auth/password.ts`, `docs/adr/0005-deployment-topology.md`, `docs/deployment.md`, `docs/deploy/railway-deploy.yml`
+- **Migrations:** none
+- **Commit(s):** `7894e44` feat(api): KB-031 prepare the Railway deploy (Docker image, hardening, runbook)
+- **Acceptance criteria covered:** Dockerfile, non-root, PORT, `.dockerignore`; exec-form `node`; process-level SIGTERM test (`process-shutdown.integration.test.ts`); `railway.json`; hardening, `TRUST_PROXY` (config and `deploy.test.ts`), dummy hash warm-up (`deploy.test.ts`); `docs/deployment.md`; `docs/deploy/railway-deploy.yml`; `@smoke` test and `BASE_URL`; G1, G6, G7. **Not met or not verified (needs João):** (1) image size is not recorded and `docker build`/`docker run` were not run (the command needs approval in this environment); (2) the tested `pg_dump`/`pg_restore` runbook was not run (same reason), so the commands are documented but untested; (3) the request to copy the workflow into `.github/workflows/` belongs in "Decisions for João" in the daily log, which this agent does not write.
+- **Tests written by the developer:** unit `config.test.ts` (https-only production origin, `TRUST_PROXY` default, valid and invalid values, `WEB_DIST_DIR`); API `deploy.test.ts` (dummy hash ready after `ready()`, SPA fallback, assets and cache headers, A1 404 for api prefixes, other methods and missing files, path traversal, missing `index.html`, helmet headers and CSP, no HSTS over http, body limit, rate limit with `TRUST_PROXY` on, with a spoofed leftmost entry, off and 0); API `process-shutdown.integration.test.ts` (built `dist/server.js` as a child, real SIGTERM, exit 0, both sockets closed with 1012, edit stored and projected); E2E `smoke.spec.ts` (`@smoke`: sign up, create workspace, reload).
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 185, web 326, api 490) · test:e2e ok (60 passed)
+- **New dependencies (G9):** `@fastify/helmet` and `@fastify/static` (MIT, maintained by the Fastify core team; needed for the required headers and for `sendFile` with path safety). `prisma` is now a production dependency.
+- **Notes for the tester:**
+  - `process-shutdown.integration.test.ts` needs `pnpm build` first (it starts `apps/api/dist/server.js` and fails with a clear message if it is missing); CI already builds before testing.
+  - The criterion says the edit must be in `YDocumentUpdate`; when the last client leaves, KB-017 compacts the updates into the snapshot, so after the real SIGTERM the edit is in the snapshot (`y_documents`) and the update rows are gone. The test therefore loads the document through `createPrismaDocumentStore().loadDocument` (snapshot plus rows) and also checks `Card.description`. The edit being inside the 500 ms batch window is shown by a second client having received it, not by an empty table.
+  - Without Docker the production layout was reproduced by hand (`pnpm deploy --prod --legacy`, `prisma migrate deploy` from that folder, `node dist/server.js` with `WEB_DIST_DIR`, `TRUST_PROXY=1`, `NODE_ENV=production`): `/` and `/workspaces/x` gave the app, `/api/nope` and a missing asset gave the A1 404, SIGTERM exited 0.
+  - A body over the limit answers `400 VALIDATION_ERROR` (the existing mapping of framework 4xx errors in `serializeError`), not 413.
+  - `/ws/<anything>` with a plain GET still answers 403 (the websocket route's own Origin check), not 404; the 404 test uses `/ws`.
+  - Suggestions for the planner: a follow-up to run `docker build`, the `@smoke` run against the container and the `pg_dump`/`pg_restore` drill once an environment with Docker permission exists (or by João); consider a `/health` exemption of the CSP is not needed. The sliding session cookie is only `Secure` when `NODE_ENV=production`, which the image sets.
+
+
+### KB-039 · Card and column tombstones in the live board cache
+
+**Iteration 1 — 2026-11-24**
+
+- **Status at the end:** Ready for test
+- **What was done:** New `features/board/tombstones.ts`: a bounded `IdSet` (1,000 most recent ids, re-adding refreshes an id), `Tombstones` (cards and columns), the pure `filterTombstoned(board, tombstones)` (same object when nothing is removed), and a per-`QueryClient` registry with `tombstoneCard`, `tombstoneColumn` and `tombstoneOn404`. `applyBoardEvent` takes the tombstones as a parameter (no module state in the reducers) and ignores create, update and move events for tombstoned cards, and create and update events for tombstoned columns. `useBoardEvents` records `card_deleted` and `column_deleted` ids (also own echoes) and skips the activity and card-query invalidations for ignored events. Own `DELETE` success (204) tombstones the card or column. `useBoard` filters every fetched board before it reaches the cache, and the optimistic rollbacks (`useBoardMutation`, `useUpdateCard`) are filtered too, so a rollback cannot restore a deleted card. A `404` from the card read, update, move or delete tombstones the card and removes its tile; for move and update a second read of the card first confirms the card itself is gone (a 404 can also mean a missing destination column). The existing U6 rollback message is the only announcement. The open dialog keeps the KB-018 "deleted by" state because it depends on the tile being absent.
+- **Changed files:** `apps/web/src/features/board/{tombstones.ts,tombstones.test.ts,board-events.ts,useBoardEvents.ts,board-live.test.tsx}`, `apps/web/src/features/board/api/board.ts`, `apps/web/src/features/cards/api/cards.ts`, `apps/web/src/features/cards/cards-flow.test.tsx`
+- **Migrations:** none
+- **Commit(s):** `8655423` feat(web): KB-039 tombstones for deleted cards and columns in the live board cache
+- **Acceptance criteria covered:** all, including G1, G8, U5, U6 and R6.
+- **Tests written by the developer:** unit `tombstones.test.ts` (late update, move and create after delete return the same object; column update after delete; bound drops the oldest; unrelated ids unaffected; board filtering); web `board-live.test.tsx` (late events after delete, a reconnect refetch that still contains the deleted card, dialog keeps "deleted by" after a late update) and `cards-flow.test.tsx` (move that gets 404 removes the tile and announces once).
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 185, web 337, api 490) · test:e2e ok (60 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - Tombstones live for the session (per `QueryClient`), not per page; ids are never reused, so this is equivalent to "per board page" and survives navigation between the board, backlog and reports.
+  - A column tombstone also hides, in a stale refetch, cards that still point at the deleted column (cards moved by `moveCardsTo` come back with the next fresh refetch).
+  - The existing assertive message after a failed move still ends with "It is back in To do." even when the tile is removed; the planning criterion says to keep the existing message, so it was not changed.
+  - Suggestion for the planner: make the U6 message say the card no longer exists when the failure was a 404 that tombstoned it.
+
+### KB-040 · Enforce the description length limit in the shared document
+
+**Iteration 1 — 2026-11-24**
+
+- **Status at the end:** Ready for test
+- **What was done:** `packages/shared/src/cards.ts` gets `excessToTrim`, `descriptionCounterText` and `DESCRIPTION_COUNTER_FROM` next to the existing `CARD_DESCRIPTION_MAX_LENGTH`, which stays the single source for the trim, the projection backstop, the textarea `maxLength` and the counter. `rooms.ts` gets `trimDescription`, called after every applied sync step 2 or update in a card description room (viewer updates return earlier): it deletes the excess from the end in one transaction with a server origin (`TRIM_ORIGIN`), which is broadcast and persisted like any update (KB-017). It never cuts a surrogate pair in half, does nothing at or below the limit, and writes no activity event. The KB-019 projection cut stays and now logs a warning with the document name and length (no content). In the editor the old "N of 20000 characters" hint is replaced by a visible counter from 19,000 ("N characters left", then "Description limit reached (20,000 characters)"), linked to the textarea with `aria-describedby` and not a live region. A remote change that only deletes from the end, leaves the text at the limit and removed items of this client's own (`transaction.deleteSet.clients`) is announced once, politely (`trim.ts`). ADR 0004 section 12 amended (new bullet).
+- **Changed files:** `packages/shared/src/{cards.ts,cards.test.ts,index.ts}`, `apps/api/src/modules/realtime/{rooms.ts,description.ts,description.integration.test.ts}`, `apps/web/src/features/cards/{DescriptionSection.tsx,trim.ts,trim.test.ts,cards-flow.test.tsx}`, `docs/adr/0004-real-time-architecture.md`
+- **Migrations:** none
+- **Commit(s):** `5647afd` feat(api): KB-040 enforce the description length limit in the shared document
+- **Acceptance criteria covered:** all, including G1, G7, G8, R1, R3, R4, R7, U4, U5. CHANGELOG is left to the finisher.
+- **Tests written by the developer:** unit (shared) `excessToTrim` below, at and above the limit, counter text at 18,999, 19,000, 19,999 and 20,000; unit (web) `trim.test.ts`; API integration with real `ws` clients: two concurrent 15,000 character inserts converge on identical 20,000 characters in both documents and in `Card.description` with no backstop warning, one 50,000 character raw update gives 20,000 for every client and for a new client after the app is rebuilt on the same database, exactly 20,000 is not trimmed, a viewer's oversized update is discarded; web: counter at 19,000 linked by `aria-describedby`, trim of own text announced once, trim of other people's text not announced.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (web 343, api 494, shared) · test:e2e ok (60 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - The "own text" detection is a heuristic: a tail-only remote deletion that leaves 20,000 (or 19,999) characters and removes some of this client's own text is announced, even if it was an ordinary deletion by another person. Documented in `trim.ts`.
+  - The trim runs once per applied update, so a large update first reaches every client in full and is then followed by the trim update.
+  - Counter text uses `toLocaleString('en-US')` ("1,000 characters left").
+
+### KB-029 · End-to-end collaboration suite (two browsers)
+
+**Iteration 1 — 2026-11-25**
+
+- **Status at the end:** In development (blocked, not Ready for test: the journey could not be run in this environment)
+- **What was done:** Added `e2e/journeys/collaboration.spec.ts`, one journey with two browser contexts. A signs up through the form, creates a workspace and a project (key `JR`) in the UI and creates a member invite link; B signs up through the link and accepts. The board is seeded through the API with two cards assigned to B. Then: A moves JR-1 with the keyboard (Space, ArrowRight, Space) while B sets its priority in the open dialog; both type in the same description at the same time and converge; B goes offline, edits the description and adds a card while A also edits, B reconnects and both converge with exactly one new card (screens and server); A plans, starts and completes a sprint in the UI (keyboard add-to-sprint) and B sees the active-sprint banner appear and disappear; A demotes B to viewer through the KB-038 confirmation dialog, the assignee disappears from both boards (B live, A after opening the board), B's card dialog is read-only, no add-card buttons, and `PATCH /api/cards/:id` returns 403. No fixed sleeps: only auto-waiting assertions and `afterWrite`/`expect.poll`.
+- **Changed files:** `e2e/journeys/collaboration.spec.ts`
+- **Migrations:** none
+- **Commit(s):** see git log (`feat(web): KB-029 ...`)
+- **Acceptance criteria covered:** journey steps written. **Not verified:** the journey has never run green, the under-5-minutes check and `pnpm test:e2e -- --repeat-each=10` (zero failures) were not run.
+
+**Iteration 2 — 2026-11-26**
+
+- **Status at the end:** Ready for test
+- **What was done:** ran the journey for the first time with PostgreSQL. It passed on the first run. A 10-repeat run had 1 failure: after clicking Create in the sprint dialog the test pressed Enter on "Add to sprint" while the dialog was still closing and holding focus, so the card never moved. Fix: the test now waits for the Create sprint dialog to be hidden before using the keyboard (no sleeps). No application code changed.
+- **Changed files:** `e2e/journeys/collaboration.spec.ts`
+- **Migrations:** none
+- **Commit(s):** see git log (`fix(web): KB-029 ...`)
+- **Flakiness check (acceptance criterion):** `pnpm test:e2e -- e2e/journeys --repeat-each=10` gave 10 passed (1.3 min), run twice, the second time with `--retries=0`. One journey takes about 15 s, well under the 5 minute limit. Full `pnpm test:e2e`: 61 passed (1.7 min).
+- **Tests written by the developer:** E2E journey (two browsers, keyboard card move). Unit and API: n/a.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 187, web 343, api 497, root 4) · test:e2e ok (61)
+- **New dependencies (G9):** none
+- **Notes for the tester:** run `pnpm test:e2e -- e2e/journeys --repeat-each=10 --retries=0` with a database. The sprint dialog closing late (focus trap held during exit) is a possible small UI issue; not changed, out of scope.
+- **Blocker:** this environment has no PostgreSQL (no `DATABASE_URL`, no server binary, `docker` is not permitted). The api answers `Internal server error` on sign-up, so even the existing `e2e/smoke.spec.ts` fails here (confirmed). `pnpm build`, `pnpm lint` and `pnpm typecheck` are green; `pnpm test` and `pnpm test:e2e` could not be run meaningfully.
+- **Tests written by the developer:** E2E journey above. Unit and API: n/a.
+- **Local checks:** build ok · lint ok · typecheck ok · test not run · test:e2e not run (no database)
+- **New dependencies (G9):** none
+- **Notes for the next iteration:**
+  - Run in an environment with PostgreSQL: `pnpm build`, then `pnpm test:e2e -- e2e/journeys --repeat-each=10` (KB-041 is not Done, so forward arguments with `pnpm exec playwright test e2e/journeys --repeat-each=10`) and record the result here.
+  - Selectors reuse the ones in `members`, `offline`, `sprints` and `collab-description` specs, but were written without a run; expect small fixes (for example the priority change racing with the move, or the `Created offline` card name once numbered).
+  - Suggestion for the planner: KB-029 asks for `pnpm test:e2e -- --repeat-each=10`, which relies on KB-041; consider adding KB-041 as a dependency.
+
+**Iteration 3 — 2026-11-26**
+
+- **Status at the end:** Ready for test
+- **Correction to iteration 2:** the "Blocker" line above (no PostgreSQL) is stale and no longer true. PostgreSQL is available as a service, `pnpm test` and `pnpm test:e2e` were run, and the "local checks" line of that iteration that says "not run" is superseded by the one just above it (all green). The records above are kept as written.
+- **Root cause (application bug, not the test):** reproduced with `--repeat-each=40 --workers=4 --retries=0` (1 failure; `--repeat-each=30` at default workers was green). The failing assertion was B's `In progress` column staying empty after A moved JR-1, while B's board showed the priority change (Urgent) in `To do`. B sends a priority PATCH at the same time as A's move. After the PATCH, B refetches the board; if that read happens before A's move commits but the response arrives after the `card_moved` event was applied, the refetch replaced the cache with the older board and undid the move. `applyBoardEvent` already ignored stale events by `version`, but fetched boards were not guarded. Real users can hit this too.
+- **Fix:** `mergeFetchedBoard` in `apps/web/src/features/board/board-events.ts`: a fetched board keeps any cached card whose `version` is higher than the fetched one. Used in the `useBoard` query function (`features/board/api/board.ts`). Two unit tests added. The journey spec is unchanged.
+- **Changed files:** `apps/web/src/features/board/board-events.ts`, `apps/web/src/features/board/board-events.test.ts`, `apps/web/src/features/board/api/board.ts`
+- **Migrations:** none
+- **Commit(s):** `27a1fb0`
+- **Flakiness check:** after the fix, `--repeat-each=60 --workers=4 --retries=0`: 60 passed (7.0 min); `pnpm test:e2e -- e2e/journeys --repeat-each=50 --retries=0`: 50 passed (5.9 min); full `pnpm test:e2e`: 61 passed. Total 110 consecutive passes at `--retries=0`. The root cause was seen once in 40 runs before the fix, so this is strong but statistical evidence.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 187, web 345, api 497, root 4) · test:e2e ok (61)
+- **New dependencies (G9):** none
+- **Notes for the tester:** rerun `pnpm test:e2e -- e2e/journeys --repeat-each=50 --retries=0` (also `--workers=4` to add load). The sprint dialog holding focus while closing is still unchanged (out of scope).
+
+### KB-041 · Forward arguments through `pnpm test:e2e`
+
+**Iteration 1 — 2026-11-25**
+
+- **Status at the end:** Ready for test
+- **Root cause:** pnpm 10 appends a literal `--` to the script when the user types `pnpm test:e2e -- <args>`, so the root script `playwright test` ran as `playwright test -- e2e/members.spec.ts --list`. Playwright treats everything after `--` as positional test filters, so options such as `--list`, `--repeat-each` and `--retries` were ignored and the whole suite ran (confirmed: the command ran the full suite). Without `--`, `pnpm test:e2e <args>` already worked.
+- **What was done:** the root script is now `node scripts/e2e.mjs`. The script drops one leading `--` (`normalizeArgs` in `scripts/e2e-args.mjs`) and runs `playwright test <args>` with inherited stdio and the same exit code. `playwright.config.ts` is not changed. The root `test` script also runs `vitest run scripts` for the helper's unit test. Repository docs: no place shows the `npx playwright test` workaround or the `-- <args>` form (README and `docs/deployment.md` only use `pnpm test:e2e --grep @smoke`, which works); the KB-029 note in this file is a record and is not edited.
+- **Changed files:** `package.json`, `scripts/e2e.mjs`, `scripts/e2e-args.mjs`, `scripts/e2e-args.test.ts`
+- **Migrations:** none
+- **Commit(s):** see git log (`feat(api): KB-041 ...`)
+- **Checks recorded (Playwright `--list`, no database needed):**
+  - `pnpm test:e2e -- e2e/members.spec.ts --list` gives `Total: 3 tests in 1 file`
+  - `pnpm test:e2e e2e/members.spec.ts --list` gives `Total: 3 tests in 1 file`
+  - `pnpm test:e2e -- e2e/members.spec.ts --list --repeat-each=2 --retries=0` gives `Total: 6 tests in 1 file` (listing only, not a real run)
+  - `pnpm test:e2e -- e2e/smoke.spec.ts -g "web app loads" --retries=0`: 1 passed, exit code 0 (needs no database).
+- **Tests written by the developer:** unit `scripts/e2e-args.test.ts` (no arguments, no leading `--`, leading `--`, only the first `--` dropped): 4 passed.
+- **Local checks:** lint ok · typecheck ok · root unit test ok · `pnpm build` not re-run (no package source changed) · `pnpm test` (api) and the full `pnpm test:e2e` could not be run: no PostgreSQL in this environment (the api fails on sign-up, so 50 specs fail here regardless of this change). With no arguments the script runs `playwright test` unchanged, with the same config and web servers.
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - Please run the full `pnpm test:e2e` and a real run of `pnpm test:e2e -- e2e/members.spec.ts --repeat-each=2 --retries=0` with a database.
+  - Suggestion for the planner: KB-029 can now use `pnpm test:e2e -- --repeat-each=10`.
+
+### KB-043 · Re-check that the room's resource still exists after a WebSocket join
+
+**Iteration 1 — 2026-11-26**
+
+- **Status at the end:** Ready for test
+- **What was done:** in `apps/api/src/modules/realtime/routes.ts` the authorization is a local `check()` (policy `authorize(..., 'workspace:read')`, 404/403 mapped to "not allowed"). It runs before the join as before and again after the connection is registered in the room, replacing the membership-only query. A failed re-check closes with `4403` through the normal leave path (the emptied room is stored and unloaded); the role is refreshed from the result; messages queued meanwhile are processed only after the re-check. One extra policy call per join, none per message. Workspace deletion is covered because it removes the memberships.
+- **ADR:** `docs/adr/0004-real-time-architecture.md` section 7 amended (join race bullet, new "Resource re-check" bullet, "Still limited" bullet).
+- **Changed files:** `apps/api/src/modules/realtime/routes.ts`, `apps/api/src/modules/realtime/realtime.test.ts`, `docs/adr/0004-real-time-architecture.md`
+- **Migrations:** none
+- **Commit(s):** `f7ca027`
+- **Tests written by the developer:** API (real `ws` clients, `beforeJoin` seam): project deleted in the window closes a board and a card socket with 4403 and leaves no room; card soft-deleted closes only its description socket while the board socket stays open; workspace deleted closes with 4403; nothing changed keeps the socket open and syncing. The KB-033 membership-removed race test still passes.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 187, web 345, api 501, root 4) · E2E not required (n/a)
+- **New dependencies (G9):** none
+- **Notes for the tester:** none beyond the criteria; no client changes.
+
+### KB-014 · Labels
+
+**Iteration 1 — 2026-11-27**
+
+- **Status at the end:** Ready for test
+- **What was done:**
+  - Shared: `packages/shared/src/labels.ts` (palette of 8 tokens, name 1 to 30 characters, request/response schemas, `diffLabelIds`). `CardSummary` gets `labelIds`, `BoardResponse` gets `labels`, new activity type `labels_changed` {added, removed} (label id and name, so history survives a label deletion), new board events `label_created`, `label_updated`, `label_deleted`, new error codes `LABEL_NAME_TAKEN` and `INVALID_LABEL`.
+  - Migration `add_labels`: `labels` and `card_labels` (composite PK, both foreign keys cascade). Hand-written in the same migration: unique index on `(project_id, lower(name))`, CHECK on name length and on the 8 palette tokens.
+  - API (`apps/api/src/modules/labels/`): `POST/GET /api/projects/:pid/labels`, `PATCH/DELETE /api/labels/:id`, `PUT /api/cards/:id/labels`. Authorization through the policy: `project:manage` for label create, rename and delete (owner and member), `card:edit` for setting a card's labels, `workspace:read` for the list; new `label` resource type in the authz resolver. Create takes a client UUID (A6). All label writes run under the board lock, like card writes. A label of another project or a missing one is `400 INVALID_LABEL`; more than 10 or duplicate ids is `400 VALIDATION_ERROR`; a duplicate name (any case) is `409 LABEL_NAME_TAKEN`.
+  - Setting the same set again is a no-op (no version bump, no activity, no event). A real change bumps the card `version`, writes `labels_changed` and publishes `card_updated` (the tile reads `labelIds`). Deleting a label bumps the version of each live card that had it, writes `labels_changed` (removed) per card, and publishes one `card_updated` per card plus `label_deleted`. Events are published after commit (R6).
+  - `GET /board` returns the labels in the same joined statement (the 5-query budget test of KB-028 still passes).
+  - Web (`apps/web/src/features/labels/`): label chips on tiles (name as text, colour as a secondary cue), `LabelPicker` in the card dialog (checkbox list, Space toggles, announced; read-only text for viewers), `LabelSettings` in project settings (create, rename, recolour, delete with confirmation, empty and error states, viewers read-only). Board events `label_*` are applied to the TanStack Query board cache; mutations are optimistic with rollback through `useBoardMutation`. The activity renderer handles `labels_changed` (the exhaustive switch).
+- **Changed files:** `packages/shared/src/{labels.ts,labels.test.ts,cards.ts,cards.test.ts,board.ts,board-events.ts,board-events.test.ts,errors.ts,index.ts}`; `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/20261127190724_add_labels/migration.sql`; `apps/api/src/{app.ts,lib/board-events.ts}`, `apps/api/src/modules/{labels/*,authz/authorize.ts,boards/service.ts,cards/service.ts,members/service.ts,sprints/service.ts}`; `apps/web/src/features/labels/*`, `apps/web/src/features/board/{BoardView.tsx,CardList.tsx,board-events.ts}`, `apps/web/src/features/cards/{CardDialog.tsx,activity.ts,api/cards.ts}`, `apps/web/src/routes/ProjectSettingsPage.tsx`, `apps/web/src/styles.css`, existing web test fixtures (new `labelIds` and `labels` fields); `e2e/labels.spec.ts`
+- **Migrations:** `20261127190724_add_labels`
+- **Commit(s):** `b214fc6`
+- **Tests written by the developer:**
+  - Unit (shared): palette (8 tokens valid, others rejected), name length and trimming, case-insensitive key, max 10 and duplicates, `diffLabelIds`, label events and `labels_changed` in the schemas. Unit (web): label helpers, board event reducer for `label_*`, activity sentence.
+  - API (`labels.test.ts`, real PostgreSQL, 19 tests): create 201 as owner and member, 400 invalid colour or name or unknown field, 409 duplicate in any case (same name allowed in another project), idempotent create with client id (200, and 409 `CONFLICT` for an id of another project), 403 viewer, 404 non-member identical to a missing resource, 401, 403 `CSRF_REJECTED`; list and board payload; rename, recolour and delete; cross-project and missing label on a card is 400 and nothing linked; same set twice is idempotent (no version bump, no event, one activity row); limit of 10; label deletion removes it from cards with activity; board events and client mutation id; no event on failure.
+  - Web component and flow tests: picker toggles with Space and announces (polite) or reports an error (assertive), viewer read-only, empty state; settings page empty state, create with client id, validation and server duplicate error, delete confirmation, viewer read-only.
+  - E2E (`e2e/labels.spec.ts`, two browser contexts): A creates a label in settings and assigns it with the keyboard, B sees it on the tile within 2 s without reload, removal and label deletion also reach B; axe (serious and critical) on settings, picker and the viewer dialog; viewer sees labels but has no controls. 5 repeats at `--retries=0`: 10 passed.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 210, web 364, api 520, root 4) · test:e2e ok (63 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - Decisions the spec left open: label management uses the `project:manage` action (owner and member), not a new action. Label deletion also changes the cards that carried it (version, activity, `card_updated`), because G5 says every card mutation writes an activity event. Colours are tokens (`red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `gray`) mapped to light tints with dark text and a coloured border in `styles.css`; the name is always the visible text.
+  - The project settings page does not open the board WebSocket, so label changes made by someone else while it is open appear after the next refetch (window focus or navigation), not instantly. The board and the card dialog do update live.
+  - I did not run a manual contrast check of the 8 tints; axe reports no serious or critical violations.
+  - Suggestion for the planner: filtering the board by label is out of scope here (as the task says) and would be a natural follow-up task; a live label list on the settings page would need a socket there.
+- **Blocker:** none
+
+### KB-026 · Velocity of recent sprints
+
+**Iteration 1 — 2026-11-27**
+
+- **Status at the end:** Ready for test
+- **What was done:**
+  - Shared: `packages/shared/src/velocity.ts` (`velocityResponseSchema` with at most 6 sprints, `averageCompleted` rounded to one decimal and 0 for none, `velocitySummary` text).
+  - API: `GET /api/projects/:pid/velocity` in the sprints module (`velocity.ts`, route in `routes.ts`). Authorization through the policy with `workspace:read` (any role; a non-member gets the same 404 as a missing project). It reads the last 6 closed sprints by `closedAt` descending and returns them oldest first with the stored `committedPoints` and `completedPoints` (null counts as 0), plus the average completed. No migration: KB-022 and KB-023 already store both numbers.
+  - Web: `features/reports/VelocityView.tsx` (Recharts bar chart, text summary, table alternative with a keyboard toggle "Show velocity as table", empty state "Close a sprint to see velocity", error state with retry) and the `useVelocity` TanStack Query hook (`refetchOnMount: 'always'`, so a sprint closed just before is shown). `ReportsPage` renders it in a "Velocity" section below the burndown.
+- **Changed files:** `packages/shared/src/{velocity.ts,velocity.test.ts,index.ts}`; `apps/api/src/modules/sprints/{velocity.ts,velocity.test.ts,routes.ts}`; `apps/web/src/features/reports/{VelocityView.tsx,velocity-flow.test.tsx,burndown-flow.test.tsx,api/velocity.ts,api/index.ts}`; `apps/web/src/routes/ReportsPage.tsx`; `e2e/velocity.spec.ts`
+- **Migrations:** none
+- **Commit(s):** `947e9b7`
+- **Tests written by the developer:**
+  - Unit (shared): average with 0, 1 and 6 sprints; schema limit; summary text. Web flow: summary, chart, table by keyboard, empty state.
+  - API (real PostgreSQL): empty when only planned or active sprints exist; 8 closed sprints give the last 6 in chronological order with the average; 404 non-member identical to a missing project; 401.
+  - E2E (`e2e/velocity.spec.ts`): empty state, then after closing a sprint the table shows 8 committed and 5 completed; keyboard toggle; axe (serious and critical) in both states.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 215, web 366, api 523, root 4) · test:e2e ok (64 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - Decisions the spec left open: the toggle label is "Show velocity as table" so it differs from the burndown toggle on the same page. "Last 6" is ordered by close time. The reports page does not subscribe to sprint events, so velocity updates on the next visit (refetch on mount), not live.
+  - The burndown flow test fixture got a velocity stub because the reports page now requests it.
+- **Blocker:** none

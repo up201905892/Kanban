@@ -7,6 +7,8 @@ import {
   cardSchema,
   createCardRequestSchema,
   deleteColumnQuerySchema,
+  descriptionCounterText,
+  excessToTrim,
   moveCardRequestSchema,
   updateCardRequestSchema,
 } from './cards.js';
@@ -80,6 +82,7 @@ describe('cardSchema', () => {
       priority: 'none',
       estimate: null,
       sprintId: null,
+      labelIds: [],
       description: '',
       createdById: id,
       createdAt: '2026-11-05T10:00:00.000Z',
@@ -157,6 +160,10 @@ describe('activityEventDataSchema', () => {
       { type: 'sprint_added', data: { sprintId: id, sprintName: 'Sprint 1' } },
       { type: 'sprint_removed', data: { sprintId: id, sprintName: 'Sprint 1' } },
       {
+        type: 'labels_changed',
+        data: { added: [{ id, name: 'Bug' }], removed: [] },
+      },
+      {
         type: 'sprint_removed',
         data: { sprintId: id, sprintName: 'Sprint 1', reason: 'sprint_closed' },
       },
@@ -176,5 +183,21 @@ describe('activityEventDataSchema', () => {
     expect(
       activityEventDataSchema.safeParse({ type: 'title_changed', data: { from: 'a' } }).success,
     ).toBe(false);
+  });
+});
+
+describe('description limit helpers (KB-040)', () => {
+  it('excessToTrim is 0 below and at the limit and the excess above it', () => {
+    expect(excessToTrim(19_999, 20_000)).toBe(0);
+    expect(excessToTrim(20_000, 20_000)).toBe(0);
+    expect(excessToTrim(20_001, 20_000)).toBe(1);
+    expect(excessToTrim(50_000)).toBe(30_000);
+  });
+
+  it('shows the counter from 19,000 characters', () => {
+    expect(descriptionCounterText(18_999)).toBeNull();
+    expect(descriptionCounterText(19_000)).toBe('1,000 characters left');
+    expect(descriptionCounterText(19_999)).toBe('1 character left');
+    expect(descriptionCounterText(20_000)).toBe('Description limit reached (20,000 characters)');
   });
 });

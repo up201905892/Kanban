@@ -23,6 +23,7 @@ export function ProjectPage() {
   if (isError) {
     return (
       <ErrorState
+        headingLevel={1}
         title="Project unavailable"
         message={error.message}
         onRetry={() => void refetch()}

@@ -30,12 +30,14 @@ const card = (id: string, columnId: string, position: string, number: number): C
   priority: 'none',
   estimate: null,
   sprintId: null,
+  labelIds: [],
 });
 const board = (): BoardResponse => ({
   board: { id: 'b', projectId: 'p' },
   columns: [col('a', 'a0'), col('b', 'a1'), col('c', 'a2', true)],
   cards: [card('x', 'a', 'a0', 1), card('y', 'a', 'a1', 2), card('z', 'b', 'a0', 3)],
   sprints: [],
+  labels: [],
 });
 const ids = (columns: Column[]) => sortColumns(columns).map((c) => c.id);
 

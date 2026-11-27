@@ -1,5 +1,5 @@
 import { ROLES, can, roleSchema } from '@kanban/shared';
-import type { Member, Workspace } from '@kanban/shared';
+import type { Member, Role, Workspace } from '@kanban/shared';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { Button, Dialog, EmptyState, ErrorState, Spinner, useAnnounce } from '../components';
@@ -18,6 +18,7 @@ export function MembersPage() {
   if (isError) {
     return (
       <ErrorState
+        headingLevel={1}
         title="Workspace unavailable"
         message={error.message}
         onRetry={() => void refetch()}
@@ -50,6 +51,7 @@ function MemberTable({ workspace, isOwner }: { workspace: Workspace; isOwner: bo
   const announce = useAnnounce();
   const navigate = useNavigate();
   const [target, setTarget] = useState<Member | null>(null);
+  const [demoting, setDemoting] = useState<Member | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
   if (isPending) return <Spinner label="Loading members" />;
@@ -72,14 +74,35 @@ function MemberTable({ workspace, isOwner }: { workspace: Workspace; isOwner: bo
   function onRoleChange(member: Member, value: string) {
     const parsed = roleSchema.safeParse(value);
     if (!parsed.success) return;
+    if (parsed.data === 'viewer' && member.role !== 'viewer') {
+      // The select is controlled, so it keeps the old role until the person confirms.
+      setDemoting(member);
+      return;
+    }
+    applyRole(member, parsed.data);
+  }
+
+  function applyRole(member: Member, role: Role) {
     setProblem(null);
     changeRole.mutate(
-      { userId: member.userId, role: parsed.data },
+      { userId: member.userId, role },
       {
-        onSuccess: () => announce(`${member.name} is now ${parsed.data}`),
+        onSuccess: () =>
+          announce(
+            role === 'viewer'
+              ? `${member.name} is now viewer and their cards were unassigned`
+              : `${member.name} is now ${role}`,
+          ),
         onError: (e) => report(e, 'Could not change the role'),
       },
     );
+  }
+
+  function confirmDemote() {
+    if (!demoting) return;
+    const member = demoting;
+    setDemoting(null);
+    applyRole(member, 'viewer');
   }
 
   function confirmRemove() {
@@ -117,61 +140,63 @@ function MemberTable({ workspace, isOwner }: { workspace: Workspace; isOwner: bo
       {members.length === 0 ? (
         <EmptyState title="No members" />
       ) : (
-        <table aria-labelledby="members-heading">
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Email</th>
-              <th scope="col">Role</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.map((member) => {
-              const isMe = member.userId === me?.id;
-              return (
-                <tr key={member.userId}>
-                  <th scope="row">
-                    {member.name}
-                    {isMe ? ' (you)' : ''}
-                  </th>
-                  <td>{member.email}</td>
-                  <td>
-                    {isOwner ? (
-                      <select
-                        aria-label={`Role for ${member.name}`}
-                        value={member.role}
-                        onChange={(e) => onRoleChange(member, e.target.value)}
-                      >
-                        {ROLES.map((role) => (
-                          <option key={role} value={role}>
-                            {role}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      member.role
-                    )}
-                  </td>
-                  <td>
-                    {isMe ? (
-                      <Button onClick={() => setTarget(member)}>Leave workspace</Button>
-                    ) : (
-                      isOwner && (
-                        <Button
-                          aria-label={`Remove ${member.name}`}
-                          onClick={() => setTarget(member)}
+        <div className="table-scroll" role="region" aria-label="Members table" tabIndex={0}>
+          <table aria-labelledby="members-heading">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Role</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((member) => {
+                const isMe = member.userId === me?.id;
+                return (
+                  <tr key={member.userId}>
+                    <th scope="row">
+                      {member.name}
+                      {isMe ? ' (you)' : ''}
+                    </th>
+                    <td>{member.email}</td>
+                    <td>
+                      {isOwner ? (
+                        <select
+                          aria-label={`Role for ${member.name}`}
+                          value={member.role}
+                          onChange={(e) => onRoleChange(member, e.target.value)}
                         >
-                          Remove
-                        </Button>
-                      )
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                          {ROLES.map((role) => (
+                            <option key={role} value={role}>
+                              {role}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        member.role
+                      )}
+                    </td>
+                    <td>
+                      {isMe ? (
+                        <Button onClick={() => setTarget(member)}>Leave workspace</Button>
+                      ) : (
+                        isOwner && (
+                          <Button
+                            aria-label={`Remove ${member.name}`}
+                            onClick={() => setTarget(member)}
+                          >
+                            Remove
+                          </Button>
+                        )
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
       <Dialog
         open={target !== null}
@@ -186,6 +211,15 @@ function MemberTable({ workspace, isOwner }: { workspace: Workspace; isOwner: bo
         <div className="dialog-actions">
           <Button onClick={confirmRemove}>{leaving ? 'Leave' : 'Remove'}</Button>
           <Button onClick={() => setTarget(null)}>Cancel</Button>
+        </div>
+      </Dialog>
+      <Dialog open={demoting !== null} onClose={() => setDemoting(null)} title="Change to viewer">
+        <p>
+          {`${demoting?.name ?? ''} will become a viewer and their cards in this workspace will be unassigned.`}
+        </p>
+        <div className="dialog-actions">
+          <Button onClick={confirmDemote}>Change to viewer</Button>
+          <Button onClick={() => setDemoting(null)}>Cancel</Button>
         </div>
       </Dialog>
     </section>

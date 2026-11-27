@@ -12,6 +12,15 @@ export {
   type BurndownCard,
   type BurndownContext,
 } from './burndown.js';
+export {
+  VELOCITY_SPRINT_LIMIT,
+  velocitySprintSchema,
+  velocityResponseSchema,
+  averageCompleted,
+  velocitySummary,
+  type VelocitySprint,
+  type VelocityResponse,
+} from './velocity.js';
 export { APP_NAME } from './constants.js';
 export { slugify } from './slugify.js';
 export {
@@ -61,6 +70,9 @@ export {
   CARD_TITLE_MAX_LENGTH,
   CARD_DESCRIPTION_MAX_LENGTH,
   DESCRIPTION_TEXT_NAME,
+  DESCRIPTION_COUNTER_FROM,
+  descriptionCounterText,
+  excessToTrim,
   DESCRIPTION_ACTIVITY_WINDOW_MS,
   ACTIVITY_TYPES,
   CARD_PRIORITIES,
@@ -273,3 +285,29 @@ export {
   type SprintListResponse,
   type SetCardSprintRequest,
 } from './sprints.js';
+export {
+  LABEL_NAME_MIN_LENGTH,
+  LABEL_NAME_MAX_LENGTH,
+  CARD_LABELS_MAX,
+  LABEL_COLORS,
+  labelColorSchema,
+  labelNameSchema,
+  labelNameKey,
+  projectLabelsParamsSchema,
+  labelParamsSchema,
+  labelSchema,
+  labelResponseSchema,
+  labelListResponseSchema,
+  createLabelRequestSchema,
+  updateLabelRequestSchema,
+  setCardLabelsRequestSchema,
+  labelRefSchema,
+  diffLabelIds,
+  type LabelColor,
+  type Label,
+  type LabelResponse,
+  type LabelListResponse,
+  type CreateLabelRequest,
+  type UpdateLabelRequest,
+  type SetCardLabelsRequest,
+} from './labels.js';

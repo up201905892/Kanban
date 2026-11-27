@@ -858,4 +858,61 @@ describe('access ends over WebSocket when it ends over REST (KB-033)', () => {
     expect(await out.client.closed).toBe(WS_CLOSE.forbidden);
     await waitFor(() => app.realtime.rooms.size === 0);
   });
+
+  describe('resource removed before the join completes (KB-043)', () => {
+    let mutate: () => Promise<void> = async () => {};
+
+    beforeEach(async () => {
+      await app.close();
+      mutate = async () => {};
+      await start({ beforeJoin: () => mutate() });
+    });
+
+    it('project deleted during the window: board and card sockets close with 4403', async () => {
+      const s = await setup();
+      mutate = async () => {
+        await prisma.project.deleteMany({ where: { id: s.projectId } });
+      };
+      const board = await connect(s.boardRoom, s.member);
+      const card = await connect(s.cardRoom, s.owner);
+      if (board.kind !== 'open' || card.kind !== 'open') throw new Error('expected upgrade');
+      expect(await board.client.closed).toBe(WS_CLOSE.forbidden);
+      expect(await card.client.closed).toBe(WS_CLOSE.forbidden);
+      await waitFor(() => app.realtime.rooms.size === 0);
+    });
+
+    it('card soft-deleted during the window: only its socket closes', async () => {
+      const s = await setup();
+      mutate = async () => {
+        await prisma.card.update({ where: { id: s.cardId }, data: { deletedAt: new Date() } });
+      };
+      const board = await connect(s.boardRoom, s.member);
+      const card = await connect(s.cardRoom, s.owner);
+      if (board.kind !== 'open' || card.kind !== 'open') throw new Error('expected upgrade');
+      expect(await card.client.closed).toBe(WS_CLOSE.forbidden);
+      await waitFor(() => board.client.received.length > 0);
+      expect(board.client.closeCode).toBeNull();
+      await waitFor(() => !app.realtime.rooms.has(s.cardRoom));
+    });
+
+    it('workspace deleted during the window: the socket closes with 4403', async () => {
+      const s = await setup();
+      mutate = async () => {
+        await prisma.workspace.deleteMany({ where: { id: s.ws.id } });
+      };
+      const board = await connect(s.boardRoom, s.member);
+      if (board.kind !== 'open') throw new Error('expected upgrade');
+      expect(await board.client.closed).toBe(WS_CLOSE.forbidden);
+      await waitFor(() => app.realtime.rooms.size === 0);
+    });
+
+    it('nothing changed during the window: the socket stays open and syncs', async () => {
+      const s = await setup();
+      const board = await connect(s.boardRoom, s.member);
+      if (board.kind !== 'open') throw new Error('expected upgrade');
+      await waitFor(() => board.client.received.length > 0);
+      await settle();
+      expect(board.client.closeCode).toBeNull();
+    });
+  });
 });

@@ -25,6 +25,7 @@ interface Cd {
   priority: string;
   estimate: number | null;
   sprintId: string | null;
+  labelIds: string[];
 }
 
 const card = (n: number, columnId: string, estimate: number | null, sprintId: string | null) => ({
@@ -38,6 +39,7 @@ const card = (n: number, columnId: string, estimate: number | null, sprintId: st
   priority: 'none',
   estimate,
   sprintId,
+  labelIds: [],
 });
 
 const activeSprint = {
@@ -87,6 +89,7 @@ function server(role: string, closeResponse?: () => Response) {
           ],
           cards,
           sprints,
+          labels: [],
         }),
       [`POST /api/sprints/${SID}/close`]:
         closeResponse ??

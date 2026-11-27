@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { compareByPosition } from '@kanban/shared';
 import { App } from '../../App';
@@ -25,6 +25,7 @@ interface Cd {
   priority: string;
   estimate: number | null;
   sprintId: string | null;
+  labelIds: string[];
   description: string;
 }
 
@@ -45,6 +46,7 @@ const card = (n: number, columnId = cid(1), extra: Partial<Cd> = {}): Cd => ({
   priority: 'none',
   estimate: null,
   sprintId: null,
+  labelIds: [],
   description: '',
   ...extra,
 });
@@ -60,6 +62,7 @@ const summary = (c: Cd) => ({
   priority: c.priority,
   estimate: c.estimate,
   sprintId: c.sprintId,
+  labelIds: c.labelIds,
 });
 const full = (c: Cd) => ({
   ...summary(c),
@@ -101,6 +104,7 @@ function server(role: string, cards: Cd[]) {
         columns,
         cards: cards.map(summary).sort(compareByPosition),
         sprints: [],
+        labels: [],
       }),
     ...Object.fromEntries(
       [1, 2, 3, 4].map((n) => [
@@ -282,6 +286,37 @@ describe('moving cards', () => {
     const todo = screen.getByRole('region', { name: 'Column To do' });
     await waitFor(() =>
       expect(within(todo).getByRole('link', { name: 'KB-2 Card 2' })).toBeVisible(),
+    );
+  });
+
+  it('removes the tile when the move gets 404 because the card is gone (KB-039)', async () => {
+    let gone = false;
+    stubFetch({
+      // The board answer is stale: it still lists the card, so only the tombstone can hide it.
+      ...server('owner', [card(1), card(2)]),
+      [`GET /api/cards/${kid(2)}`]: () =>
+        gone
+          ? jsonResponse(404, { error: { code: 'NOT_FOUND', message: 'Resource not found' } })
+          : jsonResponse(200, { card: full(card(2)) }),
+      [`POST /api/cards/${kid(2)}/move`]: () => {
+        gone = true;
+        return jsonResponse(404, { error: { code: 'NOT_FOUND', message: 'Resource not found' } });
+      },
+    });
+    const user = board(`/projects/${PID}/cards/2`);
+    const dialog = await screen.findByRole('dialog', { name: 'Card KB-2' });
+    await user.selectOptions(within(dialog).getByLabelText('Column'), 'In progress');
+    await user.click(within(dialog).getByRole('button', { name: 'Move card' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('live-assertive')).toHaveTextContent(
+        "Could not move Card KB-2 'Card 2': Resource not found",
+      ),
+    );
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'KB-2 Card 2' })).toBeNull());
+    expect(screen.getByRole('link', { name: 'KB-1 Card 1' })).toBeVisible();
+    // The announcement is the existing rollback message, said once.
+    expect(screen.getByTestId('live-assertive').textContent).toBe(
+      "Could not move Card KB-2 'Card 2': Resource not found. It is back in To do.",
     );
   });
 });
@@ -507,6 +542,82 @@ describe('card dialog', () => {
     board(`/projects/${PID}/cards/1`);
     const area = await screen.findByRole('textbox', { name: 'Description' });
     expect(area).toHaveAttribute('maxlength', '20000');
+  });
+
+  it('shows the characters-left counter from 19,000 and links it to the editor', async () => {
+    stubFetch(server('owner', [card(1)]));
+    board(`/projects/${PID}/cards/1`);
+    const area = await screen.findByRole('textbox', { name: 'Description' });
+    let room!: FakeRoom;
+    act(() => {
+      room = serveDescription('a'.repeat(18_999));
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('description-status')).toHaveTextContent('Saved'),
+    );
+    expect(screen.queryByTestId('description-counter')).toBeNull();
+    act(() => {
+      room.doc.getText('description').insert(0, 'b');
+    });
+    expect(area).toHaveAccessibleDescription('1,000 characters left');
+    expect(screen.getByTestId('description-counter')).toHaveTextContent('1,000 characters left');
+    act(() => {
+      room.doc.getText('description').insert(0, 'c'.repeat(1_000));
+    });
+    expect(area).toHaveAccessibleDescription('Description limit reached (20,000 characters)');
+    // Neither the counter nor the limit text is a live region.
+    expect(screen.getByTestId('live-polite')).toBeEmptyDOMElement();
+  });
+
+  it('announces once when a server trim removes text this client inserted', async () => {
+    stubFetch(server('owner', [card(1)]));
+    board(`/projects/${PID}/cards/1`);
+    const area = await screen.findByRole('textbox', { name: 'Description' });
+    let room!: FakeRoom;
+    act(() => {
+      room = serveDescription('a'.repeat(18_500));
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('description-status')).toHaveTextContent('Saved'),
+    );
+    fireEvent.input(area, { target: { value: 'a'.repeat(18_500) + 'm'.repeat(1_000) } });
+    expect(screen.getByTestId('live-polite')).toBeEmptyDOMElement();
+    const remote = room.doc.getText('description');
+    act(() => {
+      remote.insert(0, 'r'.repeat(800));
+    });
+    expect(screen.getByTestId('live-polite')).toBeEmptyDOMElement();
+    act(() => {
+      remote.delete(20_000, remote.length - 20_000);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('live-polite')).toHaveTextContent(
+        'The description reached the 20,000 character limit; the end was removed.',
+      ),
+    );
+    expect(area).toHaveValue(remote.toString());
+  });
+
+  it('does not announce a server trim that only removed other peoples text', async () => {
+    stubFetch(server('owner', [card(1)]));
+    board(`/projects/${PID}/cards/1`);
+    await screen.findByRole('textbox', { name: 'Description' });
+    let room!: FakeRoom;
+    act(() => {
+      room = serveDescription('a'.repeat(19_800));
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('description-status')).toHaveTextContent('Saved'),
+    );
+    const remote = room.doc.getText('description');
+    act(() => {
+      remote.insert(remote.length, 'z'.repeat(500));
+    });
+    act(() => {
+      remote.delete(20_000, 300);
+    });
+    expect(remote.length).toBe(20_000);
+    expect(screen.getByTestId('live-polite')).toBeEmptyDOMElement();
   });
 
   it('does not trap Tab in the description editor', async () => {

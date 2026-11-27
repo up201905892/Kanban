@@ -2,7 +2,7 @@ import type { BoardEvent, BoardResponse, Card, CardSummary, Column, Sprint } fro
 import { forgetMutationIds, isOwnMutation, newMutationId } from '../../lib/api/mutation-ids';
 import { parseBoardMessage } from '../../lib/realtime/board-socket';
 import { encodeBoardEvent } from '../../test-utils/websocket';
-import { applyBoardEvent, applyCardEvent, remoteChangeOf } from './board-events';
+import { applyBoardEvent, applyCardEvent, mergeFetchedBoard, remoteChangeOf } from './board-events';
 
 const id = (n: number) => `0192f000-0000-7000-8000-${String(n).padStart(12, '0')}`;
 const BOARD = id(1);
@@ -28,6 +28,7 @@ const card = (n: number, columnId = id(101), extra: Partial<CardSummary> = {}): 
   priority: 'none',
   estimate: null,
   sprintId: null,
+  labelIds: [],
   ...extra,
 });
 
@@ -36,6 +37,7 @@ const board = (): BoardResponse => ({
   columns: [column(1), column(2), column(3, { isDone: true })],
   cards: [card(1), card(2, id(102))],
   sprints: [],
+  labels: [],
 });
 
 const base = { boardId: BOARD, actorId: ACTOR, at: '2026-11-10T10:00:00.000Z' };
@@ -280,5 +282,22 @@ describe('parseBoardMessage', () => {
     expect(parseBoardMessage(new Uint8Array([]))).toBeNull();
     const garbage = new TextEncoder().encode('{"type":"x","data":{"type":"nope"}}');
     expect(parseBoardMessage(new Uint8Array([4, garbage.length, ...garbage]))).toBeNull();
+  });
+});
+
+describe('mergeFetchedBoard (stale refetch)', () => {
+  it('keeps a cached card that is newer than the fetched one', () => {
+    const cached = board();
+    cached.cards = [card(1, id(102), { version: 3 }), card(2, id(102))];
+    const fetched = board();
+    const merged = mergeFetchedBoard(fetched, cached);
+    expect(merged.cards[0]).toEqual(cached.cards[0]);
+    expect(merged.cards[1]).toBe(fetched.cards[1]);
+  });
+
+  it('returns the fetched board when nothing is newer or nothing is cached', () => {
+    const fetched = board();
+    expect(mergeFetchedBoard(fetched, undefined)).toBe(fetched);
+    expect(mergeFetchedBoard(fetched, board())).toBe(fetched);
   });
 });

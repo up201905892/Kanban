@@ -217,3 +217,76 @@ describe('projection into Card.description', () => {
     await waitFor(async () => (await s.description$()).length === 20_000, 2500);
   });
 });
+
+describe('description limit in the live document (KB-040)', () => {
+  const ready = (c: Client) => waitFor(() => c.doc.getMap('meta').get('seeded') === true);
+
+  it('converges on exactly 20,000 characters after two concurrent 15,000 character inserts', async () => {
+    const warnings: string[] = [];
+    const warn = app.log.warn.bind(app.log);
+    app.log.warn = ((...args: unknown[]) => {
+      warnings.push(String(args[1] ?? args[0]));
+      return (warn as (...a: unknown[]) => void)(...args);
+    }) as typeof app.log.warn;
+    const s = await setup();
+    const [a, b] = await Promise.all([open(s.cardRoom, s.owner), open(s.cardRoom, s.owner)]);
+    await Promise.all([ready(a), ready(b)]);
+    a.append('a'.repeat(15_000));
+    b.append('b'.repeat(15_000));
+    await waitFor(() => a.text.length === 20_000 && b.text.length === 20_000);
+    await new Promise((r) => setTimeout(r, 100));
+    expect(a.text).toBe(b.text);
+    expect(a.text).toHaveLength(20_000);
+    await waitFor(async () => (await s.description$()) === a.text, 3000);
+    expect(warnings.filter((w) => w.includes('over the limit'))).toEqual([]);
+  });
+
+  it('trims one oversized update for every client and keeps the result after a restart', async () => {
+    const s = await setup();
+    const raw = await open(s.cardRoom, s.owner);
+    const other = await open(s.cardRoom, s.owner);
+    await Promise.all([ready(raw), ready(other)]);
+    raw.append('x'.repeat(50_000));
+    await waitFor(() => raw.text.length === 20_000 && other.text.length === 20_000);
+    await waitFor(async () => (await s.description$()).length === 20_000, 3000);
+    raw.ws.close();
+    other.ws.close();
+    await Promise.all([raw.closed, other.closed]);
+    await waitFor(async () => (await prisma.yDocumentUpdate.count()) === 0);
+    await app.close();
+    app = buildApp({ prisma, webOrigin: TEST_ORIGIN });
+    await app.listen({ port: 0, host: '127.0.0.1' });
+    port = (app.server.address() as AddressInfo).port;
+    const fresh = await open(s.cardRoom, s.owner);
+    await waitFor(() => fresh.text.length > 0);
+    await new Promise((r) => setTimeout(r, 100));
+    expect(fresh.text).toHaveLength(20_000);
+  });
+
+  it('does not trim a text of exactly 20,000 characters', async () => {
+    const s = await setup();
+    const a = await open(s.cardRoom, s.owner);
+    const b = await open(s.cardRoom, s.owner);
+    await Promise.all([ready(a), ready(b)]);
+    a.append('y'.repeat(20_000));
+    await waitFor(() => b.text.length === 20_000);
+    await new Promise((r) => setTimeout(r, 100));
+    expect(a.text).toHaveLength(20_000);
+    expect(b.text).toHaveLength(20_000);
+  });
+
+  it('discards an oversized update from a viewer without trimming', async () => {
+    const s = await setup('start');
+    const viewer = await createUserAndLogin(app, { name: 'Vera' });
+    const ws = await prisma.workspace.findFirstOrThrow();
+    await prisma.membership.create({
+      data: { workspaceId: ws.id, userId: viewer.user.id, role: 'viewer' },
+    });
+    const v = await open(s.cardRoom, viewer);
+    const o = await open(s.cardRoom, s.owner);
+    await waitFor(() => v.text === 'start' && o.text === 'start');
+    v.append('z'.repeat(30_000));
+    await new Promise((r) => setTimeout(r, 300));
+    expect(o.text).toBe('start');
+  });
+});

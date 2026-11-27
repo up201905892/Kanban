@@ -154,8 +154,53 @@ describe('members page', () => {
     render(<App router={createTestRouter([`/workspaces/${WID}/members`])} />);
     const select = await screen.findByRole('combobox', { name: 'Role for Ada' });
     await user.selectOptions(select, 'viewer');
+    await user.click(
+      within(await screen.findByRole('dialog', { name: 'Change to viewer' })).getByRole('button', {
+        name: 'Change to viewer',
+      }),
+    );
     expect(await screen.findByText('A workspace needs at least one owner.')).toBeInTheDocument();
     await waitFor(() => expect(select).toHaveValue('owner'));
+  });
+
+  it('confirms a demotion to viewer; Escape keeps the role and returns focus to the select', async () => {
+    let bobRole = 'member';
+    const mock = stubMembers('owner', {
+      [`GET /api/workspaces/${WID}/members`]: () =>
+        jsonResponse(200, {
+          members: [member(USER.id, 'Ada', 'owner'), member(OTHER, 'Bob', bobRole)],
+        }),
+      [`PATCH /api/workspaces/${WID}/members/${OTHER}`]: () => {
+        bobRole = 'viewer';
+        return jsonResponse(200, { member: member(OTHER, 'Bob', 'viewer') });
+      },
+    });
+    const user = userEvent.setup();
+    render(<App router={createTestRouter([`/workspaces/${WID}/members`])} />);
+    const select = await screen.findByRole('combobox', { name: 'Role for Bob' });
+    await user.selectOptions(select, 'viewer');
+    const dialog = await screen.findByRole('dialog', { name: 'Change to viewer' });
+    expect(dialog).toHaveTextContent(
+      'Bob will become a viewer and their cards in this workspace will be unassigned.',
+    );
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(select).toHaveValue('member');
+    expect(select).toHaveFocus();
+    expect(mock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
+
+    await user.selectOptions(select, 'viewer');
+    await user.click(
+      within(await screen.findByRole('dialog', { name: 'Change to viewer' })).getByRole('button', {
+        name: 'Change to viewer',
+      }),
+    );
+    await waitFor(() => expect(select).toHaveValue('viewer'));
+    await waitFor(() =>
+      expect(screen.getByTestId('live-polite')).toHaveTextContent(
+        'Bob is now viewer and their cards were unassigned',
+      ),
+    );
   });
 
   it('asks for confirmation before removing a member', async () => {

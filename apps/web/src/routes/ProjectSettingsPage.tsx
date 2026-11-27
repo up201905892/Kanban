@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { Button, Dialog, ErrorState, Spinner, TextField, useAnnounce } from '../components';
 import { failureFromError, fieldErrorsFromZod } from '../features/auth/form-errors';
 import { useAuthForm } from '../features/auth/useAuthForm';
+import { LabelSettings } from '../features/labels/LabelSettings';
 import { useDeleteProject, useProject, useRenameProject } from '../features/projects/api';
 import { useWorkspace } from '../features/workspaces/api';
 
@@ -17,6 +18,7 @@ export function ProjectSettingsPage() {
   if (project.isError) {
     return (
       <ErrorState
+        headingLevel={1}
         title="Project unavailable"
         message={project.error.message}
         onRetry={() => void project.refetch()}
@@ -33,6 +35,7 @@ function WithRole({ project }: { project: Project }) {
   if (workspace.isError) {
     return (
       <ErrorState
+        headingLevel={1}
         title="Project unavailable"
         message={workspace.error.message}
         onRetry={() => void workspace.refetch()}
@@ -56,6 +59,7 @@ function Settings({ project, role }: { project: Project; role: Role }) {
       <p>Key: {project.key}</p>
       {!canRename && <p id="project-read-only">Viewers cannot change this project.</p>}
       <RenameForm project={project} canRename={canRename} />
+      <LabelSettings projectId={project.id} canManage={canRename} />
       {canDelete ? (
         <DeleteSection project={project} />
       ) : (

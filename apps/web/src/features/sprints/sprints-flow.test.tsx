@@ -25,6 +25,7 @@ interface Cd {
   priority: string;
   estimate: number | null;
   sprintId: string | null;
+  labelIds: string[];
 }
 
 interface Sp {
@@ -52,6 +53,7 @@ const card = (n: number, estimate: number | null, sprintId: string | null = null
   priority: 'none',
   estimate,
   sprintId,
+  labelIds: [],
 });
 
 const sprint = (n: number, status = 'planned', extra: Partial<Sp> = {}): Sp => ({
@@ -97,6 +99,7 @@ function server(role: string, cards: Cd[], sprints: Sp[]) {
         columns: [{ id: COL, boardId: BID, name: 'To do', position: 'a0', isDone: false }],
         cards,
         sprints,
+        labels: [],
       }),
     // The server keeps the state, so the refetch after a change agrees with it.
     [`POST /api/projects/${PID}/sprints`]: (body) => {

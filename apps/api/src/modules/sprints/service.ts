@@ -24,7 +24,7 @@ import {
 import { authorize } from '../authz/index.js';
 import { lockBoard, type Tx } from '../boards/lock.js';
 import { recordActivity } from '../cards/activity.js';
-import { toCardSummary } from '../cards/service.js';
+import { toCardSummary, withLabels } from '../cards/service.js';
 import { dateToString, stringToDate, toSprint } from './mapper.js';
 
 const alreadyActive = (): AppError =>
@@ -302,6 +302,7 @@ export async function closeSprint(
         await tx.card.update({
           where: { id: cardId },
           data: { sprintId: null, version: { increment: 1 } },
+          include: withLabels,
         }),
       );
       await recordActivity(tx, cardId, user.id, {

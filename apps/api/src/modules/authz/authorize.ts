@@ -13,11 +13,12 @@ export type ResourceRef =
   | { type: 'board'; id: string }
   | { type: 'column'; id: string }
   | { type: 'card'; id: string }
-  | { type: 'sprint'; id: string };
+  | { type: 'sprint'; id: string }
+  | { type: 'label'; id: string };
 
 type Db = Pick<
   PrismaClient,
-  'membership' | 'project' | 'invite' | 'board' | 'column' | 'card' | 'sprint'
+  'membership' | 'project' | 'invite' | 'board' | 'column' | 'card' | 'sprint' | 'label'
 >;
 type Resolver<T extends ResourceRef['type']> = (
   db: Db,
@@ -64,6 +65,14 @@ const RESOLVERS: { [T in ResourceRef['type']]: Resolver<T> } = {
   sprint: async (db, id) =>
     (
       await db.sprint.findUnique({
+        where: { id },
+        select: { project: { select: { workspaceId: true } } },
+      })
+    )?.project.workspaceId ?? null,
+  // A label resolves through its project.
+  label: async (db, id) =>
+    (
+      await db.label.findUnique({
         where: { id },
         select: { project: { select: { workspaceId: true } } },
       })

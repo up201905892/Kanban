@@ -25,6 +25,7 @@ const card = (number: number, estimate: number | null, sprintId: string | null):
   priority: 'none',
   estimate,
   sprintId,
+  labelIds: [],
 });
 
 const sprint = (id: string, startDate: string, status: Sprint['status'] = 'planned'): Sprint => ({

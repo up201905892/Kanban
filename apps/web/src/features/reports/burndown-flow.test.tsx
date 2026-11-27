@@ -46,7 +46,10 @@ function server(sprints: object[], burndown?: object) {
         columns: [],
         cards: [],
         sprints,
+        labels: [],
       }),
+    [`GET /api/projects/${PID}/velocity`]: () =>
+      jsonResponse(200, { sprints: [], averageCompleted: 0 }),
     [`GET /api/sprints/${SID}/burndown`]: () => jsonResponse(200, burndown),
   };
 }

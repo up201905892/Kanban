@@ -92,6 +92,7 @@ model Project {
   workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   board          Board?
   sprints        Sprint[]
+  labels         Label[]
 
   @@unique([workspaceId, key])
   @@map("projects")
@@ -166,12 +167,42 @@ model Card {
   createdBy  User            @relation("CardCreator", fields: [createdById], references: [id], onDelete: Restrict)
   assignee    User?           @relation("CardAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   activity    ActivityEvent[]
+  labels      CardLabel[]
 
   @@unique([boardId, number])
   @@index([assigneeId])
   @@index([columnId, position, id])
   @@index([sprintId])
   @@map("cards")
+}
+
+/// A project-level tag for cards. The migration adds a unique index on `(project_id, lower(name))`
+/// (names are unique per project without regard to case) and a CHECK on the 8-token palette;
+/// Prisma can express neither.
+model Label {
+  id        String      @id @default(uuid(7)) @db.Uuid
+  projectId String      @map("project_id") @db.Uuid
+  name      String
+  /// One of the `LABEL_COLORS` tokens of `@kanban/shared`.
+  color     String
+  createdAt DateTime    @default(now()) @map("created_at")
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cards     CardLabel[]
+
+  @@index([projectId])
+  @@map("labels")
+}
+
+/// Which labels a card carries. Removed with the card or the label.
+model CardLabel {
+  cardId  String @map("card_id") @db.Uuid
+  labelId String @map("label_id") @db.Uuid
+  card    Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, labelId])
+  @@index([labelId])
+  @@map("card_labels")
 }
 
 enum SprintStatus {

@@ -23,6 +23,8 @@ export const ErrorCode = {
   SPRINT_CLOSED: 'SPRINT_CLOSED',
   SPRINT_NOT_ACTIVE: 'SPRINT_NOT_ACTIVE',
   INVALID_SPRINT: 'INVALID_SPRINT',
+  LABEL_NAME_TAKEN: 'LABEL_NAME_TAKEN',
+  INVALID_LABEL: 'INVALID_LABEL',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

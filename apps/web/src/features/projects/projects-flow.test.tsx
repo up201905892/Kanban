@@ -169,6 +169,15 @@ function settingsHandlers(role: string, extra: Record<string, () => Response> = 
     [`GET /api/workspaces/${WID}`]: workspace(role),
     [`GET /api/projects/${PID}`]: () => jsonResponse(200, { project: project() }),
     [`GET /api/workspaces/${WID}/projects`]: () => jsonResponse(200, { projects: [project()] }),
+    // The settings page lists the labels, which come with the board.
+    [`GET /api/projects/${PID}/board`]: () =>
+      jsonResponse(200, {
+        board: { id: '0192f000-0000-7000-8000-0000000000b1', projectId: PID },
+        columns: [],
+        cards: [],
+        sprints: [],
+        labels: [],
+      }),
     ...extra,
   };
 }

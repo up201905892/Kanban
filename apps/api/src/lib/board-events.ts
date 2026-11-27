@@ -5,6 +5,7 @@ import {
   type BoardEvent,
   type CardSummary,
   type Column,
+  type Label,
   type Sprint,
 } from '@kanban/shared';
 
@@ -92,6 +93,30 @@ export function sprintEvent(
     type: 'sprint_updated',
     ...common(boardId, actorId, meta),
     entity: sprint,
+    version: null,
+  };
+}
+
+export function labelEvent(
+  type: 'label_created' | 'label_updated',
+  boardId: string,
+  label: Label,
+  actorId: string,
+  meta: MutationMeta,
+): BoardEvent {
+  return { type, ...common(boardId, actorId, meta), entity: label, version: null };
+}
+
+export function labelDeletedEvent(
+  boardId: string,
+  label: { id: string; name: string },
+  actorId: string,
+  meta: MutationMeta,
+): BoardEvent {
+  return {
+    type: 'label_deleted',
+    ...common(boardId, actorId, meta),
+    entity: { id: label.id, name: label.name },
     version: null,
   };
 }

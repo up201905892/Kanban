@@ -20,11 +20,13 @@ export function InvitePage() {
     const invalid = isApiError(preview.error) && preview.error.code === 'INVITE_INVALID';
     return invalid ? (
       <ErrorState
+        headingLevel={1}
         title="Invite not valid"
         message="This invite link is invalid or has expired. Ask the workspace owner for a new one."
       />
     ) : (
       <ErrorState
+        headingLevel={1}
         title="Invite unavailable"
         message={preview.error.message}
         onRetry={() => void preview.refetch()}

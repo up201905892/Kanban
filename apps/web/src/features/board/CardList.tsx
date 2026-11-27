@@ -14,10 +14,12 @@ import {
   cardReference,
   type CardSummary,
   type Column,
+  type Label,
   type Member,
   type Project,
 } from '@kanban/shared';
 import { initialsOf, priorityDisplay } from '../cards/fields';
+import { CardLabels } from '../labels/LabelChip';
 import { usePresence } from '../presence/PresenceContext';
 import { editingLabel, othersEditing } from '../presence/view-model';
 
@@ -45,6 +47,7 @@ interface CardItemProps {
   /** False for viewers: the handle is disabled and the card cannot be picked up. */
   canDrag: boolean;
   members: Member[];
+  labels: Label[];
   /** Arrow/Home/End on the tile link: move focus to another card of the same column. */
   onNavigate: (cardId: string, key: string) => void;
 }
@@ -106,7 +109,7 @@ const NAVIGATION_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End']);
  * lives in the memoized `CardBody`, so applying one board event re-renders only the bodies whose
  * card changed.
  */
-function CardItem({ project, card, canDrag, members, onNavigate }: CardItemProps) {
+function CardItem({ project, card, canDrag, members, labels, onNavigate }: CardItemProps) {
   // Number 0 is an optimistic card the server has not numbered yet: shown, but neither openable
   // nor movable.
   const pending = card.number === 0;
@@ -140,6 +143,7 @@ function CardItem({ project, card, canDrag, members, onNavigate }: CardItemProps
         card={card}
         canDrag={canDrag}
         members={members}
+        labels={labels}
         onNavigate={onNavigate}
         attributes={attributes}
         listeners={listeners}
@@ -155,6 +159,7 @@ interface CardBodyProps {
   card: CardSummary;
   canDrag: boolean;
   members: Member[];
+  labels: Label[];
   onNavigate: (cardId: string, key: string) => void;
   attributes: SortableBindings['attributes'];
   listeners: SortableBindings['listeners'];
@@ -166,6 +171,7 @@ const CardBody = memo(function CardBody({
   card,
   canDrag,
   members,
+  labels,
   onNavigate,
   attributes,
   listeners,
@@ -194,6 +200,7 @@ const CardBody = memo(function CardBody({
         <span className="card-ref">{reference}</span>{' '}
         <span className="card-title">{card.title}</span>
         <CardMeta card={card} members={members} />
+        <CardLabels labelIds={card.labelIds} labels={labels} />
         <CardEditing cardId={card.id} />
       </Link>
       {canDrag ? (
@@ -227,6 +234,8 @@ export interface ColumnCardsProps {
   cards: CardSummary[];
   canDrag: boolean;
   members: Member[];
+  /** Every label of the project; a tile shows the ones its card carries. */
+  labels: Label[];
   /** The card being dragged, if any: it stays rendered even when it scrolls out of view. */
   heldId?: string | null;
   /**
@@ -247,6 +256,7 @@ export function ColumnCards({
   cards,
   canDrag,
   members,
+  labels,
   heldId = null,
   registerReveal,
 }: ColumnCardsProps) {
@@ -367,6 +377,7 @@ export function ColumnCards({
                   card={card}
                   canDrag={canDrag}
                   members={members}
+                  labels={labels}
                   onNavigate={onNavigate}
                 />
               </li>

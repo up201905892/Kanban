@@ -36,10 +36,16 @@ interface CardRow {
   priority: CardPriority;
   estimate: number | null;
   sprintId: string | null;
+  labels: { labelId: string }[];
   createdById: string;
   createdAt: Date;
   updatedAt: Date;
 }
+
+/** Loads the label links with a card, in a stable order, so every card shape carries `labelIds`. */
+export const withLabels = {
+  labels: { select: { labelId: true }, orderBy: { labelId: 'asc' } },
+} as const;
 
 export const toCardSummary = (row: {
   id: string;
@@ -52,6 +58,7 @@ export const toCardSummary = (row: {
   priority: CardPriority;
   estimate: number | null;
   sprintId: string | null;
+  labels: { labelId: string }[];
 }): CardSummary => ({
   id: row.id,
   columnId: row.columnId,
@@ -63,6 +70,7 @@ export const toCardSummary = (row: {
   priority: row.priority,
   estimate: row.estimate,
   sprintId: row.sprintId,
+  labelIds: row.labels.map((l) => l.labelId),
 });
 
 export const toCard = (row: CardRow): Card => ({
@@ -93,6 +101,7 @@ export async function respacedEvents(
   const rows = await tx.card.findMany({
     where: { id: { in: [...ids] } },
     orderBy: [{ position: 'asc' }, { id: 'asc' }],
+    include: withLabels,
   });
   return rows.map((row) => cardEvent('card_moved', boardId, toCardSummary(row), actorId, meta));
 }
@@ -103,7 +112,10 @@ export async function getCard(
   id: string,
 ): Promise<Card> {
   await authorize(prisma, user, { type: 'card', id }, 'workspace:read');
-  const row = await prisma.card.findFirst({ where: { id, deletedAt: null } });
+  const row = await prisma.card.findFirst({
+    where: { id, deletedAt: null },
+    include: withLabels,
+  });
   if (!row) throw notFound();
   return toCard(row);
 }
@@ -130,7 +142,10 @@ export async function createCard(
 
     if (input.id) {
       // A6: repeating a create returns the existing card and never makes a duplicate.
-      const existing = await tx.card.findUnique({ where: { id: input.id } });
+      const existing = await tx.card.findUnique({
+        where: { id: input.id },
+        include: withLabels,
+      });
       if (existing) {
         if (existing.boardId !== boardId || existing.deletedAt) {
           throw new AppError(409, ErrorCode.CONFLICT, 'This id is already in use');
@@ -189,6 +204,7 @@ export async function createCard(
         position,
         createdById: user.id,
       },
+      include: withLabels,
     });
     await recordActivity(tx, row.id, user.id, {
       type: 'created',
@@ -217,7 +233,7 @@ export async function updateCard(
       select: { boardId: true },
     });
     if (!first || !(await lockBoard(tx, first.boardId))) throw notFound();
-    const card = await tx.card.findFirst({ where: { id, deletedAt: null } });
+    const card = await tx.card.findFirst({ where: { id, deletedAt: null }, include: withLabels });
     if (!card) throw notFound();
 
     const titleChanged = input.title !== undefined && input.title !== card.title;
@@ -262,6 +278,7 @@ export async function updateCard(
         ...(estimateChanged && { estimate: input.estimate as number | null }),
         version: { increment: 1 },
       },
+      include: withLabels,
     });
     if (assigneeChanged) {
       await recordActivity(tx, id, user.id, {
@@ -308,7 +325,7 @@ export async function deleteCard(
       select: { boardId: true },
     });
     if (!first || !(await lockBoard(tx, first.boardId))) throw notFound();
-    const card = await tx.card.findFirst({ where: { id, deletedAt: null } });
+    const card = await tx.card.findFirst({ where: { id, deletedAt: null }, include: withLabels });
     if (!card) throw notFound();
     const row = await tx.card.update({
       where: { id },
@@ -345,7 +362,7 @@ export async function moveCard(
     });
     if (!first || !(await lockBoard(tx, first.boardId))) throw notFound();
     // Re-read under the lock: the card or the column may have been deleted while we waited.
-    const card = await tx.card.findFirst({ where: { id, deletedAt: null } });
+    const card = await tx.card.findFirst({ where: { id, deletedAt: null }, include: withLabels });
     if (!card) throw notFound();
     const column = await tx.column.findUnique({ where: { id: input.columnId } });
     if (!column || column.boardId !== card.boardId) throw notFound();
@@ -381,6 +398,7 @@ export async function moveCard(
     const row = await tx.card.update({
       where: { id },
       data: { columnId: column.id, position, version: { increment: 1 } },
+      include: withLabels,
     });
     if (card.columnId !== column.id) {
       await recordActivity(tx, id, user.id, {
@@ -417,7 +435,7 @@ export async function setCardSprint(
       select: { boardId: true },
     });
     if (!first || !(await lockBoard(tx, first.boardId))) throw notFound();
-    const card = await tx.card.findFirst({ where: { id, deletedAt: null } });
+    const card = await tx.card.findFirst({ where: { id, deletedAt: null }, include: withLabels });
     if (!card) throw notFound();
     if (card.sprintId === input.sprintId) return toCard(card);
 
@@ -453,6 +471,7 @@ export async function setCardSprint(
     const row = await tx.card.update({
       where: { id },
       data: { sprintId: input.sprintId, version: { increment: 1 } },
+      include: withLabels,
     });
     if (current) {
       await recordActivity(tx, id, user.id, {

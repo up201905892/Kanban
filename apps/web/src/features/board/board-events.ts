@@ -1,17 +1,40 @@
 import type { BoardEvent, BoardResponse, Card, CardSummary, Column } from '@kanban/shared';
+import { removeLabel, upsertLabel } from '../labels/labels';
 import { sortSprints } from '../sprints/planning';
+import type { Tombstones } from './tombstones';
 
 const upsertColumn = (columns: Column[], column: Column): Column[] =>
   columns.some((c) => c.id === column.id)
     ? columns.map((c) => (c.id === column.id ? column : c))
     : [...columns, column];
 
+/** True when a create, update or move event is about a card or column that was deleted. */
+export function isTombstoned(event: BoardEvent, tombstones: Tombstones): boolean {
+  switch (event.type) {
+    case 'column_created':
+    case 'column_updated':
+      return tombstones.columns.has(event.entity.id);
+    case 'card_created':
+    case 'card_updated':
+    case 'card_moved':
+      return tombstones.cards.has(event.entity.id);
+    default:
+      return false;
+  }
+}
+
 /**
  * Applies one board event to the cached board. Idempotent and safe against out-of-order delivery:
  * a card event whose `version` is not newer than the cached card's is ignored (and the same board
- * object is returned). Columns are not versioned, so their events are always applied.
+ * object is returned). Columns are not versioned, so their events are always applied, except for
+ * ids in `tombstones` (KB-039): an event for a deleted card or column is ignored ("delete wins").
  */
-export function applyBoardEvent(board: BoardResponse, event: BoardEvent): BoardResponse {
+export function applyBoardEvent(
+  board: BoardResponse,
+  event: BoardEvent,
+  tombstones?: Tombstones,
+): BoardResponse {
+  if (tombstones && isTombstoned(event, tombstones)) return board;
   switch (event.type) {
     case 'column_created':
     case 'column_updated': {
@@ -51,7 +74,36 @@ export function applyBoardEvent(board: BoardResponse, event: BoardEvent): BoardR
         event.entity.status === 'closed' ? others : sortSprints([...others, event.entity]);
       return { ...board, sprints };
     }
+    case 'label_created':
+    case 'label_updated':
+      return upsertLabel(board, event.entity);
+    case 'label_deleted':
+      return removeLabel(board, event.entity.id);
   }
+}
+
+/**
+ * Merges a freshly fetched board with the cached one. A fetch can be answered from a database read
+ * that is older than a real-time event already applied (the response overtakes nothing, the event
+ * overtakes the response); then the card in the cache has a higher `version` and is kept, so a
+ * stale refetch never undoes a newer move or edit. Everything else comes from the fetch.
+ */
+export function mergeFetchedBoard(
+  fetched: BoardResponse,
+  cached: BoardResponse | undefined,
+): BoardResponse {
+  if (!cached) return fetched;
+  const newer = new Map(cached.cards.map((c) => [c.id, c]));
+  let changed = false;
+  const cards = fetched.cards.map((card) => {
+    const kept = newer.get(card.id);
+    if (kept && kept.version > card.version) {
+      changed = true;
+      return kept;
+    }
+    return card;
+  });
+  return changed ? { ...fetched, cards } : fetched;
 }
 
 const summaryFields = (card: CardSummary) => ({
@@ -63,6 +115,7 @@ const summaryFields = (card: CardSummary) => ({
   priority: card.priority,
   estimate: card.estimate,
   sprintId: card.sprintId,
+  labelIds: card.labelIds,
 });
 
 /**

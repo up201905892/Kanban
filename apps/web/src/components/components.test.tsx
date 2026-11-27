@@ -1,7 +1,16 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { AnnouncerProvider, Button, Dialog, Select, TextArea, TextField, useAnnounce } from '.';
+import {
+  AnnouncerProvider,
+  Button,
+  Dialog,
+  ErrorState,
+  Select,
+  TextArea,
+  TextField,
+  useAnnounce,
+} from '.';
 
 function DialogHarness() {
   const [open, setOpen] = useState(false);
@@ -109,5 +118,15 @@ describe('useAnnounce', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     expect(() => render(<Announcing />)).toThrow(/AnnouncerProvider/);
     vi.restoreAllMocks();
+  });
+});
+
+describe('ErrorState', () => {
+  it('is an h2 by default and an h1 when it replaces the whole page', () => {
+    const { rerender } = render(<ErrorState message="Nope" />);
+    expect(screen.getByRole('heading', { level: 2, name: 'Something went wrong' })).toBeVisible();
+    rerender(<ErrorState headingLevel={1} title="Invite not valid" message="Nope" />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Invite not valid' })).toBeVisible();
+    expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
   });
 });

@@ -18,7 +18,8 @@ import {
 } from '../../lib/board-events.js';
 import { authorize } from '../authz/index.js';
 import { recordActivity } from '../cards/activity.js';
-import { respacedEvents, toCardSummary } from '../cards/service.js';
+import { respacedEvents, toCardSummary, withLabels } from '../cards/service.js';
+import { toLabel } from '../labels/mapper.js';
 import { toSprint } from '../sprints/mapper.js';
 import { lockBoard, type Tx } from './lock.js';
 import { placeWithRebalance } from './position.js';
@@ -93,11 +94,14 @@ export async function getBoard(
     relationLoadStrategy: 'join',
     where: { projectId },
     include: {
+      // The project's labels ride in the same statement (the query budget is tested).
+      project: { select: { labels: { orderBy: [{ name: 'asc' }, { id: 'asc' }] } } },
       columns: { orderBy: [{ position: 'asc' }, { id: 'asc' }] },
       // Soft-deleted cards never leave the database layer.
       cards: {
         where: { deletedAt: null },
         orderBy: [{ columnId: 'asc' }, { position: 'asc' }, { id: 'asc' }],
+        include: withLabels,
       },
     },
   });
@@ -111,6 +115,7 @@ export async function getBoard(
     columns: board.columns.map(toColumn),
     cards: board.cards.map(toCardSummary),
     sprints: sprints.map(toSprint),
+    labels: board.project.labels.map(toLabel),
   };
 }
 

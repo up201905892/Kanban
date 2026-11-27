@@ -99,6 +99,76 @@ test.describe('invites and members', () => {
     await expect(a.getByRole('link', { name: 'Made by Bob' })).toBeVisible();
   });
 
+  test('demoting a member to viewer asks first and unassigns their cards', async ({
+    userA,
+    userB,
+  }) => {
+    const a = userA.page;
+    const b = userB.page;
+    await signUpViaApi(a, { name: 'Olive Owner' });
+    await signUpViaApi(b, { name: 'Mark Member' });
+    const workspaceId = await createWorkspaceViaApi(a, `Demote ${randomUUID().slice(0, 8)}`);
+
+    const invite = await a.request.post(`/api/workspaces/${workspaceId}/invites`, {
+      data: { role: 'member', expiresInDays: 7 },
+      headers: { origin: ORIGIN },
+    });
+    expect(invite.status()).toBe(201);
+    const token = ((await invite.json()) as { link: string }).link.split('/invite/')[1];
+    const accepted = await b.request.post(`/api/invites/${token}/accept`, {
+      headers: { origin: ORIGIN },
+    });
+    expect(accepted.ok()).toBe(true);
+    const me = (await (await b.request.get('/api/auth/me')).json()) as { user: { id: string } };
+
+    const project = await a.request.post(`/api/workspaces/${workspaceId}/projects`, {
+      data: { name: 'Demotion', key: 'DM' },
+      headers: { origin: ORIGIN },
+    });
+    const projectId = ((await project.json()) as { project: { id: string } }).project.id;
+    const board = await a.request.get(`/api/projects/${projectId}/board`);
+    const { columns } = (await board.json()) as { columns: { id: string }[] };
+    const created = await a.request.post(`/api/columns/${columns[0]?.id}/cards`, {
+      data: { title: 'Assigned to Mark' },
+      headers: { origin: ORIGIN },
+    });
+    const cardId = ((await created.json()) as { card: { id: string } }).card.id;
+    const assigned = await a.request.patch(`/api/cards/${cardId}`, {
+      data: { assigneeId: me.user.id },
+      headers: { origin: ORIGIN },
+    });
+    expect(assigned.ok()).toBe(true);
+
+    await a.goto(`/workspaces/${workspaceId}/members`);
+    const select = a.getByRole('combobox', { name: 'Role for Mark Member' });
+    // selectOption does not focus the select, a person using it would have.
+    await select.focus();
+    await select.selectOption('viewer');
+    const dialog = a.getByRole('dialog', { name: 'Change to viewer' });
+    await expect(dialog).toContainText(
+      'Mark Member will become a viewer and their cards in this workspace will be unassigned.',
+    );
+    await expectNoBlockingAxeViolations(a);
+
+    // Escape cancels: the role stays and focus returns to the select.
+    await a.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(select).toHaveValue('member');
+    await expect(select).toBeFocused();
+
+    await select.selectOption('viewer');
+    await afterWrite(a, 'PATCH', /^\/api\/workspaces\/[^/]+\/members\/[^/]+$/, () =>
+      dialog.getByRole('button', { name: 'Change to viewer' }).click(),
+    );
+    await expect(select).toHaveValue('viewer');
+    await expect(a.getByTestId('live-polite')).toHaveText(/cards were unassigned/);
+
+    await a.goto(`/projects/${projectId}`);
+    const tile = a.getByRole('link', { name: /DM-1 Assigned to Mark/ });
+    await expect(tile).toBeVisible();
+    await expect(tile.getByRole('img', { name: /Assignee/ })).toHaveCount(0);
+  });
+
   test('the last owner cannot step down and a revoked link stops working', async ({
     userA,
     userB,
@@ -109,6 +179,10 @@ test.describe('invites and members', () => {
 
     await a.goto(`/workspaces/${workspaceId}/members`);
     await a.getByRole('combobox', { name: 'Role for Solo Owner' }).selectOption('viewer');
+    await a
+      .getByRole('dialog', { name: 'Change to viewer' })
+      .getByRole('button', { name: 'Change to viewer' })
+      .click();
     // Scoped to the members region: the same text is announced (after 50 ms) in the
     // assertive live region, which is asserted separately.
     await expect(

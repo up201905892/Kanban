@@ -6,7 +6,7 @@ import { publishMembershipChange } from '../../lib/membership-events.js';
 import { authorize } from '../authz/index.js';
 import { lockBoard } from '../boards/lock.js';
 import { recordActivity } from '../cards/activity.js';
-import { toCardSummary } from '../cards/service.js';
+import { toCardSummary, withLabels } from '../cards/service.js';
 
 interface MemberRow {
   userId: string;
@@ -61,8 +61,11 @@ export async function changeMemberRole(
   targetUserId: string,
   role: Role,
 ): Promise<Member> {
-  const member = await changeMemberRoleTx(prisma, user, workspaceId, targetUserId, role);
+  const events: BoardEvent[] = [];
+  const member = await changeMemberRoleTx(prisma, user, workspaceId, targetUserId, role, events);
   publishMembershipChange({ workspaceId, userId: targetUserId, role: member.role });
+  // After commit: a refused or rolled-back change publishes nothing (R6).
+  publishBoardEvents(events);
   return member;
 }
 
@@ -72,6 +75,7 @@ async function changeMemberRoleTx(
   workspaceId: string,
   targetUserId: string,
   role: Role,
+  events: BoardEvent[],
 ): Promise<Member> {
   return prisma.$transaction(async (tx) => {
     await lockWorkspace(tx, workspaceId);
@@ -89,6 +93,10 @@ async function changeMemberRoleTx(
       data: { role },
       include: { user: { select: { name: true, email: true } } },
     });
+    // Invariant: an assignee is always an owner or member, so losing edit rights ends assignments.
+    if (role === 'viewer' && target.role !== 'viewer') {
+      events.push(...(await unassignCards(tx, workspaceId, targetUserId, user.id)));
+    }
     return toMember(row);
   });
 }
@@ -124,6 +132,7 @@ async function unassignCards(
     const row = await tx.card.update({
       where: { id },
       data: { assigneeId: null, version: { increment: 1 } },
+      include: withLabels,
     });
     await recordActivity(tx, id, actorId, {
       type: 'assignee_changed',

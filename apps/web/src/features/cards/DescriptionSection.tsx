@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type * as Y from 'yjs';
-import { CARD_DESCRIPTION_MAX_LENGTH, type Card } from '@kanban/shared';
+import { CARD_DESCRIPTION_MAX_LENGTH, descriptionCounterText, type Card } from '@kanban/shared';
 import { Button, TextArea, useAnnounce } from '../../components';
 import type { AwarenessSync } from '../../lib/realtime/awareness-sync';
 import type { DescriptionStatus } from '../../lib/realtime/card-description';
@@ -11,6 +11,7 @@ import { usePresence } from '../presence/PresenceContext';
 import { RemoteCarets } from '../presence/RemoteCarets';
 import { LOCAL_ORIGIN, applyTextChange, transformPosition } from './binding';
 import { Markdown } from './Markdown';
+import { TRIM_ANNOUNCEMENT, isTrimOfOwnText } from './trim';
 import { useCardDescription } from './useCardDescription';
 
 const STATUS_TEXT: Record<DescriptionStatus, string> = {
@@ -107,6 +108,9 @@ interface EditorProps {
 function Editor({ text, presence, live, fallback, readOnly, onValue, length }: EditorProps) {
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const { setEditing } = usePresence();
+  const announce = useAnnounce();
+  const counterId = useId();
+  const counter = descriptionCounterText(length);
   const canType = live && !readOnly;
 
   // Leaving the editor (Preview, closing the dialog) ends "editing" even without a blur event.
@@ -144,6 +148,10 @@ function Editor({ text, presence, live, fallback, readOnly, onValue, length }: E
       if (!element) return;
       const next = text.toString();
       onValue(next);
+      const ownDeleted = transaction.deleteSet.clients.has(text.doc?.clientID ?? -1);
+      if (isTrimOfOwnText(event.delta, next.length, ownDeleted)) {
+        announce(TRIM_ANNOUNCEMENT, 'polite');
+      }
       if (document.activeElement === element) {
         // Remote edits keep the caret (and selection) where the person was typing.
         const start = transformPosition(event.delta, element.selectionStart);
@@ -165,7 +173,7 @@ function Editor({ text, presence, live, fallback, readOnly, onValue, length }: E
       <TextArea
         ref={areaRef}
         label="Description"
-        hint={`${length} of ${CARD_DESCRIPTION_MAX_LENGTH} characters`}
+        aria-describedby={counter ? counterId : undefined}
         rows={8}
         maxLength={CARD_DESCRIPTION_MAX_LENGTH}
         readOnly={readOnly || !live}
@@ -189,6 +197,11 @@ function Editor({ text, presence, live, fallback, readOnly, onValue, length }: E
           share();
         }}
       />
+      {counter && (
+        <p id={counterId} data-testid="description-counter">
+          {counter}
+        </p>
+      )}
       {live && text && presence && (
         <RemoteCarets areaRef={areaRef} text={text} presence={presence} />
       )}

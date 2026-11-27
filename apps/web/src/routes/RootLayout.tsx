@@ -1,5 +1,7 @@
 import { APP_NAME } from '@kanban/shared';
+import { useRef } from 'react';
 import { Link, Outlet } from 'react-router';
+import { useHeadingTitle } from './useHeadingTitle';
 import { Button } from '../components';
 import { useCurrentUser, useLogout } from '../features/auth/api';
 import { WorkspaceSwitcher } from '../features/workspaces/WorkspaceSwitcher';
@@ -7,6 +9,8 @@ import { WorkspaceSwitcher } from '../features/workspaces/WorkspaceSwitcher';
 export function RootLayout() {
   const { data: user } = useCurrentUser();
   const logout = useLogout();
+  const mainRef = useRef<HTMLElement>(null);
+  useHeadingTitle(mainRef);
 
   return (
     <>
@@ -27,7 +31,7 @@ export function RootLayout() {
           </div>
         )}
       </header>
-      <main id="main" tabIndex={-1}>
+      <main id="main" tabIndex={-1} ref={mainRef}>
         <Outlet />
       </main>
     </>

@@ -9,15 +9,26 @@ import {
 } from '@kanban/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, request } from '../../../lib/api';
+import { mergeFetchedBoard } from '../board-events';
 import { applyColumnDelete, applyColumnUpdate, sortColumns } from '../ordering';
+import { filterTombstoned, tombstoneColumn, tombstonesOf } from '../tombstones';
 
 export const boardKey = (projectId: string) => ['projects', projectId, 'board'] as const;
 
 export function useBoard(projectId: string) {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: boardKey(projectId),
-    queryFn: ({ signal }) =>
-      apiClient.get(`/api/projects/${projectId}/board`, boardResponseSchema, signal),
+    // A refetch that started before a deletion must not bring the card or column back (KB-039).
+    // A response older than an event already applied must not undo it either (card `version`).
+    queryFn: async ({ signal }) =>
+      mergeFetchedBoard(
+        filterTombstoned(
+          await apiClient.get(`/api/projects/${projectId}/board`, boardResponseSchema, signal),
+          tombstonesOf(queryClient),
+        ),
+        queryClient.getQueryData<BoardResponse>(boardKey(projectId)),
+      ),
   });
 }
 
@@ -51,7 +62,11 @@ export function useBoardMutation<TVars, TResult>(
       return { previous };
     },
     onError: (_error, _vars, context) => {
-      queryClient.setQueryData(key, context?.previous);
+      // The rollback must not restore a card or column that turned out to be deleted (KB-039).
+      queryClient.setQueryData(
+        key,
+        context?.previous && filterTombstoned(context.previous, tombstonesOf(queryClient)),
+      );
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
@@ -106,11 +121,13 @@ export interface DeleteColumnVars {
 }
 
 export function useDeleteColumn(projectId: string) {
+  const queryClient = useQueryClient();
   return useBoardMutation<DeleteColumnVars, void>(
     projectId,
     async ({ id, moveCardsTo }) => {
       const query = moveCardsTo ? `?moveCardsTo=${encodeURIComponent(moveCardsTo)}` : '';
       await request(`/api/columns/${id}${query}`, { method: 'DELETE' });
+      tombstoneColumn(queryClient, id);
     },
     (board, { id, moveCardsTo }) => applyColumnDelete(board, id, moveCardsTo),
   );

@@ -23,6 +23,13 @@ How to use it: add one line per decision (on GitHub, on the `develop` branch, ev
 | 2026-11-13 | Approve | KB-014, KB-020, KB-023, KB-025, KB-026, KB-028, KB-029, KB-030, KB-031, KB-032 | Approve the rest of the MVP; develop as dependencies close |
 | 2026-11-20 | Answer | 2026-11-19 follow-ups | Plan (1) pnpm test:e2e forwards arguments and (3) unit test for validateSessionToken |
 | 2026-11-20 | Answer | ADR 0004 §7 | Plan a follow-up: re-check the project still exists on room join |
+| 2026-11-26 | Change | KB-030 | Remove the NVDA + Chrome spot check from the acceptance criteria and plan it as a separate follow-up task done by João (script in docs/accessibility-audit.md, item O1); retest KB-030 on the automated criteria |
+| 2026-11-26 | Change | KB-031 | Move the Docker image build (size check) and the pg_dump/pg_restore backup drill to a separate follow-up task done by João (steps in docs/deployment.md, "Verify the image locally"); retest KB-031 on the remaining criteria |
+| 2026-11-26 | Answer | 2026-11-24 follow-up | Plan the fix: after a 404 on a card move, do not announce "It is back in To do." |
+| 2026-11-26 | Answer | 2026-11-19 follow-ups | Plan (2) "jump to card" / "Move to top/bottom" keyboard shortcut |
+| 2026-11-26 | Answer | KB-030 follow-ups | Plan O2 (24 px target size) and O3 (skip to column); O4 after KB-027 |
+| 2026-11-26 | Change | KB-031 | Deploy to Render instead of Railway (Railway is not an option), free plan: replace railway.json with render.yaml (web service from the Dockerfile + Render PostgreSQL), run prisma migrate deploy at container start while keeping node as the process that receives SIGTERM, use Render auto-deploy after CI passes instead of a GitHub workflow, document sleeping after inactivity and the free database expiry, update ADR 0005 and docs/deployment.md. Move the Docker image build and the pg_dump/pg_restore drill to a separate follow-up task done by João. Rename the task accordingly |
+| 2026-11-26 | Answer | KB-031 | Deployed by hand on Render (free): web service "kanban" (Docker, branch develop, health check /health/ready) and Postgres 17 "kanban-db", migrations run from my machine with pnpm db:migrate. Image build on Render: <ok / failed: ...>. App works: <yes / problems: ...>. Backup drill: <done / not done>. render.yaml must use these service names |
 
 Possible decisions:
 

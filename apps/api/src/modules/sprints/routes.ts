@@ -11,11 +11,13 @@ import {
   sprintParamsSchema,
   sprintResponseSchema,
   updateSprintRequestSchema,
+  velocityResponseSchema,
 } from '@kanban/shared';
 import type { PrismaClient } from '../../db.js';
 import { AppError } from '../../lib/app-error.js';
 import { mutationMetaOf } from '../../lib/board-events.js';
 import { getBurndown } from './burndown.js';
+import { getVelocity } from './velocity.js';
 import { closeSprint, createSprint, listSprints, startSprint, updateSprint } from './service.js';
 
 export function sprintRoutes({ prisma }: { prisma: PrismaClient }) {
@@ -92,6 +94,14 @@ export function sprintRoutes({ prisma }: { prisma: PrismaClient }) {
       '/api/sprints/:id/burndown',
       { schema: { params: sprintParamsSchema, response: { 200: burndownResponseSchema } } },
       async (req) => getBurndown(prisma, userOf(req), req.params.id),
+    );
+
+    r.get(
+      '/api/projects/:pid/velocity',
+      {
+        schema: { params: projectSprintsParamsSchema, response: { 200: velocityResponseSchema } },
+      },
+      async (req) => getVelocity(prisma, userOf(req), req.params.pid),
     );
 
     r.post(

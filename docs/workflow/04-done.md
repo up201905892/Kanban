@@ -269,6 +269,89 @@ Entry template:
 - **Documentation:** no new endpoints, messages or environment variables, so no `docs/api.md` or `.env.example` change; no ADR required; no migrations; no new dependencies
 - **Lessons:** `pnpm test:e2e -- <files> --repeat-each` does not forward arguments (use `npx playwright test`); suggestion for the planner: fix the root `package.json` script to forward arguments. No TODO found in the task's code; no secret found (the e2e password is a fake test value). Milestone "Quality and delivery" not reached (KB-029, KB-030, KB-031 and KB-032 are still open).
 
+### KB-037 · Keep unsaved collaborative edits when the final flush fails — done on 2026-11-20
+
+- **Approving test report:** Report 1 (2026-11-20), commit 2e6fe52 (later commits, 34f4277 and c0de80a, only change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** a failed final store (Yjs append or `Card.description` projection) no longer drops the room: it is retained in memory and retried with backoff (1 s doubling, cap 30 s); a client joining a retained room gets the in-memory document; a compaction-only failure does not retain the room; errors log document name and attempt (no content) and one warning after 5 minutes; graceful shutdown retries within a 10 s deadline and exits with code 1, naming each unsaved document, when edits could not be saved; timers are `unref()`ed and `retainedRooms()` is exposed for tests.
+- **CHANGELOG:** "Added: A database failure while a card description is being saved no longer loses the last edits: the server keeps the unsaved text in memory and keeps retrying (after 1, 2, 4 seconds and so on, at most every 30 seconds), a person who opens the card meanwhile still sees the edits, and when the server is stopped it waits up to 10 seconds for the database and exits with an error, naming each document, if something could not be saved (KB-037)."
+- **Documentation:** ADR 0004 section 9 amended (done in the task); no new endpoints or messages, so no `docs/api.md` change; no new environment variables (timings are options, not variables); no migrations; no new dependencies
+- **Lessons:** `RealtimeService.shutdown()` now returns a result and is memoized; the "timers do not keep the process alive" unit test only inspects timers created after its spy (the rest verified by code reading). Retained rooms stay in memory until the database recovers. No TODO found in the task's code; no secret found. Milestone "Real time" not reached (KB-039, KB-040 and KB-043 are Planned).
+
+### KB-038 · Unassign a member's cards when they are demoted to viewer (D10) — done on 2026-11-20
+
+- **Approving test report:** Report 1 (2026-11-20), commit 00e7f7e (the later commit 0845ec6 only adds tests; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** changing an owner or member to viewer now unassigns their live cards in the workspace through the shared `unassignCards` helper, in the same transaction (boards locked in id order, `version` + 1, `assignee_changed` with the owner as actor, `card_updated` board events after commit only); the Members page asks for confirmation (Cancel and Escape keep the role and return focus), invalidates the board and card queries and announces the result politely.
+- **CHANGELOG:** "Changed: Changing an owner or member to viewer on the Members page now asks for confirmation ("<name> will become a viewer and their cards in this workspace will be unassigned.") and unassigns that person's cards in the workspace, as removing them already does; boards update live and the result is announced (KB-038)."
+- **Documentation:** `docs/api.md` documents the side effect on the members endpoint; no new endpoints, messages or environment variables; no ADR required; no migrations; no new dependencies
+- **Lessons:** events are asserted on the in-process bus rather than a `ws` client (bus-to-socket path covered by `board-events.test.ts`); query invalidation uses the `['projects']` and `['cards']` prefixes because keys carry no workspace id. No TODO found in the task's code; no secret found. Milestone "Authentication and workspaces" not re-reached (KB-042 is Planned).
+
+### KB-039 · Card and column tombstones in the live board cache — done on 2026-11-24
+
+- **Approving test report:** Report 1 (2026-11-24), commit 8655423 (the later commits, c865300 and ea407e0, only change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** per-session bounded tombstone sets (1,000 most recent ids) for cards and columns, filled by `card_deleted` and `column_deleted` events, own successful DELETE and a 404 from a card read or mutation; create, update and move events for tombstoned ids are ignored (same object returned); fetched boards and optimistic rollbacks are filtered so a stale refetch cannot restore a deleted card or column; the open card dialog keeps "deleted by"; reducers stay pure.
+- **CHANGELOG:** "Fixed: A card or column that someone deleted no longer comes back on the board because of a late live update or a slow reload of the board; a card that no longer exists is removed from the board when an action on it fails (KB-039)."
+- **Documentation:** client-only change, so no `docs/api.md`, `.env.example` or ADR change; no migrations; no new dependencies
+- **Lessons:** after a 404 move the message still ends with "It is back in To do." although the tile is removed; suggestion for the planner: make the U6 message say the card no longer exists when the 404 tombstoned it. Tombstones are per `QueryClient` (session), equivalent to per page because ids are never reused. No TODO found in the task's code; no secret found. Milestone "Real time" not reached (KB-040 and KB-043 are still open).
+
+### KB-040 · Enforce the description length limit in the shared document — done on 2026-11-24
+
+- **Approving test report:** Report 1 (2026-11-24), commit 5647afd (the later commits, f1a10f5, e22556a and e01850a, only add tests or change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** after every applied sync step 2 or update from a member in a card description room, the server deletes the excess over `CARD_DESCRIPTION_MAX_LENGTH` (20,000) from the end in one server-origin transaction, broadcast and persisted like any update; deterministic, idempotent, never splits a surrogate pair, writes no activity event; the projection cut stays as a backstop and logs a warning with document name and length only; the editor shows a counter from 19,000 characters linked by `aria-describedby` (not a live region) and announces once, politely, a trim of the person's own text.
+- **CHANGELOG:** "Added: A card description can no longer go past 20,000 characters when several people paste or type at the same time: the server removes the excess from the end for everyone, the editor shows "N characters left" from 19,000 characters and "Description limit reached (20,000 characters)" at the limit, and a trim of your own text is announced politely (KB-040)."
+- **Documentation:** ADR 0004 section 12 amended (done in the task); no new endpoints or messages, so no `docs/api.md` change; no new environment variables; no migrations; no new dependencies
+- **Lessons:** the own-text trim announcement is a heuristic (an ordinary tail deletion by someone else that leaves 20,000 characters can be announced too); a large update reaches every client in full before the trim update follows. No TODO found in the task's code; no secret found. Milestone "Real time" not reached (KB-043 is still Planned).
+
+### KB-041 · Forward arguments through `pnpm test:e2e` — done on 2026-11-25
+
+- **Approving test report:** Report 1 (2026-11-25), commit 140c29a (the later commit, c708526, only changes workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** the root `test:e2e` script now runs `scripts/e2e.mjs`, which drops one leading `--` (pnpm 10 passes it literally and Playwright would treat what follows as file filters) and runs `playwright test <args>` with the same exit code; `playwright.config.ts` unchanged; no arguments behaves as before (61 E2E passed); unit test `scripts/e2e-args.test.ts` (4 cases) runs in the root `pnpm test`.
+- **CHANGELOG:** "Fixed: For people working on the project: `pnpm test:e2e` now passes options such as a test file, `--repeat-each` or `--retries` to Playwright, with or without a `--` before them, instead of running the whole suite and ignoring them (KB-041)."
+- **Documentation:** tooling change, so no `docs/api.md`, `.env.example` or ADR change; README and `docs/` already show only working forms; no migrations; no new dependencies
+- **Lessons:** only a leading `--` is dropped, a later one reaches Playwright unchanged (intended, tested). KB-029 can now use `pnpm test:e2e -- --repeat-each=10`. No TODO found in the task's code; no secret found. Milestone "Quality and delivery" not reached (KB-029, KB-030, KB-031, KB-032 and others are open).
+
+### KB-029 · End-to-end collaboration suite (two browsers) — done on 2026-11-26
+
+- **Approving test report:** Report 2 (2026-11-26), commit 27a1fb0 (the later commits, e9ff2a3 and 205ab56, only change workflow records; no production code changed after it)
+- **Development iterations:** 3 (report 1 Failed on flakiness)
+- **Delivered:** `e2e/journeys/collaboration.spec.ts`, one two-browser journey (sign-up, workspace, project, invite link, keyboard card move while the other edits, concurrent description edit, offline and reconnect, sprint start and close, demotion through the KB-038 dialog with read-only UI, API 403 and cleared assignees); no fixed sleeps; about 8-15 s per run; 10/10 and 50/50 repeats at `--retries=0`. The flake was a real application race, fixed by `mergeFetchedBoard`: a fetched board keeps cached cards with a higher `version`.
+- **CHANGELOG:** "Fixed: A card that someone moves no longer jumps back to its old column when your board reloads at the same moment: a reload that is older than a live change no longer overwrites it (KB-029)."
+- **Documentation:** client-only fix, so no `docs/api.md`, `.env.example` or ADR change; no migrations; no new dependencies
+- **Lessons:** the sprint dialog keeps focus while closing (not changed, out of scope; possible suggestion for the planner). The iteration 2 "Blocker" line in 02-development.md is stale (corrected in iteration 3). No TODO found in the task's code; no secret found. Milestone "Quality and delivery" not reached (KB-030, KB-031, KB-032 and others are open).
+
+### KB-043 · Re-check that the room's resource still exists after a WebSocket join — done on 2026-11-26
+
+- **Approving test report:** Report 1 (2026-11-26), commit f7ca027 (the later commits only change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** after the connection is registered in the room, the server re-runs the shared policy `authorize(..., 'workspace:read')` (replacing the membership-only query); a deleted project, soft-deleted card or deleted workspace gives 404/403 and closes the socket with `4403` through the normal leave path, so an emptied room is stored and unloaded; messages queued meanwhile are processed only after the re-check; one extra policy call per join, none per message.
+- **CHANGELOG:** "Fixed: Live connections no longer stay open on something that was deleted while they were connecting: if a project, card or workspace is deleted at the moment someone joins its live room, that connection is now closed instead of staying attached (KB-043)."
+- **Documentation:** ADR 0004 section 7 amended (done in the task); no new endpoints or messages, so no `docs/api.md` change; no new environment variables; no migrations; no new dependencies
+- **Lessons:** `rooms.join` still sends sync step 1 and awareness states before the re-check (pre-existing KB-033 order); no test asserts that nothing is received after the close; possible suggestion for the planner. No TODO found in the task's code; no secret found.
+
+### KB-014 · Labels — done on 2026-11-27
+
+- **Approving test report:** Report 1 (2026-11-27), commit b214fc6 (the later commits only change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** project labels (name 1 to 30 characters unique per project without regard to case, 8 palette tokens) and card labels (max 10) with migration `add_labels` (composite PK, cascades, unique index on `lower(name)`, CHECKs); `POST/GET /api/projects/:pid/labels`, `PATCH/DELETE /api/labels/:id`, `PUT /api/cards/:id/labels` (owner and member manage, viewers read; cross-project label is `400 INVALID_LABEL`, duplicate name `409 LABEL_NAME_TAKEN`, same set twice is a no-op); activity `labels_changed`, board events `label_created`, `label_updated`, `label_deleted` and `card_updated`, published after commit; chips on tiles, picker in the card dialog, management in project settings.
+- **CHANGELOG:** "Added: Cards can now carry labels: owners and members create, rename, recolour and delete project labels in the project settings (a name of up to 30 characters and one of 8 colours), and give a card up to 10 labels from a checkbox list in the card dialog; labels show on the card tiles with their name as text, viewers can see them, everyone sees changes live on the board, and the card history records which labels were added or removed (KB-014)."
+- **Documentation:** `docs/api.md` updated by the finisher (five label endpoints, `labelIds` and `labels` in the board response, `label_*` board events, `card_updated` sources); no new environment variables; no ADR required; one new migration; no new dependencies
+- **Test note:** the tester did not run `prisma migrate reset --force`: Prisma's AI-safety guard requires explicit user consent for it and none was given, so it was not bypassed. The tester used `prisma migrate status` on the test database instead (11 migrations, up to date), reviewed the migration SQL, and all tests passed on that database. João can run the reset himself to confirm a clean apply from scratch.
+- **Lessons:** the project settings page does not open the board socket, so label changes by others appear there after the next refetch (the board and card dialog update live); `PATCH` and `DELETE` live at `/api/labels/:id`; the 8 tints had no manual contrast check (axe is clean). Possible suggestions for the planner: filter the board by label; a live label list on the settings page; a manual contrast check of the palette. No TODO found in the task's code; no secret found. Milestone "Board" not reached (KB-046, KB-048 and KB-049 are still Proposed).
+
+### KB-026 · Velocity of recent sprints — done on 2026-11-27
+
+- **Approving test report:** Report 1 (2026-11-27), commit 947e9b7 (the later commits only change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** `GET /api/projects/:pid/velocity` (last 6 closed sprints by `closedAt`, oldest first, with committed and completed points and the average completed; any member role, 404 for non-members); shared schema and helpers in `packages/shared/src/velocity.ts`; Reports page section with a Recharts bar chart, text summary, keyboard-operable table toggle ("Show velocity as table") and the empty state "Close a sprint to see velocity".
+- **CHANGELOG:** "Added: The Reports page now shows the velocity of the last 6 closed sprints: a bar chart of points committed against points completed, a text summary with the average completed per sprint, and a "Show velocity as table" button for the same numbers; with no closed sprint it says "Close a sprint to see velocity" (KB-026)."
+- **Documentation:** `docs/api.md` updated by the finisher (velocity endpoint); no new environment variables; no ADR required; no migrations; no new dependencies
+- **Test note:** the tester did not run `prisma migrate reset --force` (Prisma AI-safety guard needs explicit user consent); no migration in this task.
+- **Lessons:** velocity is not live, it updates on the next visit of the Reports page (refetch on mount); the response carries an extra sprint `id`. Possible suggestion for the planner: subscribe the Reports page to sprint events. No TODO found in the task's code; no secret found. Milestone "Reports and history" reached (KB-024, KB-025, KB-026).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
@@ -276,3 +359,5 @@ Entry template:
 - Foundations done — 2026-10-27 (KB-001, KB-002, KB-003, KB-004)
 - Authentication and workspaces done — 2026-11-02 (KB-005, KB-006, KB-007, KB-008, KB-009)
 - Sprints done — 2026-11-17 (KB-022, KB-023)
+- Real time done — 2026-11-26 (KB-016, KB-017, KB-018, KB-019, KB-020, KB-021, KB-033, KB-037, KB-039, KB-040, KB-043)
+- Reports and history done — 2026-11-27 (KB-024, KB-025, KB-026)

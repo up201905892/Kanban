@@ -16,6 +16,86 @@ Template:
 - **Next step:** …
 -->
 
+## 2026-11-27
+
+- **Decisions for João:**
+  - **Approve to resume:** still pending `Approve | KB-030, KB-031` (both `Proposed` after your Changes). KB-032 waits on KB-031. The 2026-11-26 `Answer | KB-031` line still has template placeholders; add a new line with the real values.
+  - **Optional check:** the testers could not run `prisma migrate reset --force` (Prisma's AI-safety guard needs your consent). For KB-014 (new migration `add_labels`) they used `prisma migrate status` instead (11 migrations applied). Run the reset yourself if you want a clean-apply confirmation.
+- **Done:** KB-014 (labels), KB-026 (velocity of recent sprints; milestone "Reports and history" reached)
+- **Tested:** KB-014 (Passed), KB-026 (Passed)
+- **Developed:** KB-014, KB-026 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-027, KB-030, KB-031, KB-044 to KB-049 (no new proposals: the backlog of `Proposed` tasks is already large). Ideas from the agents, not planned: filter the board by label; live label list and live velocity.
+- **Rule violations found:** none
+- **Next step:** KB-042 is the only `Planned` task left with its dependencies `Done`; it is developed next. Approving the `Proposed` tasks is what unblocks further work.
+
+## 2026-11-26
+
+- **Decisions for João:**
+  - **Approve to resume:** KB-030 and KB-031 went back to `Proposed` after your Changes (a Change sends a task back for approval). Add `Approve | KB-030, KB-031` to `approvals.md` to resume them. KB-032 waits on KB-031.
+  - **Unfilled answer:** your `Answer | KB-031` line of 2026-11-26 still has template placeholders ("Image build on Render: <ok / failed...>", "App works: <yes / problems...>", "Backup drill: <done / not done>"). They were not treated as results. Add a new `Answer | KB-031` line with the real values, or report them under KB-045.
+  - The request to copy `railway-deploy.yml` into `.github/workflows/` is withdrawn (Render auto-deploys after CI).
+- **Done:** KB-029 (two-browser collaboration suite), KB-043 (re-check the resource after a WebSocket join)
+- **Tested:** KB-029 (Failed on flakiness, 1 in 90 runs; Passed on report 2), KB-043 (Passed)
+- **Developed:** KB-029 (resumed; the flake was a real client bug, a stale board refetch undoing a newer card move, fixed with `mergeFetchedBoard`), KB-043
+- **Planning:** applied your 2026-11-26 decisions; new tasks KB-044 to KB-049 (all `Proposed`)
+- **Proposals awaiting approval:** KB-027 (waits for `@up201905892/ui` on npm), KB-030, KB-031, KB-044 (NVDA spot check, yours), KB-045 (image build and backup drill, yours), KB-046, KB-047, KB-048, KB-049
+- **Rule violations found:** none (KB-030 and KB-031 going `Failed` → `Proposed` is explained in their histories)
+- **Next step:** KB-014, KB-026 and KB-042 are `Planned` and get developed next. Minor, not planned: the sprint dialog holds focus briefly while closing, and `cardKey` has the same stale-overwrite exposure as the board query.
+
+## 2026-11-25
+
+- **Decisions for João:**
+  - Still waiting on you (no new lines in `approvals.md`): **KB-030** (NVDA spot check) and **KB-031** (Docker image build and backup drill; copy `docs/deploy/railway-deploy.yml` to `.github/workflows/railway-deploy.yml`). Details in the 2026-11-23 entry. KB-032 waits on KB-031.
+  - **KB-029 is paused `In development`.** The journey is written (`e2e/journeys/collaboration.spec.ts`, commit `6b38687`) but never ran green: the developer's environment had no PostgreSQL, while the tester's later had one. It needs a run with a database (`pnpm test:e2e -- e2e/journeys --repeat-each=10`, possible now that KB-041 is Done). No decision needed; the next run resumes it.
+  - Optional (from KB-039, 2026-11-24): after a 404 on a card move, the announcement still ends with "It is back in To do." although the card is removed.
+- **Done:** KB-041 (`pnpm test:e2e` forwards arguments)
+- **Tested:** KB-041 (Passed)
+- **Developed:** KB-041 (whole cycle today); KB-029 (blocked, still In development)
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` on npm)
+- **Rule violations found:** none
+- **Next step:** resume KB-029; then KB-043, KB-014, KB-026, KB-042.
+
+## 2026-11-24
+
+- **Decisions for João:**
+  - Still waiting on you (no new lines in `approvals.md`): **KB-030** (NVDA spot check cannot run unattended) and **KB-031** (needs Docker for the image build and backup drill; also copy `docs/deploy/railway-deploy.yml` to `.github/workflows/railway-deploy.yml`). Details are in the 2026-11-23 entry. Both stay paused; KB-032 waits on KB-031.
+  - Optional follow-up for the planner: after a 404 on a card move, the announcement still ends with "It is back in To do." although the card is removed (from KB-039). Say so in `approvals.md` if you want it planned.
+- **Done:** KB-039 (tombstones in the live board cache), KB-040 (description length limit enforced in the shared document)
+- **Tested:** KB-039 (Passed), KB-040 (Passed)
+- **Developed:** KB-039, KB-040 (both went through the whole cycle today)
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` on npm)
+- **Rule violations found:** none
+- **Next step:** KB-029 is now unblocked. KB-041, KB-043, KB-026, KB-014 and KB-042 are also `Planned`.
+
+## 2026-11-23
+
+- **Decisions for João:**
+  - **KB-030 (accessibility audit) is Failed, report 1.** Everything automated passes (axe sweep, keyboard-only path, fixes F1 to F3), but the criterion "NVDA + Chrome spot check" cannot be done in the autonomous environment. Either run the check with the script in `docs/accessibility-audit.md` (open item O1) and record the result, or answer in `approvals.md` with a **Change** (for example, move the spot check to a João-owned follow-up) so the planner revises the criterion. The task stays paused until then.
+  - **KB-031 (deploy preparation) is Failed, report 1.** Two criteria need Docker, which is denied in this environment: the image was never built (no size recorded) and the `pg_dump`/`pg_restore` drill was not run. Steps are in `docs/deployment.md` ("Verify the image locally"). Options: run them yourself and tell me, or **Change** the criteria so those items become a follow-up task for you. Paused until then.
+  - **KB-031 workflow copy:** please copy `docs/deploy/railway-deploy.yml` to `.github/workflows/railway-deploy.yml`. It needs the `RAILWAY_TOKEN` secret, the `RAILWAY_SERVICE` variable and a `production` environment (optionally with required reviewers).
+  - FYI: KB-031 adds `@fastify/helmet` and `@fastify/static`, and moves `prisma` to dependencies (the pre-deploy command runs its CLI in the image). Oversized bodies return 400 in the standard error format, not 413.
+  - Optional follow-ups from KB-030: O2 (24 px target-size check, SC 2.5.8), O3 ("skip to column" shortcut), O4 (re-run the sweep after KB-027).
+  - FYI: `prisma migrate reset --force` is still blocked by Prisma's consent guard in unattended runs.
+- **Done:** none
+- **Tested:** KB-030 (Failed: NVDA spot check not performed), KB-031 (Failed: image size not recorded, backup drill untested)
+- **Developed:** KB-030, KB-031 (both Ready for test, then Failed on the items above)
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` on npm)
+- **Rule violations found:** none
+- **Next step:** KB-039, KB-040, KB-041, KB-043, KB-026, KB-014 and KB-042 are the next `Planned` tasks. KB-030 and KB-031 wait for your decision.
+
+## 2026-11-20
+
+- **Decisions for João:**
+  - Optional: item (2) of the 2026-11-19 follow-ups (a "jump to card" / "Move to top/bottom" keyboard shortcut for long columns) was not planned because your answer named only (1) and (3). Say so in `approvals.md` if you want it.
+  - FYI: the tester could not run `prisma migrate reset --force` (Prisma's AI-safety guard needs explicit user consent). KB-038 has no migration, so it was marked n.a.; it will matter for any task that adds a migration.
+- **Done:** KB-037 (keep unsaved collaborative edits when the final flush fails), KB-038 (unassign cards when a member is demoted to viewer)
+- **Tested:** KB-037 (Passed), KB-038 (Passed)
+- **Developed:** KB-037, KB-038 (both went through the whole cycle today)
+- **Planned from your decisions:** KB-041 (forward args through `pnpm test:e2e`), KB-042 (unit tests for `validateSessionToken`), KB-043 (re-check the room's resource on WebSocket join; also covers deleted cards)
+- **Proposals awaiting approval:** KB-027 only (waits for `@up201905892/ui` on npm)
+- **Rule violations found:** none
+- **Next step:** KB-039, KB-040, KB-043, KB-041, KB-026, KB-014 are next; KB-029 unlocks once KB-039 is Done.
+
 ## 2026-11-19
 
 - **Decisions for João:**
