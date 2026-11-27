@@ -158,6 +158,10 @@ How it is computed (`computeBurndown` in `packages/shared`): the activity events
 
 Known limitation (D11, option A): deleting a column hard-deletes the cards that were soft-deleted in it earlier, together with their activity. If that happens during the active sprint, those cards no longer exist, so they drop out of the scope line of past days. Today's remaining points are not affected.
 
+### GET /api/projects/:pid/velocity
+
+Any role (`workspace:read`); a non-member gets the same `404` as a missing project. Response `200 { sprints, averageCompleted }`. `sprints` holds the last 6 closed sprints (selected by `closedAt`, newest first) returned oldest first, each `{ id, name, committedPoints, completedPoints }` using the points stored when the sprint was started and closed (null counts as 0). `averageCompleted` is the mean of `completedPoints` of the listed sprints, rounded to one decimal, and 0 when there are none. Errors: `401`, `404`.
+
 ### DELETE /api/cards/:id
 
 Owner or member. Soft delete (`deletedAt`); writes a `deleted` event. Response `204`; afterwards `GET`, `PATCH` and `DELETE` answer `404` and the card disappears from the board. Errors: `400`, `401`, `403`, `404`.

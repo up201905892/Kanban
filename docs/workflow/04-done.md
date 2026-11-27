@@ -342,6 +342,16 @@ Entry template:
 - **Test note:** the tester did not run `prisma migrate reset --force`: Prisma's AI-safety guard requires explicit user consent for it and none was given, so it was not bypassed. The tester used `prisma migrate status` on the test database instead (11 migrations, up to date), reviewed the migration SQL, and all tests passed on that database. João can run the reset himself to confirm a clean apply from scratch.
 - **Lessons:** the project settings page does not open the board socket, so label changes by others appear there after the next refetch (the board and card dialog update live); `PATCH` and `DELETE` live at `/api/labels/:id`; the 8 tints had no manual contrast check (axe is clean). Possible suggestions for the planner: filter the board by label; a live label list on the settings page; a manual contrast check of the palette. No TODO found in the task's code; no secret found. Milestone "Board" not reached (KB-046, KB-048 and KB-049 are still Proposed).
 
+### KB-026 · Velocity of recent sprints — done on 2026-11-27
+
+- **Approving test report:** Report 1 (2026-11-27), commit 947e9b7 (the later commits only change workflow records; no production code changed after it)
+- **Development iterations:** 1
+- **Delivered:** `GET /api/projects/:pid/velocity` (last 6 closed sprints by `closedAt`, oldest first, with committed and completed points and the average completed; any member role, 404 for non-members); shared schema and helpers in `packages/shared/src/velocity.ts`; Reports page section with a Recharts bar chart, text summary, keyboard-operable table toggle ("Show velocity as table") and the empty state "Close a sprint to see velocity".
+- **CHANGELOG:** "Added: The Reports page now shows the velocity of the last 6 closed sprints: a bar chart of points committed against points completed, a text summary with the average completed per sprint, and a "Show velocity as table" button for the same numbers; with no closed sprint it says "Close a sprint to see velocity" (KB-026)."
+- **Documentation:** `docs/api.md` updated by the finisher (velocity endpoint); no new environment variables; no ADR required; no migrations; no new dependencies
+- **Test note:** the tester did not run `prisma migrate reset --force` (Prisma AI-safety guard needs explicit user consent); no migration in this task.
+- **Lessons:** velocity is not live, it updates on the next visit of the Reports page (refetch on mount); the response carries an extra sprint `id`. Possible suggestion for the planner: subscribe the Reports page to sprint events. No TODO found in the task's code; no secret found. Milestone "Reports and history" reached (KB-024, KB-025, KB-026).
+
 ## Milestones
 
 <!-- The finisher records here when an MVP phase is fully Done (e.g. "Foundations done — 2026-11-04"). -->
@@ -350,3 +360,4 @@ Entry template:
 - Authentication and workspaces done — 2026-11-02 (KB-005, KB-006, KB-007, KB-008, KB-009)
 - Sprints done — 2026-11-17 (KB-022, KB-023)
 - Real time done — 2026-11-26 (KB-016, KB-017, KB-018, KB-019, KB-020, KB-021, KB-033, KB-037, KB-039, KB-040, KB-043)
+- Reports and history done — 2026-11-27 (KB-024, KB-025, KB-026)
