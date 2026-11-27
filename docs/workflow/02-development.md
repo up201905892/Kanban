@@ -853,3 +853,32 @@ Entry template:
 - **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 187, web 345, api 501, root 4) · E2E not required (n/a)
 - **New dependencies (G9):** none
 - **Notes for the tester:** none beyond the criteria; no client changes.
+
+### KB-014 · Labels
+
+**Iteration 1 — 2026-11-27**
+
+- **Status at the end:** Ready for test
+- **What was done:**
+  - Shared: `packages/shared/src/labels.ts` (palette of 8 tokens, name 1 to 30 characters, request/response schemas, `diffLabelIds`). `CardSummary` gets `labelIds`, `BoardResponse` gets `labels`, new activity type `labels_changed` {added, removed} (label id and name, so history survives a label deletion), new board events `label_created`, `label_updated`, `label_deleted`, new error codes `LABEL_NAME_TAKEN` and `INVALID_LABEL`.
+  - Migration `add_labels`: `labels` and `card_labels` (composite PK, both foreign keys cascade). Hand-written in the same migration: unique index on `(project_id, lower(name))`, CHECK on name length and on the 8 palette tokens.
+  - API (`apps/api/src/modules/labels/`): `POST/GET /api/projects/:pid/labels`, `PATCH/DELETE /api/labels/:id`, `PUT /api/cards/:id/labels`. Authorization through the policy: `project:manage` for label create, rename and delete (owner and member), `card:edit` for setting a card's labels, `workspace:read` for the list; new `label` resource type in the authz resolver. Create takes a client UUID (A6). All label writes run under the board lock, like card writes. A label of another project or a missing one is `400 INVALID_LABEL`; more than 10 or duplicate ids is `400 VALIDATION_ERROR`; a duplicate name (any case) is `409 LABEL_NAME_TAKEN`.
+  - Setting the same set again is a no-op (no version bump, no activity, no event). A real change bumps the card `version`, writes `labels_changed` and publishes `card_updated` (the tile reads `labelIds`). Deleting a label bumps the version of each live card that had it, writes `labels_changed` (removed) per card, and publishes one `card_updated` per card plus `label_deleted`. Events are published after commit (R6).
+  - `GET /board` returns the labels in the same joined statement (the 5-query budget test of KB-028 still passes).
+  - Web (`apps/web/src/features/labels/`): label chips on tiles (name as text, colour as a secondary cue), `LabelPicker` in the card dialog (checkbox list, Space toggles, announced; read-only text for viewers), `LabelSettings` in project settings (create, rename, recolour, delete with confirmation, empty and error states, viewers read-only). Board events `label_*` are applied to the TanStack Query board cache; mutations are optimistic with rollback through `useBoardMutation`. The activity renderer handles `labels_changed` (the exhaustive switch).
+- **Changed files:** `packages/shared/src/{labels.ts,labels.test.ts,cards.ts,cards.test.ts,board.ts,board-events.ts,board-events.test.ts,errors.ts,index.ts}`; `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/20261127190724_add_labels/migration.sql`; `apps/api/src/{app.ts,lib/board-events.ts}`, `apps/api/src/modules/{labels/*,authz/authorize.ts,boards/service.ts,cards/service.ts,members/service.ts,sprints/service.ts}`; `apps/web/src/features/labels/*`, `apps/web/src/features/board/{BoardView.tsx,CardList.tsx,board-events.ts}`, `apps/web/src/features/cards/{CardDialog.tsx,activity.ts,api/cards.ts}`, `apps/web/src/routes/ProjectSettingsPage.tsx`, `apps/web/src/styles.css`, existing web test fixtures (new `labelIds` and `labels` fields); `e2e/labels.spec.ts`
+- **Migrations:** `20261127190724_add_labels`
+- **Commit(s):** `b214fc6`
+- **Tests written by the developer:**
+  - Unit (shared): palette (8 tokens valid, others rejected), name length and trimming, case-insensitive key, max 10 and duplicates, `diffLabelIds`, label events and `labels_changed` in the schemas. Unit (web): label helpers, board event reducer for `label_*`, activity sentence.
+  - API (`labels.test.ts`, real PostgreSQL, 19 tests): create 201 as owner and member, 400 invalid colour or name or unknown field, 409 duplicate in any case (same name allowed in another project), idempotent create with client id (200, and 409 `CONFLICT` for an id of another project), 403 viewer, 404 non-member identical to a missing resource, 401, 403 `CSRF_REJECTED`; list and board payload; rename, recolour and delete; cross-project and missing label on a card is 400 and nothing linked; same set twice is idempotent (no version bump, no event, one activity row); limit of 10; label deletion removes it from cards with activity; board events and client mutation id; no event on failure.
+  - Web component and flow tests: picker toggles with Space and announces (polite) or reports an error (assertive), viewer read-only, empty state; settings page empty state, create with client id, validation and server duplicate error, delete confirmation, viewer read-only.
+  - E2E (`e2e/labels.spec.ts`, two browser contexts): A creates a label in settings and assigns it with the keyboard, B sees it on the tile within 2 s without reload, removal and label deletion also reach B; axe (serious and critical) on settings, picker and the viewer dialog; viewer sees labels but has no controls. 5 repeats at `--retries=0`: 10 passed.
+- **Local checks:** build ok · lint ok · typecheck ok · test ok (shared 210, web 364, api 520, root 4) · test:e2e ok (63 passed)
+- **New dependencies (G9):** none
+- **Notes for the tester:**
+  - Decisions the spec left open: label management uses the `project:manage` action (owner and member), not a new action. Label deletion also changes the cards that carried it (version, activity, `card_updated`), because G5 says every card mutation writes an activity event. Colours are tokens (`red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `gray`) mapped to light tints with dark text and a coloured border in `styles.css`; the name is always the visible text.
+  - The project settings page does not open the board WebSocket, so label changes made by someone else while it is open appear after the next refetch (window focus or navigation), not instantly. The board and the card dialog do update live.
+  - I did not run a manual contrast check of the 8 tints; axe reports no serious or critical violations.
+  - Suggestion for the planner: filtering the board by label is out of scope here (as the task says) and would be a natural follow-up task; a live label list on the settings page would need a socket there.
+- **Blocker:** none
