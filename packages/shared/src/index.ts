@@ -12,6 +12,15 @@ export {
   type BurndownCard,
   type BurndownContext,
 } from './burndown.js';
+export {
+  VELOCITY_SPRINT_LIMIT,
+  velocitySprintSchema,
+  velocityResponseSchema,
+  averageCompleted,
+  velocitySummary,
+  type VelocitySprint,
+  type VelocityResponse,
+} from './velocity.js';
 export { APP_NAME } from './constants.js';
 export { slugify } from './slugify.js';
 export {

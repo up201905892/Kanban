@@ -48,6 +48,8 @@ function server(sprints: object[], burndown?: object) {
         sprints,
         labels: [],
       }),
+    [`GET /api/projects/${PID}/velocity`]: () =>
+      jsonResponse(200, { sprints: [], averageCompleted: 0 }),
     [`GET /api/sprints/${SID}/burndown`]: () => jsonResponse(200, burndown),
   };
 }
